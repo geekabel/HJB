@@ -5,6 +5,7 @@ Dernière mise à jour : 5 novembre 2026
 Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque tâche, on déplace sa carte dans « Fait » et on coche ses critères.
 
 - Maquettes UI/UX : canevas « HJB Résidence · maquettes » (12 écrans)
+- Tableau visuel : artifact « Kanban HJB Résidence », mis à jour en même temps que ce fichier
 - Modèle de données : [docs/modele-de-donnees.md](docs/modele-de-donnees.md)
 
 ## Règles de travail
@@ -18,7 +19,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - Forme : `type(portée facultative): description`, puis un corps et des pieds de page facultatifs.
 - Types utilisés : `feat`, `fix`, `docs`, `test`, `refactor`, `style`, `build`, `ci`, `chore`, `perf`.
 - Changement incompatible : `!` avant les deux-points, ou un pied de page `BREAKING CHANGE: ...`.
-- Auteur : `Godwin <koffigodwin96@gmail.com>`.
+
+**Dépôt public : aucune donnée sensible**
+- Jamais de secret dans le dépôt : clés, mots de passe, jetons d'API, clés VAPID, clé de chiffrement du wifi. Ils vivent dans l'environnement du serveur (`.env`, ignoré par Git).
+- Jamais de vraies données de la résidence : noms, téléphones, numéros de chambre réels, codes wifi. Les tests et les exemples utilisent des données inventées.
+- Pas d'adresse e-mail ni de numéro de téléphone personnels dans les fichiers.
+- La CI recherche les secrets à chaque push (carte T02).
 
 **Sources de vérité**
 1. Django : uniquement la [documentation officielle](https://docs.djangoproject.com/en/6.1/), pour la version utilisée.
@@ -134,6 +140,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Ruff (lint et format) configuré
 - [ ] GitHub Actions : tests, `check`, `check --deploy`, `makemigrations --check`
 - [ ] Validation W3C automatique des pages rendues (Nu Html Checker en local dans la CI)
+- [ ] Recherche de secrets à chaque push (le dépôt est public)
 
 #### T03 Gabarits de base et système de design CSS
 - **But** : reproduire le style des maquettes une seule fois, en composants réutilisables.
