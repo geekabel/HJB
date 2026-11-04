@@ -1,0 +1,2 @@
+# Dépendances de l'application (épinglées).
+Django==6.1.3
