@@ -1,0 +1,47 @@
+{% extends "interface/resident.html" %}
+{% load icones %}
+{% block titre %}Accueil (exemple){% endblock %}
+{% block entete %}
+<div class="rangee">
+  <span class="tuile-logo">{% toits %}</span>
+  <div>
+    <p><strong>Bonjour Awa</strong></p>
+    <p class="texte-doux texte-petit">Chambre 312 · 3e étage</p>
+  </div>
+</div>
+<button class="bouton-icone" type="button">
+  {% icone "cloche" %}<span class="visuellement-cache">Notifications</span>
+  <span class="compteur">2<span class="visuellement-cache"> nouvelles</span></span>
+</button>
+{% endblock %}
+
+{% block contenu %}
+<h1 class="visuellement-cache">Accueil</h1>
+<p class="alerte alerte--info">{% icone "info" %}<span>Page d'exemple du guide de style : les noms et dates sont inventés.</span></p>
+
+<section class="carte carte--accent" aria-labelledby="visite">
+  <div class="toits" aria-hidden="true"><span></span><span></span><span></span></div>
+  <p class="rangee texte-petit">{% icone "porte" %}Visite de logement · réponse attendue</p>
+  <h2 id="visite">Demain, jeudi 6 novembre, entre 15 h et 17 h</h2>
+  <p class="carte__texte">Contrôle de l'alarme incendie et du compteur. Serez-vous là ?</p>
+  <div class="grille-2">
+    <button class="bouton" type="button">Je serai présent</button>
+    <button class="bouton bouton--secondaire" type="button">Absent</button>
+  </div>
+</section>
+
+<nav class="grille-2" aria-label="Raccourcis">
+  <a class="carte carte--lien" href="#">{% icone "alerte" %}<span class="carte__titre">Signaler un problème</span></a>
+  <a class="carte carte--lien" href="#">{% icone "calendrier" %}<span class="carte__titre">Voir un éducateur</span></a>
+  <a class="carte carte--lien" href="#">{% icone "wifi" %}<span class="carte__titre">Mon wifi</span></a>
+  <a class="carte carte--lien" href="#">{% icone "vote" %}<span class="carte__titre">1 vote en cours</span></a>
+</nav>
+
+<section class="pile" aria-labelledby="demandes">
+  <h2 id="demandes">Mes demandes</h2>
+  <a class="carte carte--lien" href="#">
+    <span class="rangee"><span class="carte__titre">Lampe salle de bain</span><span class="badge badge--info">Planifié</span></span>
+    <span class="carte__texte">Intervention vendredi 7 novembre, de 10 h à 12 h</span>
+  </a>
+</section>
+{% endblock %}

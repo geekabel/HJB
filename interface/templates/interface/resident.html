@@ -1,0 +1,33 @@
+{% extends "interface/base.html" %}
+{% load icones %}
+{% comment %}
+  Gabarit de section de l'espace résident (mobile d'abord).
+  Variables : ``actif`` (accueil, messages, signaler, rendezvous, compte)
+  pour marquer l'entrée de la barre du bas.
+  Les liens « # » seront remplacés par les vraies pages (cartes T23, T27, T30, T34).
+{% endcomment %}
+{% block classe_corps %}page-resident{% endblock %}
+{% block corps %}
+<header class="page-resident__entete">
+  {% block entete %}
+  <div class="rangee">
+    <span class="tuile-logo">{% toits %}</span>
+    <span class="texte-doux texte-petit">Espace résidents</span>
+  </div>
+  {% endblock %}
+</header>
+
+<main id="contenu" class="page-resident__contenu">
+  {% block contenu %}{% endblock %}
+</main>
+
+<nav class="nav-resident" aria-label="Navigation principale">
+  <ul>
+    <li><a href="#"{% if actif == "accueil" %} aria-current="page"{% endif %}>{% icone "maison" %}Accueil</a></li>
+    <li><a href="#"{% if actif == "messages" %} aria-current="page"{% endif %}>{% icone "message" %}Messages</a></li>
+    <li><a href="#"{% if actif == "signaler" %} aria-current="page"{% endif %}>{% icone "plus" %}Signaler</a></li>
+    <li><a href="#"{% if actif == "rendezvous" %} aria-current="page"{% endif %}>{% icone "calendrier" %}Rendez-vous</a></li>
+    <li><a href="#"{% if actif == "compte" %} aria-current="page"{% endif %}>{% icone "personne" %}Mon compte</a></li>
+  </ul>
+</nav>
+{% endblock %}
