@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T04 | Rôles et permissions | E0 Fondations | T01 |
 | T05 | Journal d'audit | E0 Fondations | T04 |
 | T06 | Étages, chambres et séjours | E1 Résidents | T01 |
 | T07 | Liste et fiche des résidents (équipe) | E1 Résidents | T03, T06 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T01 | Initialiser le projet Django | 5 nov. 2026 |
 | T02 | Outils qualité et intégration continue | 5 nov. 2026 |
 | T03 | Gabarits de base et système de design CSS | 5 nov. 2026 |
+| T04 | Rôles et permissions | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -157,12 +157,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Rendu vérifié dans Chrome : mobile 390 px et ordinateur 1280 px, thèmes clair et sombre, aucun débordement, polices chargées, lien d'évitement au premier Tab
 - **Notes** : le validateur W3C n'accepte pas encore `@container`, donc on ne l'utilise pas. Les liens de la navigation pointent vers « # » jusqu'à ce que leurs pages existent. Une chaîne écrite en dur dans un gabarit n'est pas échappée par Django : seules les variables le sont, ce que vérifie un test.
 
-#### T04 Rôles et permissions
-- **Docs** : [permissions et autorisation](https://docs.djangoproject.com/en/6.1/topics/auth/default/#permissions-and-authorization).
-- [ ] Champ `role` : RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN
-- [ ] Groupes et permissions créés par migration
-- [ ] Champs `telephone` (E.164) et `est_moderateur`
-- [ ] Tests d'accès par rôle
+#### T04 Rôles et permissions (fait le 5 nov. 2026)
+- **Docs** : [permissions et autorisation](https://docs.djangoproject.com/en/6.1/topics/auth/default/#permissions-and-authorization), [signal `post_migrate`](https://docs.djangoproject.com/en/6.1/ref/signals/#post-migrate), [RunPython](https://docs.djangoproject.com/en/6.1/ref/migration-operations/#runpython), [phonenumbers](https://github.com/daviddrysdale/python-phonenumbers).
+- [x] Champ `role` : RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN
+- [x] Groupes et permissions créés au `migrate`, par un gestionnaire `post_migrate` (voir la note)
+- [x] Champs `telephone` (portable, E.164, unique s'il est renseigné) et `est_moderateur`
+- [x] Tests d'accès par rôle : chaque rôle a exactement ses droits, changement de rôle, modérateur, administration Django
+- [x] Guide de style réservé aux rôles du personnel : un résident connecté reçoit un 403
+- **Notes** : la carte prévoyait une migration de données. La doc de Django indique que les permissions sont créées par le signal `post_migrate`, donc après les migrations : sur une base neuve, une migration ne pourrait pas les attribuer. Les groupes sont donc créés dans ce même signal, à chaque `migrate`, et le code de `comptes/roles.py` fait foi. Le numéro est normalisé dans `clean_fields()`, avant les validateurs, car `full_clean()` les lance avant `clean()`. Connexion provisoire par la page de l'administration jusqu'à T13 : elle n'accepte que les comptes `is_staff`. Table des droits dans [docs/modele-de-donnees.md](docs/modele-de-donnees.md#rôles-groupes-et-permissions).
 
 #### T05 Journal d'audit
 - [ ] Modèle `EntreeJournal` et fonction `journaliser(acteur, action, objet, requete)`
