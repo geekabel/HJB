@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 
-from .models import User
+from comptes.models import User
 
 
 class ModeleUtilisateurTests(TestCase):
