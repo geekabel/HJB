@@ -14,7 +14,7 @@ DEBUG = True
 # dans l'environnement (voir prod.py).
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    "django-insecure-cle-de-developpement-a-ne-jamais-utiliser-en-production",
+    "django-insecure-cle-de-developpement-a-ne-jamais-utiliser-en-production",  # gitleaks:allow
 )
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
