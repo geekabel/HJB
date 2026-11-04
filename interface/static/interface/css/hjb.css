@@ -1,0 +1,981 @@
+/*
+ * Système de design HJB Résidence.
+ *
+ * Couleurs tirées du logo : bleu #03A9F4, vert #8BC34A, jaune #FFC107,
+ * avec un bleu nuit pour le texte. Une couleur, un sens :
+ *   bleu = action et information, jaune = attention, vert = terminé.
+ *
+ * Organisation par couches (MDN : @layer), de la moins à la plus prioritaire.
+ * Validé par le Nu Html Checker du W3C (voir outils/valider_w3c.py).
+ */
+
+@layer reset, jetons, base, mise-en-page, composants, utilitaires;
+
+/* ------------------------------------------------------------------ */
+/* Polices servies par le site (licence SIL OFL 1.1, voir fonts/)       */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Remise à zéro légère                                                 */
+/* ------------------------------------------------------------------ */
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  ul,
+  ol,
+  figure,
+  fieldset {
+    margin: 0;
+  }
+
+  fieldset {
+    padding: 0;
+    border: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Jetons : clair par défaut, sombre selon la préférence du système     */
+/* ------------------------------------------------------------------ */
+
+@layer jetons {
+  :root {
+    color-scheme: light dark;
+
+    /* Couleurs du logo (décor seulement, jamais pour du texte) */
+    --toit-vert: #8bc34a;
+    --toit-bleu: #03a9f4;
+    --toit-jaune: #ffc107;
+
+    /* Fonds et texte */
+    --fond: #eef7fc;
+    --surface: #ffffff;
+    --surface-2: #e3eef5;
+    --encre: #06202f;
+    --texte-doux: #4a6272;
+    --ligne: #cfe0ea;
+    --controle: #6f8b9c; /* bordure des champs et puces : 3,6:1 sur blanc */
+
+    /* Action et information (bleu) */
+    --action: #006fa3; /* liens et texte bleu : 5,5:1 sur blanc */
+    --action-survol: #00557d;
+    --action-fond: #006fa3;
+    --sur-action: #ffffff;
+    --action-doux: #e1f4fd;
+
+    /* Attention (jaune), terminé (vert), erreur (rouge) */
+    --attention: #ffc107;
+    --sur-attention: #06202f;
+    --attention-doux: #fff3cd;
+    --attention-texte: #6b4e00;
+    --succes: #33691e;
+    --succes-doux: #eef6e4;
+    --erreur: #b3261e;
+    --erreur-doux: #fde8e6;
+
+    /* Menu de l'équipe */
+    --menu-fond: #06202f;
+    --menu-texte: #dcebf3;
+    --menu-doux: #a3bac8;
+    --menu-actif: #12384d;
+    --menu-ligne: #1d3d50;
+
+    --focus: #006fa3;
+
+    /* Typographie */
+    --police-titre: "Bricolage Grotesque", "Trebuchet MS", "Segoe UI", sans-serif;
+    --police-texte: "Atkinson Hyperlegible", Verdana, "Segoe UI", sans-serif;
+    --police-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --t-petit: 0.8125rem;
+    --t-texte: 1rem;
+    --t-gros: 1.125rem;
+    --t-h3: 1.25rem;
+    --t-h2: 1.5rem;
+    --t-h1: clamp(1.75rem, 1.4rem + 1.5vw, 2.25rem);
+
+    /* Espacements, rayons, tailles */
+    --e-1: 0.25rem;
+    --e-2: 0.5rem;
+    --e-3: 0.75rem;
+    --e-4: 1rem;
+    --e-5: 1.25rem;
+    --e-6: 1.5rem;
+    --e-8: 2rem;
+    --e-10: 2.5rem;
+    --r-petit: 0.5rem;
+    --r: 0.75rem;
+    --r-grand: 1.25rem;
+    --cible: 2.75rem; /* 44 px : taille minimale d'une zone cliquable */
+    --largeur-resident: 40rem;
+    --largeur-texte: 65ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #071a26;
+      --surface: #10293a;
+      --surface-2: #0b2332;
+      --encre: #eaf4fa;
+      --texte-doux: #a3bac8;
+      --ligne: #23404f;
+      --controle: #7f9bab;
+
+      --action: #6ccfff;
+      --action-survol: #9fdfff;
+      --action-fond: #03a9f4;
+      --sur-action: #06202f;
+      --action-doux: #0f3a52;
+
+      --attention-doux: #3b3208;
+      --attention-texte: #ffd54f;
+      --succes: #9ccc65;
+      --succes-doux: #1e3311;
+      --erreur: #ffb4ab;
+      --erreur-doux: #3d1512;
+
+      --menu-fond: #04121b;
+      --menu-actif: #12384d;
+
+      --focus: #6ccfff;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                 */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  body {
+    background: var(--fond);
+    color: var(--encre);
+    font-family: var(--police-texte);
+    font-size: var(--t-texte);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--police-titre);
+    font-weight: 650;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: var(--t-h1);
+  }
+
+  h2 {
+    font-size: var(--t-h2);
+  }
+
+  h3 {
+    font-size: var(--t-h3);
+  }
+
+  p,
+  li {
+    max-width: var(--largeur-texte);
+  }
+
+  a {
+    color: var(--action);
+    text-underline-offset: 0.2em;
+  }
+
+  a:hover {
+    color: var(--action-survol);
+  }
+
+  code {
+    font-family: var(--police-code);
+    font-size: 0.9em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Mise en page                                                         */
+/* ------------------------------------------------------------------ */
+
+@layer mise-en-page {
+  /* Lien d'évitement : visible seulement au clavier */
+  .lien-evitement {
+    position: absolute;
+    inset-block-start: var(--e-2);
+    inset-inline-start: var(--e-2);
+    z-index: 100;
+    padding: var(--e-2) var(--e-4);
+    border-radius: var(--r-petit);
+    background: var(--action-fond);
+    color: var(--sur-action);
+    font-weight: 700;
+    transform: translateY(-200%);
+  }
+
+  .lien-evitement:focus-visible {
+    transform: none;
+  }
+
+  /* Espace résident : mobile d'abord, une colonne centrée */
+  .page-resident {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-resident__entete,
+  .page-resident__contenu {
+    width: 100%;
+    max-width: var(--largeur-resident);
+    margin-inline: auto;
+    padding-inline: max(var(--e-5), env(safe-area-inset-left, 0px));
+  }
+
+  .page-resident__entete {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding-block: var(--e-5) var(--e-3);
+  }
+
+  .page-resident__contenu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    padding-block: var(--e-2) var(--e-8);
+  }
+
+  /* Espace équipe : menu latéral, contenu fluide ; le menu passe au-dessus sur petit écran */
+  .page-equipe {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .page-equipe__contenu {
+    flex: 999 1 35rem;
+    min-width: 0;
+    padding-block: var(--e-8);
+    padding-inline: max(var(--e-5), env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-6);
+  }
+
+  @media (min-width: 64rem) {
+    .page-equipe__contenu {
+      padding-inline: var(--e-10);
+    }
+  }
+
+  .pile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+
+  .rangee {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-2);
+  }
+
+  .grille-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-3);
+  }
+
+  .grille-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--e-4);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Composants                                                           */
+/* ------------------------------------------------------------------ */
+
+@layer composants {
+  /* Tuile du logo : les trois toits */
+  .tuile-logo {
+    flex: none;
+    width: var(--cible);
+    height: var(--cible);
+    display: grid;
+    place-items: center;
+    border-radius: 0.875rem;
+    background: #ffffff;
+    border: 1px solid var(--ligne);
+  }
+
+  .tuile-logo svg {
+    width: 1.875rem;
+    height: auto;
+  }
+
+  /* Bandeau aux trois couleurs du logo, en haut des cartes importantes */
+  .toits {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: 0.375rem;
+  }
+
+  .toits span:nth-child(1) {
+    background: var(--toit-vert);
+  }
+
+  .toits span:nth-child(2) {
+    background: var(--toit-bleu);
+  }
+
+  .toits span:nth-child(3) {
+    background: var(--toit-jaune);
+  }
+
+  /* Boutons */
+  .bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e-2);
+    min-height: var(--cible);
+    padding-inline: var(--e-4);
+    border: 2px solid var(--action-fond);
+    border-radius: var(--r);
+    background: var(--action-fond);
+    color: var(--sur-action);
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .bouton:hover {
+    color: var(--sur-action);
+    filter: brightness(1.08);
+  }
+
+  .bouton svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex: none;
+  }
+
+  .bouton--secondaire {
+    background: var(--surface);
+    color: var(--action);
+  }
+
+  .bouton--secondaire:hover {
+    color: var(--action-survol);
+    filter: none;
+    background: var(--action-doux);
+  }
+
+  .bouton--discret {
+    border-color: var(--controle);
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .bouton--discret:hover {
+    color: var(--encre);
+    filter: none;
+    background: var(--surface-2);
+  }
+
+  .bouton--bloc {
+    width: 100%;
+  }
+
+  .bouton:disabled,
+  .bouton[aria-disabled="true"] {
+    border-color: var(--ligne);
+    background: var(--surface-2);
+    color: var(--texte-doux);
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  /* Puces de filtre : l'état choisi se lit aussi sans la couleur (graisse) */
+  .puce {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding-inline: var(--e-4);
+    border: 1px solid var(--controle);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--encre);
+    font-size: 0.875rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .puce[aria-pressed="true"],
+  .puce[aria-current="true"],
+  .puce[aria-current="page"] {
+    border-color: var(--encre);
+    background: var(--encre);
+    color: var(--fond);
+    font-weight: 700;
+  }
+
+  /* Cartes */
+  .carte {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+    padding: var(--e-4);
+    border: 1px solid var(--ligne);
+    border-radius: var(--r-grand);
+    background: var(--surface);
+  }
+
+  .carte--lien {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .carte--lien:hover {
+    color: inherit;
+    border-color: var(--controle);
+  }
+
+  .carte__titre {
+    font-family: var(--police-texte);
+    font-size: var(--t-gros);
+    font-weight: 700;
+  }
+
+  .carte__texte {
+    color: var(--texte-doux);
+    font-size: 0.875rem;
+  }
+
+  /* Carte d'action attendue : fond bleu, bandeau des toits */
+  .carte--accent {
+    /* Contour de focus de la couleur du texte : 5,5:1 en clair, 6,4:1 en sombre */
+    --focus: var(--sur-action);
+    overflow: hidden;
+    padding: 0 var(--e-5) var(--e-5);
+    gap: var(--e-3);
+    border: 0;
+    background: var(--action-fond);
+    color: var(--sur-action);
+  }
+
+  .carte--accent .toits {
+    margin-inline: calc(-1 * var(--e-5));
+    margin-block-end: var(--e-2);
+  }
+
+  .carte--accent .carte__texte {
+    color: inherit;
+  }
+
+  .carte--accent .bouton {
+    border-color: var(--sur-action);
+    background: var(--sur-action);
+    color: var(--action-fond);
+  }
+
+  .carte--accent .bouton--secondaire {
+    background: transparent;
+    color: var(--sur-action);
+  }
+
+  /* Badges de statut : un libellé écrit, jamais la couleur seule */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-1);
+    padding: 0.125rem var(--e-2);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .badge--info {
+    background: var(--action-doux);
+    color: var(--action);
+  }
+
+  .badge--attention {
+    background: var(--attention);
+    color: var(--sur-attention);
+  }
+
+  .badge--succes {
+    background: var(--succes-doux);
+    color: var(--succes);
+  }
+
+  .badge--neutre {
+    background: var(--surface-2);
+    color: var(--texte-doux);
+  }
+
+  .badge--erreur {
+    background: var(--erreur-doux);
+    color: var(--erreur);
+  }
+
+  /* Pastille de compteur (non lus, à traiter) */
+  .compteur {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.375rem;
+    height: 1.375rem;
+    padding-inline: 0.375rem;
+    border-radius: 999px;
+    background: var(--attention);
+    color: var(--sur-attention);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Bandeaux d'information */
+  .alerte {
+    display: flex;
+    gap: var(--e-3);
+    align-items: flex-start;
+    padding: var(--e-3) var(--e-4);
+    border-radius: var(--r);
+    font-size: 0.875rem;
+  }
+
+  .alerte svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-block-start: 0.0625rem;
+  }
+
+  .alerte--info {
+    background: var(--action-doux);
+    color: var(--encre);
+  }
+
+  .alerte--attention {
+    background: var(--attention-doux);
+    color: var(--encre);
+  }
+
+  .alerte--attention svg {
+    color: var(--attention-texte);
+  }
+
+  .alerte--succes {
+    background: var(--succes-doux);
+    color: var(--encre);
+  }
+
+  /* Champs de formulaire */
+  .champ {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+  }
+
+  .champ label,
+  .champ legend {
+    font-weight: 700;
+  }
+
+  .champ input:not([type="checkbox"], [type="radio"]),
+  .champ select,
+  .champ textarea {
+    width: 100%;
+    min-height: var(--cible);
+    padding: var(--e-2) var(--e-3);
+    border: 1px solid var(--controle);
+    border-radius: var(--r-petit);
+    background: var(--surface);
+    color: var(--encre);
+  }
+
+  .champ textarea {
+    resize: vertical;
+  }
+
+  .champ__aide {
+    color: var(--texte-doux);
+    font-size: var(--t-petit);
+  }
+
+  .champ__erreur {
+    display: flex;
+    gap: var(--e-1);
+    align-items: center;
+    color: var(--erreur);
+    font-size: var(--t-petit);
+    font-weight: 700;
+  }
+
+  .champ__erreur svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+
+  .champ [aria-invalid="true"] {
+    border-width: 2px;
+    border-color: var(--erreur);
+  }
+
+  /* Choix en tuiles (boutons radio et cases à cocher) */
+  .choix {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+    min-height: 3rem;
+    padding: var(--e-2) var(--e-4);
+    border: 1px solid var(--controle);
+    border-radius: var(--r);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  .choix input {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+    accent-color: var(--action-fond);
+  }
+
+  .choix:has(input:checked) {
+    border: 2px solid var(--action);
+    background: var(--action-doux);
+    font-weight: 700;
+  }
+
+  /* Bouton rond à icône (notifications, retour) */
+  .bouton-icone {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--cible);
+    height: var(--cible);
+    border: 1px solid var(--ligne);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--encre);
+    cursor: pointer;
+  }
+
+  .bouton-icone svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .bouton-icone .compteur {
+    position: absolute;
+    inset-block-start: 0.125rem;
+    inset-inline-end: 0.125rem;
+  }
+
+  /* Barre de navigation du résident, fixée en bas sur téléphone */
+  .nav-resident {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 10;
+    border-block-start: 1px solid var(--ligne);
+    background: var(--surface);
+    padding-block-end: env(safe-area-inset-bottom, 0px);
+  }
+
+  .nav-resident ul {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    max-width: var(--largeur-resident);
+    margin-inline: auto;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav-resident a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e-1);
+    min-height: 4rem;
+    color: var(--texte-doux);
+    font-size: 0.75rem;
+    text-decoration: none;
+  }
+
+  .nav-resident a:hover {
+    color: var(--encre);
+  }
+
+  .nav-resident a[aria-current="page"] {
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .nav-resident svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  /* Menu latéral de l'équipe */
+  .menu-equipe {
+    flex: 1 1 15rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-1);
+    padding: var(--e-6) var(--e-4);
+    background: var(--menu-fond);
+    color: var(--menu-texte);
+  }
+
+  .menu-equipe__marque {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+    padding: 0 var(--e-2) var(--e-5);
+    font-family: var(--police-titre);
+    font-size: var(--t-gros);
+    font-weight: 650;
+  }
+
+  .menu-equipe ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-1);
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu-equipe a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    min-height: var(--cible);
+    padding-inline: var(--e-3);
+    border-radius: var(--r-petit);
+    color: var(--menu-texte);
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  .menu-equipe a:hover {
+    background: var(--menu-actif);
+    color: #ffffff;
+  }
+
+  .menu-equipe a[aria-current="page"] {
+    background: var(--menu-actif);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .menu-equipe :focus-visible {
+    outline-color: var(--toit-bleu);
+  }
+
+  .menu-equipe__personne {
+    margin-block-start: auto;
+    padding: var(--e-4) var(--e-3) 0;
+    border-block-start: 1px solid var(--menu-ligne);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.875rem;
+  }
+
+  .menu-equipe__personne span + span {
+    color: var(--menu-doux);
+    font-size: 0.75rem;
+  }
+
+  /* Indicateur chiffré du tableau de bord */
+  .indicateur {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-1);
+  }
+
+  /* Dans une colonne, un badge garde sa taille au lieu de s'étirer */
+  .indicateur > .badge,
+  .pile > .badge {
+    align-self: flex-start;
+  }
+
+  .indicateur__valeur {
+    font-family: var(--police-titre);
+    font-size: 2.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  /* Nuancier du guide de style */
+  .echantillon {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+  }
+
+  .echantillon__couleur {
+    height: 3.5rem;
+    border: 1px solid var(--ligne);
+    border-radius: var(--r);
+  }
+
+  .echantillon__couleur--action {
+    background: var(--action-fond);
+  }
+
+  .echantillon__couleur--encre {
+    background: var(--encre);
+  }
+
+  .echantillon__couleur--fond {
+    background: var(--fond);
+  }
+
+  .echantillon__couleur--attention {
+    background: var(--attention);
+  }
+
+  .echantillon__couleur--succes {
+    background: var(--succes);
+  }
+
+  .echantillon__couleur--erreur {
+    background: var(--erreur);
+  }
+
+  .echantillon__couleur--toit-vert {
+    background: var(--toit-vert);
+  }
+
+  .echantillon__couleur--toit-bleu {
+    background: var(--toit-bleu);
+  }
+
+  .echantillon__couleur--toit-jaune {
+    background: var(--toit-jaune);
+  }
+
+  @media (forced-colors: active) {
+    .bouton,
+    .puce,
+    .badge,
+    .choix {
+      border: 1px solid CanvasText;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilitaires                                                          */
+/* ------------------------------------------------------------------ */
+
+@layer utilitaires {
+  .visuellement-cache {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .texte-doux {
+    color: var(--texte-doux);
+  }
+
+  .texte-petit {
+    font-size: var(--t-petit);
+  }
+}
