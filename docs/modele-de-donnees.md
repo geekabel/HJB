@@ -69,12 +69,12 @@ erDiagram
         string username UK
         string first_name
         string last_name
-        string telephone UK "format E.164"
+        string telephone UK "portable, format E.164, unique s'il est renseigné"
         string email "facultatif"
         string role "RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN"
-        bool est_moderateur "phase 2"
+        bool est_moderateur "donné par l'équipe"
         bool is_active
-        datetime telephone_verifie_le
+        datetime telephone_verifie_le "carte T12"
     }
     ETAGE {
         int id PK
@@ -283,6 +283,27 @@ erDiagram
         datetime cree_le
     }
 ```
+
+## Rôles, groupes et permissions
+
+Le rôle est un champ du compte. Chaque rôle du personnel correspond à un groupe Django, qui porte les permissions. Le compte est placé dans le bon groupe à chaque enregistrement. Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `post_migrate`) : le code de `comptes/roles.py` fait foi, un ajout fait à la main est retiré.
+
+| Permission (`comptes.…`) | Accueil | Éducateurs | Maintenance | Administration | Modérateurs |
+|---|:-:|:-:|:-:|:-:|:-:|
+| `acceder_espace_equipe` | oui | oui | oui | oui | |
+| `gerer_residents` | oui | | | oui | |
+| `generer_code_activation` | oui | | | oui | |
+| `voir_code_wifi` | | | | oui | |
+| `envoyer_messages` | oui | oui | oui | oui | |
+| `gerer_signalements` | oui | | oui | oui | |
+| `gerer_rendezvous` | | oui | | oui | |
+| `moderer_discussion` | | | | oui | oui |
+| `voir_journal` | | | | oui | |
+| `gerer_roles` | | | | oui | |
+
+- Un résident n'a aucune permission, sauf s'il est désigné modérateur.
+- `is_staff` (accès à l'administration Django) reste séparé du rôle et se règle à la main.
+- Un super-utilisateur créé avec `createsuperuser` reçoit le rôle Administration.
 
 ## Règles métier portées par le modèle
 
