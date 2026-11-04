@@ -1,2 +1,3 @@
 # Dépendances de l'application (épinglées).
 Django==6.1.3
+phonenumbers==9.0.41
