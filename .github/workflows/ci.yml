@@ -1,0 +1,71 @@
+# Qualité, tests et validation W3C à chaque push et chaque pull request.
+# setup-python : https://github.com/actions/setup-python
+# setup-java : https://github.com/actions/setup-java
+# Nu Html Checker : https://validator.github.io/validator/docs/vnu.1.html
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Version du validateur W3C (paquet npm vnu-jar), épinglée.
+  VNU_VERSION: "26.10.12"
+
+jobs:
+  qualite:
+    name: Qualité, tests et W3C
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format)
+        run: ruff format --check .
+
+      - name: Contrôles Django
+        run: python manage.py check
+
+      - name: Migrations à jour
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Contrôle avant déploiement
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          DJANGO_ALLOWED_HOSTS: ci.example
+          DJANGO_SQLITE_PATH: ${{ runner.temp }}/check-deploy.sqlite3
+        run: |
+          # Clé jetable générée à chaque exécution : aucun secret dans le dépôt.
+          export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          python manage.py check --deploy
+
+      - name: Tests (avec capture des pages)
+        env:
+          HTML_CAPTURE_DIR: build/html
+        run: python manage.py test
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Installer le validateur W3C
+        run: npm install --no-save --prefix "$RUNNER_TEMP/vnu" "vnu-jar@$VNU_VERSION"
+
+      - name: Validation W3C (HTML et CSS)
+        run: python -m outils.valider_w3c --jar "$RUNNER_TEMP/vnu/node_modules/vnu-jar/build/dist/vnu.jar" --html build/html

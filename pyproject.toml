@@ -1,0 +1,22 @@
+# Configuration des outils. Les dépendances restent dans requirements*.txt.
+# Ruff : https://docs.astral.sh/ruff/configuration/
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+# E/W : pycodestyle, F : Pyflakes, I : tri des imports, B : bugbear,
+# UP : syntaxe Python à jour, DJ : règles propres à Django, RUF : règles Ruff.
+select = ["E", "W", "F", "I", "B", "UP", "DJ", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Fichiers générés par Django : on ne les réécrit pas à la main.
+"*/migrations/*" = ["E501", "RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["comptes", "config", "outils"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

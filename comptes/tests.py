@@ -43,7 +43,11 @@ class ReglagesProductionTests(SimpleTestCase):
         }
         environnement.update(variables)
         return subprocess.run(
-            [sys.executable, "-c", "import config.settings.prod as p; print(p.DEBUG, p.ALLOWED_HOSTS)"],
+            [
+                sys.executable,
+                "-c",
+                "import config.settings.prod as p; print(p.DEBUG, p.ALLOWED_HOSTS)",
+            ],
             cwd=settings.BASE_DIR,
             env=environnement,
             capture_output=True,
