@@ -4,24 +4,25 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from comptes.models import User
+from comptes.roles import Role
 from outils.capture_html import enregistrer_page
 
 
 class GuideDeStyleTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.equipe = User.objects.create_user(
-            username="equipe", password="mot-de-passe-de-test", is_staff=True
-        )
-        cls.resident = User.objects.create_user(
-            username="resident", password="mot-de-passe-de-test"
-        )
+        cls.equipe = User.objects.create_user(username="equipe", role=Role.ACCUEIL)
+        cls.resident = User.objects.create_user(username="resident")
 
     def test_reserve_a_l_equipe(self):
         url = reverse("interface:guide")
-        self.assertEqual(self.client.get(url).status_code, 302)
+        # Anonyme : renvoyé vers la connexion.
+        reponse = self.client.get(url)
+        self.assertEqual(reponse.status_code, 302)
+        self.assertIn(reverse("admin:login"), reponse["Location"])
+        # Résident connecté : accès refusé, sans boucle de connexion.
         self.client.force_login(self.resident)
-        self.assertEqual(self.client.get(url).status_code, 302)
+        self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_guide_de_style(self):
         self.client.force_login(self.equipe)

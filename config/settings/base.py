@@ -63,6 +63,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Modèle personnalisé, défini avant la première migration :
 # https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
+# Provisoire : la page de connexion de l'administration, en attendant la
+# connexion par clé d'accès (carte T13).
+LOGIN_URL = "admin:login"
+
 AUTH_USER_MODEL = "comptes.User"
 
 AUTH_PASSWORD_VALIDATORS = [

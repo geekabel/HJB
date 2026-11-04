@@ -1,5 +1,7 @@
+import io
 import os
 import tempfile
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -39,12 +41,17 @@ class ValidationW3CTests(SimpleTestCase):
             with (
                 mock.patch("outils.valider_w3c.fichiers_css", return_value=[]),
                 mock.patch("outils.valider_w3c.valider", return_value=1) as valider,
+                redirect_stdout(io.StringIO()),
+                redirect_stderr(io.StringIO()),
             ):
                 code = main(["--jar", "vnu.jar", "--html", dossier])
             self.assertEqual(code, 1)
             valider.assert_called_once()
 
     def test_reussit_sans_page_ni_css(self):
-        with tempfile.TemporaryDirectory() as dossier:
-            with mock.patch("outils.valider_w3c.fichiers_css", return_value=[]):
-                self.assertEqual(main(["--jar", "vnu.jar", "--html", dossier]), 0)
+        with (
+            tempfile.TemporaryDirectory() as dossier,
+            mock.patch("outils.valider_w3c.fichiers_css", return_value=[]),
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(main(["--jar", "vnu.jar", "--html", dossier]), 0)
