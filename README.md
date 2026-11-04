@@ -29,19 +29,38 @@ python manage.py runserver
 
 ## Tests et contrôles
 
+La CI GitHub Actions lance les mêmes contrôles à chaque push sur `main` et `develop`, et à chaque pull request.
+
 ```sh
-python manage.py test
+ruff check .              # lint (règles dans pyproject.toml)
+ruff format --check .     # mise en forme
 python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test
 ```
 
 Contrôle avant déploiement, avec les réglages de production :
 
 ```sh
 DJANGO_SETTINGS_MODULE=config.settings.prod \
-DJANGO_SECRET_KEY=une-cle-longue-et-aleatoire \
+DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')" \
 DJANGO_ALLOWED_HOSTS=exemple.org \
 python manage.py check --deploy
 ```
+
+### Validation W3C
+
+Les tests enregistrent les pages rendues quand `HTML_CAPTURE_DIR` est défini (voir `outils/capture_html.py`). Le Nu Html Checker du W3C valide ensuite ces pages et tous les fichiers CSS du projet. Il faut Java 17 ou plus et Node.js :
+
+```sh
+npm install --no-save --prefix ~/.cache/vnu vnu-jar@26.10.12
+HTML_CAPTURE_DIR=build/html python manage.py test
+python -m outils.valider_w3c --jar ~/.cache/vnu/node_modules/vnu-jar/build/dist/vnu.jar --html build/html
+```
+
+### Secrets
+
+Le dépôt est public. Un second workflow lance [gitleaks](https://github.com/gitleaks/gitleaks-action) sur chaque push. Les secrets restent dans l'environnement du serveur (voir [.env.example](.env.example)).
 
 ## Réglages
 
