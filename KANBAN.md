@@ -1,0 +1,378 @@
+# Kanban du projet HJB Résidence
+
+Dernière mise à jour : 4 novembre 2026
+
+Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque tâche, on déplace sa carte dans « Fait » et on coche ses critères.
+
+- Maquettes UI/UX : canevas « HJB Résidence · maquettes » (12 écrans)
+- Modèle de données : [docs/modele-de-donnees.md](docs/modele-de-donnees.md)
+
+## Règles de travail
+
+**Branches**
+1. `main` contient ce qui est en production. `develop` contient le travail validé.
+2. Chaque tâche se fait sur une branche locale `feat/tXX-nom-court`, créée depuis `develop`.
+3. Quand la tâche est finie et testée, on la fusionne dans `develop` avec `git merge --no-ff`.
+
+**Commits** : spécification [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification).
+- Forme : `type(portée facultative): description`, puis un corps et des pieds de page facultatifs.
+- Types utilisés : `feat`, `fix`, `docs`, `test`, `refactor`, `style`, `build`, `ci`, `chore`, `perf`.
+- Changement incompatible : `!` avant les deux-points, ou un pied de page `BREAKING CHANGE: ...`.
+- Auteur : `Godwin <koffigodwin96@gmail.com>`.
+
+**Sources de vérité**
+1. Django : uniquement la [documentation officielle](https://docs.djangoproject.com/en/6.1/), pour la version utilisée.
+2. Chaque bibliothèque : lire sa documentation officielle avant de l'utiliser.
+3. Si un problème reste bloquant après la doc : tickets GitHub du projet, puis forums (Django Forum, Stack Overflow).
+4. HTML, CSS et JavaScript : [MDN](https://developer.mozilla.org/fr/).
+
+**Définition de « fait » (pour toutes les cartes)**
+- Le code suit la documentation officielle citée dans la carte.
+- Les tests passent (`python manage.py test`).
+- `python manage.py check` ne signale rien.
+- Tout HTML et CSS produit passe les validateurs du W3C (HTML : [Nu Html Checker](https://validator.w3.org/nu/), CSS : [validateur CSS](https://jigsaw.w3.org/css-validator/)).
+- Le code front est moderne : HTML sémantique, CSS natif (variables, grilles, `:focus-visible`, `prefers-color-scheme`), JavaScript sans dépendance quand c'est possible.
+- Accessibilité : contraste du texte au moins 4,5:1, bordures des contrôles au moins 3:1, zones cliquables d'au moins 44 px, navigation au clavier.
+- Ce fichier et le modèle de données sont à jour.
+
+## Choix techniques
+
+| Sujet | Choix | Pourquoi |
+|---|---|---|
+| Langage | Python 3.13 | Supporté par Django 6.1 (3.12 à 3.15) |
+| Framework | Django 6.1 | Dernière version, support jusqu'en décembre 2027. Passage à 6.2 LTS (avril 2027) prévu en fin de projet |
+| Base de données | SQLite en développement, PostgreSQL en production | Django 6.1 demande SQLite 3.37 ou plus et PostgreSQL 15 ou plus |
+| Tâches en arrière-plan | Framework de tâches de Django + un backend avec worker | Les backends livrés avec Django servent au développement et aux tests seulement. Le backend de production sera choisi en T21, après lecture de sa doc |
+| Notifications | Web Push (application web installable, PWA) | Gratuit. Le SMS ne sert que de secours |
+| SMS | Couche « fournisseur » interchangeable | Console en développement, SMSGate pour les tests réels, OVHcloud ou Brevo en production |
+| Connexion | Code d'activation remis à l'accueil, code SMS, puis clé d'accès (passkey) | Le numéro de chambre n'est pas un secret |
+| Front | Gabarits Django, CSS natif, JavaScript léger | Moins de dépendances, validation W3C plus simple |
+
+## Tableau
+
+### En cours
+
+| ID | Tâche | Épopée |
+|---|---|---|
+| | *(vide)* | |
+
+### À faire
+
+| ID | Tâche | Épopée | Dépend de |
+|---|---|---|---|
+| T01 | Initialiser le projet Django | E0 Fondations | |
+| T02 | Outils qualité et intégration continue | E0 Fondations | T01 |
+| T03 | Gabarits de base et système de design CSS | E0 Fondations | T01 |
+| T04 | Rôles et permissions | E0 Fondations | T01 |
+| T05 | Journal d'audit | E0 Fondations | T04 |
+| T06 | Étages, chambres et séjours | E1 Résidents | T01 |
+| T07 | Liste et fiche des résidents (équipe) | E1 Résidents | T03, T06 |
+| T08 | Import CSV et Excel des résidents | E1 Résidents | T07 |
+| T09 | Départ d'un résident | E1 Résidents | T06, T15 |
+| T10 | Couche fournisseur SMS | E4 Messages | T01 |
+| T11 | Code d'activation | E2 Connexion | T07 |
+| T12 | Vérification du téléphone par code SMS | E2 Connexion | T10, T11 |
+| T13 | Connexion par clé d'accès (passkey) | E2 Connexion | T12 |
+| T14 | Sécurité de l'espace équipe | E2 Connexion | T04, T13 |
+| T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
+| T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
+| T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
+| T18 | Application installable (PWA) | E4 Messages | T03 |
+| T19 | Notifications Web Push | E4 Messages | T18 |
+| T20 | Modèles de message et composeur | E4 Messages | T06, T10 |
+| T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
+| T22 | Réponse Présent ou Absent | E4 Messages | T21 |
+| T23 | Boîte de réception du résident | E4 Messages | T21 |
+| T24 | Statuts de livraison des SMS | E4 Messages | T21 |
+| T25 | Sondages anonymes | E5 Votes | T21 |
+| T26 | Disponibilités des éducateurs | E6 Rendez-vous | T04 |
+| T27 | Réservation d'un rendez-vous | E6 Rendez-vous | T26, T13 |
+| T28 | Messages directs avec un éducateur | E6 Rendez-vous | T13 |
+| T29 | Rappels et annulation de rendez-vous | E6 Rendez-vous | T27, T19 |
+| T30 | Signaler un problème | E7 Signalements | T13 |
+| T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
+| T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
+| T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
+| T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
+| T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
+| T36 | RGPD | E9 Mise en service | T09, T15 |
+| T37 | Sécurité avant la mise en ligne | E9 Mise en service | toutes |
+| T38 | Déploiement | E9 Mise en service | T37 |
+| T39 | Essai pilote sur un étage | E9 Mise en service | T38 |
+| T40 | Guides d'utilisation | E9 Mise en service | T39 |
+| T41 | Discussion entre résidents et modération | E10 Phase 2 | T39 |
+
+### Fait
+
+| ID | Tâche | Terminé le |
+|---|---|---|
+| R01 | Recherche : envoi de SMS, options gratuites, cadre légal | 21 oct. 2026 |
+| R02 | Choix d'architecture : application web, Django, fournisseur SMS interchangeable | 4 nov. 2026 |
+| R03 | Maquettes UI/UX (7 écrans résident, 5 écrans équipe) et palette du logo | 4 nov. 2026 |
+| R04 | Kanban et modèle de données | 4 nov. 2026 |
+
+## Détail des cartes
+
+### E0 Fondations
+
+#### T01 Initialiser le projet Django
+- **But** : un projet Django 6.1 qui démarre, avec le modèle utilisateur personnalisé créé avant la première migration.
+- **Docs** : [tutoriel partie 1](https://docs.djangoproject.com/en/6.1/intro/tutorial01/), [modèle utilisateur personnalisé](https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project), [réglages](https://docs.djangoproject.com/en/6.1/topics/settings/), [liste de contrôle du déploiement](https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/).
+- [ ] Dépendances épinglées (`requirements.txt`, `requirements-dev.txt`)
+- [ ] Projet `config` avec réglages séparés : `base`, `dev`, `prod`
+- [ ] `SECRET_KEY` lue depuis une variable d'environnement en production
+- [ ] Application `comptes` avec `User(AbstractUser)` et `AUTH_USER_MODEL`
+- [ ] Langue française, fuseau `Europe/Paris`, `USE_TZ = True`
+- [ ] Premiers tests verts, `check` propre, `check --deploy` propre avec les réglages de production
+- [ ] README : installation en local
+
+#### T02 Outils qualité et intégration continue
+- **But** : chaque push vérifie le code automatiquement.
+- **Docs** : Ruff, GitHub Actions, [Nu Html Checker](https://validator.github.io/validator/).
+- [ ] Ruff (lint et format) configuré
+- [ ] GitHub Actions : tests, `check`, `check --deploy`, `makemigrations --check`
+- [ ] Validation W3C automatique des pages rendues (Nu Html Checker en local dans la CI)
+
+#### T03 Gabarits de base et système de design CSS
+- **But** : reproduire le style des maquettes une seule fois, en composants réutilisables.
+- **Docs** : [gabarits Django](https://docs.djangoproject.com/en/6.1/topics/templates/), [fichiers statiques](https://docs.djangoproject.com/en/6.1/howto/static-files/), MDN (propriétés personnalisées CSS, `:focus-visible`, `prefers-color-scheme`).
+- [ ] Jetons de couleur du logo : bleu `#03a9f4`, vert `#8bc34a`, jaune `#ffc107`, bleu nuit `#06202f`, bleu d'action `#006fa3`
+- [ ] Sens des couleurs : bleu = action et information, jaune = attention, vert = terminé
+- [ ] Polices : Bricolage Grotesque (titres) et Atkinson Hyperlegible (texte), servies depuis le site
+- [ ] Composants : boutons, puces, cartes, champs, badges de statut, barre de navigation mobile, menu latéral de l'équipe
+- [ ] Mode sombre et contour de focus visible
+- [ ] Gabarit résident (mobile d'abord) et gabarit équipe (ordinateur)
+- [ ] Pages modèles validées W3C
+
+#### T04 Rôles et permissions
+- **Docs** : [permissions et autorisation](https://docs.djangoproject.com/en/6.1/topics/auth/default/#permissions-and-authorization).
+- [ ] Champ `role` : RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN
+- [ ] Groupes et permissions créés par migration
+- [ ] Champs `telephone` (E.164) et `est_moderateur`
+- [ ] Tests d'accès par rôle
+
+#### T05 Journal d'audit
+- [ ] Modèle `EntreeJournal` et fonction `journaliser(acteur, action, objet, requete)`
+- [ ] Utilisé pour : affichage d'un code wifi, génération d'un code d'activation, départ d'un résident, changement de rôle
+- [ ] Consultable par les administrateurs seulement
+
+### E1 Résidents
+
+#### T06 Étages, chambres et séjours
+- [ ] Modèles `Etage`, `Chambre`, `Sejour` et contraintes uniques conditionnelles
+- [ ] Administration Django pour la saisie initiale
+- [ ] Tests des contraintes (une chambre, un séjour en cours)
+
+#### T07 Liste et fiche des résidents (équipe)
+- **Maquette** : P5.
+- [ ] Liste avec recherche, filtres par étage et par état du compte
+- [ ] Numéros de téléphone masqués dans la liste
+- [ ] Création et modification d'une fiche
+- [ ] Gabarit validé W3C
+
+#### T08 Import CSV et Excel des résidents
+- **Docs** : module `csv` de Python, openpyxl, phonenumbers.
+- [ ] Envoi du fichier, aperçu ligne par ligne, erreurs expliquées
+- [ ] Numéros normalisés au format international
+- [ ] Import des seules lignes valides, dans une transaction
+- [ ] Option « envoyer un code d'activation aux nouveaux »
+
+#### T09 Départ d'un résident
+- [ ] Fin du séjour, compte désactivé, sessions fermées, accès wifi désactivé
+- [ ] Trace dans le journal d'audit
+
+### E2 Connexion
+
+#### T10 Couche fournisseur SMS
+- **Docs** : doc de chaque fournisseur (SMSGate, API OVHcloud).
+- [ ] Interface `FournisseurSms.envoyer(numero, texte)` et réglage du fournisseur actif
+- [ ] Fournisseur « console » pour le développement et les tests
+- [ ] Fournisseur SMSGate (téléphone Android) pour les essais réels
+- [ ] Fournisseur OVHcloud pour la production
+- [ ] Compteur de caractères et de segments (GSM-7 : 160 ou 153, UCS-2 : 70 ou 67)
+
+#### T11 Code d'activation
+- **Maquettes** : P5 (bouton), R0.
+- [ ] Généré depuis la fiche du résident, à l'accueil, quand la personne se présente
+- [ ] Code haché en base, usage unique, valable 72 h
+- [ ] Impression du code ou affichage d'un QR code
+- [ ] Limite de tentatives
+
+#### T12 Vérification du téléphone par code SMS
+- **Maquette** : R0.
+- [ ] Code à 6 chiffres haché, valable 10 minutes, 5 essais au plus
+- [ ] Délai avant renvoi
+- [ ] Message clair si le numéro n'est pas le bon : passer à l'accueil
+
+#### T13 Connexion par clé d'accès (passkey)
+- **Docs** : django-otp-webauthn (à lire en entier avant de coder), [MDN Web Authentication API](https://developer.mozilla.org/fr/docs/Web/API/Web_Authentication_API).
+- [ ] Création de la clé après la vérification du téléphone
+- [ ] Connexion sans mot de passe
+- [ ] Récupération : nouveau code d'activation par l'accueil
+- [ ] Sessions longues pour les résidents, avec reconnexion demandée pour les actions sensibles
+
+#### T14 Sécurité de l'espace équipe
+- [ ] Espace équipe réservé aux rôles du personnel
+- [ ] Clé d'accès obligatoire pour le personnel
+- [ ] Adresse de l'administration Django changée
+- [ ] Limite de tentatives de connexion
+
+### E3 Wifi
+
+#### T15 Accès wifi chiffré (équipe)
+- **Docs** : bibliothèque cryptography (Fernet).
+- [ ] Modèle `AccesWifi` : mot de passe chiffré, clé dans une variable d'environnement
+- [ ] Saisie ou génération par l'équipe, date d'expiration à un an
+- [ ] Affichage réservé aux administrateurs, chaque affichage dans le journal
+
+#### T16 Écran « Mon wifi » du résident
+- **Maquette** : R6.
+- [ ] Mot de passe masqué, affiché après confirmation par la clé d'accès
+- [ ] Boutons « copier », barre de validité
+
+#### T17 Rappels d'expiration du wifi
+- [ ] Notification au résident 15 jours avant
+- [ ] Liste des renouvellements à faire pour l'équipe
+
+### E4 Messages
+
+#### T18 Application installable (PWA)
+- **Docs** : MDN (manifeste d'application web, service workers).
+- [ ] Manifeste, icônes, service worker
+- [ ] Écran d'aide « ajouter à l'écran d'accueil » pour iPhone (nécessaire pour recevoir les notifications)
+
+#### T19 Notifications Web Push
+- **Docs** : MDN Push API, pywebpush (ou django-webpush si sa maintenance est confirmée).
+- [ ] Clés VAPID, modèle `AbonnementPush`
+- [ ] Demande d'autorisation après un geste de l'utilisateur
+- [ ] Nettoyage des abonnements expirés
+
+#### T20 Modèles de message et composeur
+- **Maquette** : P2.
+- [ ] Types : visite, maintenance, annonce, vote, message libre
+- [ ] Modèles modifiables avec champs `{prénom}`, `{chambre}`, `{date}`
+- [ ] Ciblage par étage, chambre ou personne, avec le décompte « notification / SMS »
+- [ ] Version SMS courte, alerte quand un caractère fait passer en UCS-2
+- [ ] Bouton « m'envoyer un test »
+
+#### T21 Envoi programmé et relances
+- **Docs** : [framework de tâches de Django](https://docs.djangoproject.com/en/6.0/topics/tasks/), doc du backend choisi.
+- [ ] Choix du backend de tâches pour la production, après lecture de sa doc
+- [ ] Commande périodique qui lance les campagnes arrivées à l'heure
+- [ ] Notification push d'abord, SMS seulement sans abonnement push
+- [ ] Envois sans doublon (contrainte unique sur `Envoi`)
+- [ ] Relance automatique de ceux qui n'ont pas répondu
+
+#### T22 Réponse Présent ou Absent
+- **Docs** : [signature cryptographique](https://docs.djangoproject.com/en/6.1/topics/signing/).
+- [ ] Lien personnel signé dans le SMS
+- [ ] Réponse en un geste dans l'appli
+- [ ] Décompte des réponses côté équipe
+
+#### T23 Boîte de réception du résident
+- **Maquette** : R2.
+- [ ] Filtres : tous, visites, annonces, votes, pour moi
+- [ ] Non lu et lu
+
+#### T24 Statuts de livraison des SMS
+- [ ] Réception des accusés du fournisseur
+- [ ] Liste des échecs sur la campagne
+
+### E5 Votes
+
+#### T25 Sondages anonymes
+- **Maquette** : R2.
+- [ ] Tables `Participation` et `Vote` séparées : on sait qui a voté, pas pour quoi
+- [ ] Date de clôture, résultats pour l'équipe
+- [ ] Rappel aux seuls non-votants
+
+### E6 Rendez-vous
+
+#### T26 Disponibilités des éducateurs
+- **Maquette** : P4.
+- [ ] Grille hebdomadaire, créneaux répétés chaque semaine
+- [ ] Réglages : durée, délai minimum
+
+#### T27 Réservation d'un rendez-vous
+- **Maquette** : R5.
+- [ ] Choix de l'éducateur (nom visible) ou « le premier libre »
+- [ ] Prochain créneau libre mis en avant
+- [ ] Pas de double réservation (transaction et contrainte)
+- [ ] Motif facultatif, visible par l'éducateur seul
+
+#### T28 Messages directs avec un éducateur
+- [ ] Conversation résident et éducateur, non lus
+- [ ] Heures de réponse affichées
+
+#### T29 Rappels et annulation de rendez-vous
+- [ ] Rappel la veille et une heure avant
+- [ ] Annulation par le résident ou l'éducateur, avec notification
+
+### E7 Signalements
+
+#### T30 Signaler un problème
+- **Maquette** : R3.
+- [ ] Catégorie, description, photos, urgence, accès à la chambre
+- [ ] Rappel du numéro à appeler pour les urgences graves
+- [ ] Photos réduites et sans métadonnées de localisation
+
+#### T31 Tableau des signalements (équipe)
+- **Maquette** : P3.
+- [ ] Colonnes : nouveau, pris en charge, planifié, fait
+- [ ] Assignation, planification d'un créneau
+- [ ] Le résident est notifié à chaque changement
+
+#### T32 Délais, relances et récapitulatif quotidien
+- [ ] Échéance selon l'urgence : 4 h, 48 h, 7 jours
+- [ ] Rappel à l'équipe en cas de retard
+- [ ] Récapitulatif chaque matin à 9 h
+
+#### T33 Suivi et confirmation par le résident
+- **Maquette** : R4.
+- [ ] Historique de la demande
+- [ ] « C'est réglé » ou « pas encore » (réouverture)
+- [ ] Bouton « relancer » actif 48 h après la dernière mise à jour
+- [ ] Clôture automatique 3 jours après « fait »
+
+### E8 Accueils
+
+#### T34 Accueil du résident
+- **Maquette** : R1.
+- [ ] Action attendue en tête, raccourcis, mes demandes, dernière annonce
+
+#### T35 Tableau de bord de l'équipe
+- **Maquette** : P1.
+- [ ] Chiffres du jour, éléments en retard, envois programmés
+- [ ] Rotation des visites par étage
+
+### E9 Mise en service
+
+#### T36 RGPD
+- [ ] Information des résidents (règlement intérieur ou page dédiée)
+- [ ] Durées de conservation et suppression des données après le départ
+- [ ] Registre des traitements
+
+#### T37 Sécurité avant la mise en ligne
+- **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/).
+- [ ] `check --deploy` sans alerte
+- [ ] HTTPS, cookies sécurisés, politique de sécurité du contenu (CSP)
+- [ ] Sauvegardes testées
+
+#### T38 Déploiement
+- **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
+- [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
+- [ ] Fichiers statiques et médias
+
+#### T39 Essai pilote sur un étage
+- [ ] Un étage pendant deux semaines, retours de l'équipe et des résidents
+- [ ] Corrections
+
+#### T40 Guides d'utilisation
+- [ ] Guide de l'équipe et guide du résident
+
+### E10 Phase 2
+
+#### T41 Discussion entre résidents et modération
+- [ ] Salons, messages, signalement d'un message
+- [ ] Rôle modérateur donné par l'équipe (personnel ou résidents désignés)
+- [ ] Masquer un message, mettre un résident en pause
