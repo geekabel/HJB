@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Outils
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+/media/
+/staticfiles/
+
+# Secrets et réglages locaux
+.env
+*.local
+
+# Éditeurs et systèmes
+.idea/
+.vscode/
+.DS_Store
