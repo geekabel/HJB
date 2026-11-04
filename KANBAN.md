@@ -1,6 +1,6 @@
 # Kanban du projet HJB Résidence
 
-Dernière mise à jour : 4 novembre 2026
+Dernière mise à jour : 5 novembre 2026
 
 Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque tâche, on déplace sa carte dans « Fait » et on coche ses critères.
 
@@ -60,7 +60,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T01 | Initialiser le projet Django | E0 Fondations | |
 | T02 | Outils qualité et intégration continue | E0 Fondations | T01 |
 | T03 | Gabarits de base et système de design CSS | E0 Fondations | T01 |
 | T04 | Rôles et permissions | E0 Fondations | T01 |
@@ -110,21 +109,24 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | R02 | Choix d'architecture : application web, Django, fournisseur SMS interchangeable | 4 nov. 2026 |
 | R03 | Maquettes UI/UX (7 écrans résident, 5 écrans équipe) et palette du logo | 4 nov. 2026 |
 | R04 | Kanban et modèle de données | 4 nov. 2026 |
+| T01 | Initialiser le projet Django | 5 nov. 2026 |
 
 ## Détail des cartes
 
 ### E0 Fondations
 
-#### T01 Initialiser le projet Django
+#### T01 Initialiser le projet Django (fait le 5 nov. 2026)
 - **But** : un projet Django 6.1 qui démarre, avec le modèle utilisateur personnalisé créé avant la première migration.
-- **Docs** : [tutoriel partie 1](https://docs.djangoproject.com/en/6.1/intro/tutorial01/), [modèle utilisateur personnalisé](https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project), [réglages](https://docs.djangoproject.com/en/6.1/topics/settings/), [liste de contrôle du déploiement](https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/).
-- [ ] Dépendances épinglées (`requirements.txt`, `requirements-dev.txt`)
-- [ ] Projet `config` avec réglages séparés : `base`, `dev`, `prod`
-- [ ] `SECRET_KEY` lue depuis une variable d'environnement en production
-- [ ] Application `comptes` avec `User(AbstractUser)` et `AUTH_USER_MODEL`
-- [ ] Langue française, fuseau `Europe/Paris`, `USE_TZ = True`
-- [ ] Premiers tests verts, `check` propre, `check --deploy` propre avec les réglages de production
-- [ ] README : installation en local
+- **Docs** : [tutoriel partie 1](https://docs.djangoproject.com/en/6.1/intro/tutorial01/), [modèle utilisateur personnalisé](https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project), [réglages](https://docs.djangoproject.com/en/6.1/topics/settings/), [liste de contrôle du déploiement](https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/), [réglage `MAILERS`](https://docs.djangoproject.com/en/6.1/ref/settings/#mailers).
+- [x] Dépendances épinglées (`requirements.txt`, `requirements-dev.txt`) : Django 6.1.3, Ruff 0.17.3
+- [x] Projet `config` avec réglages séparés : `base`, `dev`, `prod`
+- [x] `SECRET_KEY` lue depuis une variable d'environnement en production (refus de démarrer sans elle, testé)
+- [x] Application `comptes` avec `User(AbstractUser)` et `AUTH_USER_MODEL`, migration `0001_initial`
+- [x] Langue française, fuseau `Europe/Paris`, `USE_TZ = True`
+- [x] 6 tests verts, `check` propre, `makemigrations --check` propre
+- [x] `check --deploy` sans erreur. Restent volontairement `security.W005` et `security.W021` (HSTS sur les sous-domaines et préchargement) : ils dépendent du domaine final et seront réglés en T37
+- [x] README : installation en local, tests, réglages
+- **Notes** : en production, l'e-mail passe par SMTP (réglage `MAILERS`, nouveau en 6.1), sinon `check --deploy` refuse le backend console. La configuration de Ruff est faite en T02.
 
 #### T02 Outils qualité et intégration continue
 - **But** : chaque push vérifie le code automatiquement.
@@ -354,7 +356,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 #### T37 Sécurité avant la mise en ligne
 - **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/).
-- [ ] `check --deploy` sans alerte
+- [ ] `check --deploy` sans alerte, dont HSTS sur les sous-domaines et préchargement (W005, W021) une fois le domaine choisi
 - [ ] HTTPS, cookies sécurisés, politique de sécurité du contenu (CSP)
 - [ ] Sauvegardes testées
 
