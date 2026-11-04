@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T02 | Outils qualité et intégration continue | E0 Fondations | T01 |
 | T03 | Gabarits de base et système de design CSS | E0 Fondations | T01 |
 | T04 | Rôles et permissions | E0 Fondations | T01 |
 | T05 | Journal d'audit | E0 Fondations | T04 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | R03 | Maquettes UI/UX (7 écrans résident, 5 écrans équipe) et palette du logo | 4 nov. 2026 |
 | R04 | Kanban et modèle de données | 4 nov. 2026 |
 | T01 | Initialiser le projet Django | 5 nov. 2026 |
+| T02 | Outils qualité et intégration continue | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -134,13 +134,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] README : installation en local, tests, réglages
 - **Notes** : en production, l'e-mail passe par SMTP (réglage `MAILERS`, nouveau en 6.1), sinon `check --deploy` refuse le backend console. La configuration de Ruff est faite en T02.
 
-#### T02 Outils qualité et intégration continue
+#### T02 Outils qualité et intégration continue (fait le 5 nov. 2026)
 - **But** : chaque push vérifie le code automatiquement.
-- **Docs** : Ruff, GitHub Actions, [Nu Html Checker](https://validator.github.io/validator/).
-- [ ] Ruff (lint et format) configuré
-- [ ] GitHub Actions : tests, `check`, `check --deploy`, `makemigrations --check`
-- [ ] Validation W3C automatique des pages rendues (Nu Html Checker en local dans la CI)
-- [ ] Recherche de secrets à chaque push (le dépôt est public)
+- **Docs** : [configuration de Ruff](https://docs.astral.sh/ruff/configuration/), [setup-python](https://github.com/actions/setup-python), [setup-java](https://github.com/actions/setup-java), [Nu Html Checker](https://validator.github.io/validator/docs/vnu.1.html), [gitleaks-action](https://github.com/gitleaks/gitleaks-action).
+- [x] Ruff 0.17.3 configuré dans `pyproject.toml` (règles E, W, F, I, B, UP, DJ, RUF ; lignes de 100)
+- [x] GitHub Actions : Ruff, `check`, `check --deploy` (clé jetable générée à chaque passage), `makemigrations --check`, tests
+- [x] Validation W3C automatique : les tests enregistrent les pages (`HTML_CAPTURE_DIR`), puis `outils.valider_w3c` passe ces pages et tous les CSS du projet au Nu Html Checker (vnu-jar 26.10.12, Java 21). Vérifié en local : une page fautive fait échouer, une page correcte passe
+- [x] Recherche de secrets à chaque push avec gitleaks (compte personnel : pas de licence)
+- [x] Les deux workflows sont verts sur GitHub
+- **Notes** : pas encore de page à nous, donc la validation HTML n'a rien à vérifier. Elle prendra effet dès T03 : chaque test qui rend une page doit appeler `enregistrer_page`. La clé de développement porte un commentaire `gitleaks:allow`, car c'est une valeur publique et volontaire. À partir de T02, les commits utilisent l'adresse anonyme de GitHub.
 
 #### T03 Gabarits de base et système de design CSS
 - **But** : reproduire le style des maquettes une seule fois, en composants réutilisables.
