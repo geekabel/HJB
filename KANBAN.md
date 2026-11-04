@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T03 | Gabarits de base et système de design CSS | E0 Fondations | T01 |
 | T04 | Rôles et permissions | E0 Fondations | T01 |
 | T05 | Journal d'audit | E0 Fondations | T04 |
 | T06 | Étages, chambres et séjours | E1 Résidents | T01 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | R04 | Kanban et modèle de données | 4 nov. 2026 |
 | T01 | Initialiser le projet Django | 5 nov. 2026 |
 | T02 | Outils qualité et intégration continue | 5 nov. 2026 |
+| T03 | Gabarits de base et système de design CSS | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -144,16 +144,18 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Les deux workflows sont verts sur GitHub
 - **Notes** : pas encore de page à nous, donc la validation HTML n'a rien à vérifier. Elle prendra effet dès T03 : chaque test qui rend une page doit appeler `enregistrer_page`. La clé de développement porte un commentaire `gitleaks:allow`, car c'est une valeur publique et volontaire. À partir de T02, les commits utilisent l'adresse anonyme de GitHub.
 
-#### T03 Gabarits de base et système de design CSS
+#### T03 Gabarits de base et système de design CSS (fait le 5 nov. 2026)
 - **But** : reproduire le style des maquettes une seule fois, en composants réutilisables.
-- **Docs** : [gabarits Django](https://docs.djangoproject.com/en/6.1/topics/templates/), [fichiers statiques](https://docs.djangoproject.com/en/6.1/howto/static-files/), MDN (propriétés personnalisées CSS, `:focus-visible`, `prefers-color-scheme`).
-- [ ] Jetons de couleur du logo : bleu `#03a9f4`, vert `#8bc34a`, jaune `#ffc107`, bleu nuit `#06202f`, bleu d'action `#006fa3`
-- [ ] Sens des couleurs : bleu = action et information, jaune = attention, vert = terminé
-- [ ] Polices : Bricolage Grotesque (titres) et Atkinson Hyperlegible (texte), servies depuis le site
-- [ ] Composants : boutons, puces, cartes, champs, badges de statut, barre de navigation mobile, menu latéral de l'équipe
-- [ ] Mode sombre et contour de focus visible
-- [ ] Gabarit résident (mobile d'abord) et gabarit équipe (ordinateur)
-- [ ] Pages modèles validées W3C
+- **Docs** : [langage de gabarits (héritage)](https://docs.djangoproject.com/en/6.0/ref/templates/language/), [balises personnalisées](https://docs.djangoproject.com/en/6.1/howto/custom-template-tags/), [fichiers statiques](https://docs.djangoproject.com/en/6.1/howto/static-files/), MDN ([`:focus-visible`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:focus-visible), [`<meta name="color-scheme">`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/meta/name/color-scheme)).
+- [x] Jetons de couleur du logo : bleu `#03a9f4`, vert `#8bc34a`, jaune `#ffc107`, bleu nuit `#06202f`, bleu d'action `#006fa3`
+- [x] Sens des couleurs : bleu = action et information, jaune = attention, vert = terminé
+- [x] Polices : Bricolage Grotesque (titres) et Atkinson Hyperlegible (texte), servies depuis le site avec leurs licences OFL
+- [x] Composants : boutons, puces, cartes, champs, choix, badges de statut, bandeaux, compteurs, barre de navigation mobile, menu latéral de l'équipe
+- [x] Mode sombre et contour de focus visible. Toutes les paires de couleurs passent : texte 4,5:1, contrôles et focus 3:1, dans les deux thèmes
+- [x] Gabarit résident (mobile d'abord) et gabarit équipe (ordinateur, qui se replie sur téléphone)
+- [x] Pages modèles validées W3C : guide de style et accueil résident d'exemple (`/guide/`, réservé à l'équipe), plus la feuille de style
+- [x] Rendu vérifié dans Chrome : mobile 390 px et ordinateur 1280 px, thèmes clair et sombre, aucun débordement, polices chargées, lien d'évitement au premier Tab
+- **Notes** : le validateur W3C n'accepte pas encore `@container`, donc on ne l'utilise pas. Les liens de la navigation pointent vers « # » jusqu'à ce que leurs pages existent. Une chaîne écrite en dur dans un gabarit n'est pas échappée par Django : seules les variables le sont, ce que vérifie un test.
 
 #### T04 Rôles et permissions
 - **Docs** : [permissions et autorisation](https://docs.djangoproject.com/en/6.1/topics/auth/default/#permissions-and-authorization).
@@ -249,7 +251,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 #### T18 Application installable (PWA)
 - **Docs** : MDN (manifeste d'application web, service workers).
-- [ ] Manifeste, icônes, service worker
+- [ ] Manifeste, icônes (dont `favicon.ico`, absent pour l'instant), service worker
 - [ ] Écran d'aide « ajouter à l'écran d'accueil » pour iPhone (nécessaire pour recevoir les notifications)
 
 #### T19 Notifications Web Push
