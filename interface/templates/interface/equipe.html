@@ -1,0 +1,37 @@
+{% extends "interface/base.html" %}
+{% load icones %}
+{% comment %}
+  Gabarit de section de l'espace équipe (ordinateur, se replie sur téléphone).
+  Variables : ``actif`` (tableau, messages, signalements, rendezvous, residents).
+  Les liens « # » seront remplacés par les vraies pages (cartes T07, T20, T26, T31, T35).
+{% endcomment %}
+{% block classe_corps %}page-equipe{% endblock %}
+{% block corps %}
+<nav class="menu-equipe" aria-label="Menu de l'équipe">
+  <div class="menu-equipe__marque">
+    <span class="tuile-logo">{% toits %}</span>
+    Espace équipe
+  </div>
+  <ul>
+    <li><a href="#"{% if actif == "tableau" %} aria-current="page"{% endif %}>Tableau de bord</a></li>
+    <li><a href="#"{% if actif == "messages" %} aria-current="page"{% endif %}>Messages</a></li>
+    <li>
+      <a href="#"{% if actif == "signalements" %} aria-current="page"{% endif %}>Signalements
+        {% if a_traiter %}<span class="compteur">{{ a_traiter }}<span class="visuellement-cache"> à traiter</span></span>{% endif %}
+      </a>
+    </li>
+    <li><a href="#"{% if actif == "rendezvous" %} aria-current="page"{% endif %}>Rendez-vous</a></li>
+    <li><a href="#"{% if actif == "residents" %} aria-current="page"{% endif %}>Résidents et wifi</a></li>
+  </ul>
+  {% if user.is_authenticated %}
+  <div class="menu-equipe__personne">
+    <span>{{ user.get_full_name|default:user.get_username }}</span>
+    <span>{% block role %}Équipe{% endblock %}</span>
+  </div>
+  {% endif %}
+</nav>
+
+<main id="contenu" class="page-equipe__contenu">
+  {% block contenu %}{% endblock %}
+</main>
+{% endblock %}
