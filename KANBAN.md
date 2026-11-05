@@ -56,6 +56,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | Import Excel | openpyxl en lecture seule, avec defusedxml | Lit les .xlsx sans Excel ; defusedxml bloque les fichiers XML piégés |
 | API OVHcloud | Bibliothèque officielle python-ovh | Conseillée par OVHcloud : elle signe les requêtes ; pas de cryptographie maison |
 | Code QR | segno (pur Python, sans dépendance, BSD) | SVG inséré dans la page, imprimable |
+| Clés d'accès | django-otp-webauthn 0.10.3 (py_webauthn), script maison | Cryptographie confiée à py_webauthn ; script en français, sans `alert()` |
 
 ## Tableau
 
@@ -69,7 +70,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T13 | Connexion par clé d'accès (passkey) | E2 Connexion | T12 |
 | T14 | Sécurité de l'espace équipe | E2 Connexion | T04, T13 |
 | T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
 | T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
@@ -119,6 +119,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T10 | Couche fournisseur SMS | 5 nov. 2026 |
 | T11 | Code d'activation | 5 nov. 2026 |
 | T12 | Vérification du téléphone par code SMS | 5 nov. 2026 |
+| T13 | Connexion par clé d'accès (passkey) | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -264,13 +265,17 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : un SMS qui n'a pas pu partir rend son code inutilisable, mais compte dans la limite horaire (pour ne pas épuiser le crédit SMS). Le code n'est jamais dans les journaux (voir T10). Le champ utilise `autocomplete="one-time-code"` : iOS et Android proposent le code reçu.
 - **Revue indépendante (5 nov.)** : corrigé après relecture. Des clics en rafale passaient les limites d'envoi : la ligne du compte est verrouillée avant les vérifications. Le suivi des changements de numéro avait des trous (chargement partiel, `update()`, instance périmée) : on compare désormais au numéro vérifié. L'étape 3 revérifie le numéro. Un nouveau code d'activation ferme la session ouverte avec l'ancien (un code volé ne garde pas la main). La page du code ne garde plus le code en clair dans la session : un jeton à usage unique évite qu'un rechargement remplace le code remis. Afficher « Ce n'est pas mon numéro » ne change plus rien (GET). L'heure de renvoi est affichée au lieu d'un compte à rebours figé. Au plus 15 essais par heure et par personne (3 codes de 5 essais). 27 tests.
 
-#### T13 Connexion par clé d'accès (passkey)
-- **Docs** : django-otp-webauthn (à lire en entier avant de coder), [MDN Web Authentication API](https://developer.mozilla.org/fr/docs/Web/API/Web_Authentication_API).
-- [ ] Création de la clé après la vérification du téléphone
-- [ ] Connexion sans mot de passe
-- [ ] Récupération : nouveau code d'activation par l'accueil
-- [ ] Sessions longues pour les résidents, avec reconnexion demandée pour les actions sensibles
-- [ ] Au départ (T09) : supprimer les clés d'accès, via le signal `depart_enregistre`
+#### T13 Connexion par clé d'accès (passkey) (fait le 5 nov. 2026)
+- **Docs** : [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/) (démarrage, vues, classe « helper », FAQ, journal des versions, code source), [MDN : Web Authentication API](https://developer.mozilla.org/fr/docs/Web/API/Web_Authentication_API), [MDN : parseCreationOptionsFromJSON](https://developer.mozilla.org/en-US/docs/Web/API/PublicKeyCredential/parseCreationOptionsFromJSON_static), [sessions Django (set_expiry)](https://docs.djangoproject.com/en/6.1/topics/http/sessions/), [authentification Django (login, backends)](https://docs.djangoproject.com/en/6.1/topics/auth/default/).
+- [x] Création de la clé après la vérification du téléphone : étape 3 de /activer/, puis connexion directe. Clé « découvrable » obligatoire (connexion sans identifiant)
+- [x] Connexion sans mot de passe sur /connexion/ : Face ID, empreinte ou code du téléphone, toujours exigés
+- [x] Récupération : nouveau code d'activation par l'accueil. La nouvelle clé remplace les anciennes et ferme les autres sessions. La fiche du résident montre la date de la clé
+- [x] Sessions longues pour les résidents (90 jours sans activité), 12 heures pour le personnel. Page /connexion/confirmer/ et décorateur `confirmation_recente` : clé utilisée il y a moins de 10 minutes, pour les actions sensibles (wifi en T16)
+- [x] Au départ (T09) : clés supprimées via le signal `depart_enregistre`, nombre noté au journal
+- [x] Déconnexion (POST), accueil provisoire du résident (en attendant T34), clés visibles et supprimables dans l'administration
+- [x] Téléphone perdu ou volé : bouton « Couper l'accès » sur la fiche (Accueil, Administration). Clés supprimées, code en attente annulé, sessions fermées, entrée au journal
+- **Notes** : version 0.10.3 de la bibliothèque, qui corrige une faille d'ajout de clé (GHSA-8r76-c459-ww98). Elle n'a pas de traduction française et son script affiche des fenêtres `alert()` : la doc dit de faire son propre script dans ce cas. `cle-acces.js` appelle les mêmes adresses avec le même JSON, sans dépendance. Les tests utilisent un authentificateur logiciel (vraie clé ES256) : le serveur vérifie tout, sans simulacre. Essai de bout en bout dans Chromium avec un authentificateur virtuel : activation, connexion, confirmation, annulation. En développement, ouvrir http://localhost:8000 (pas 127.0.0.1). Le personnel garde la connexion par mot de passe de l'administration jusqu'à T14.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Un téléphone perdu restait connecté : supprimer une clé (administration, « Couper l'accès ») ferme maintenant les sessions du compte. La création de clé revérifie tout une fois la ligne du compte verrouillée, et la génération d'un code prend le même verrou (un départ simultané ne laisse plus de clé). Face ID, empreinte ou code exigés dès la création, sinon une clé inutilisable aurait remplacé les autres. Un compte devenu membre du personnel ne s'active plus par ce chemin. Changer les rôles ferme les sessions de la personne et annule son code. La durée de session repart à chaque requête (`SESSION_SAVE_EVERY_REQUEST`). Un identifiant de clé déjà connu renvoie une erreur claire au lieu d'une erreur 500. Messages du script plus justes (réseau coupé, page expirée). 340 tests.
 
 #### T14 Sécurité de l'espace équipe
 - [ ] Espace équipe réservé aux rôles du personnel

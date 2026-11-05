@@ -1,0 +1,16 @@
+{% load icones %}
+{% comment %}
+  Bouton de clé d'accès, piloté par interface/js/cle-acces.js.
+  Variables : ``configuration`` (dict pour le script), ``libelle`` (texte du bouton).
+  Sans JavaScript, ou si le navigateur ne gère pas les clés d'accès, un message le dit.
+{% endcomment %}
+{{ configuration|json_script:"cle-acces-config" }}
+<div class="pile">
+  {% csrf_token %}
+  <button class="bouton bouton--bloc" type="button" data-cle-acces-bouton hidden>{{ libelle }}</button>
+  <div data-cle-acces-statut role="status"></div>
+  <template data-cle-acces-icone="succes">{% icone "coche" %}</template>
+  <template data-cle-acces-icone="attention">{% icone "alerte" %}</template>
+  <div class="alerte alerte--attention" data-cle-acces-indisponible hidden>{% icone "alerte" %}<p>Ce navigateur ne gère pas les clés d'accès. Mettez-le à jour, ou essayez avec Chrome, Safari, Firefox ou Edge. Si ça ne marche toujours pas, passez à l'accueil.</p></div>
+  <noscript><div class="alerte alerte--attention"><p>JavaScript est désactivé. Il est nécessaire pour utiliser une clé d'accès.</p></div></noscript>
+</div>

@@ -11,3 +11,7 @@ ovh==1.2.0
 requests==2.34.2
 # Code QR de la feuille d'activation (carte T11). Pur Python, sans dépendance.
 segno==1.6.6
+# Clés d'accès (carte T13) : WebAuthn sur django-otp. La 0.10.3 corrige la faille
+# GHSA-8r76-c459-ww98 (ajout d'une clé sans vérification).
+django-otp==1.7.5
+django-otp-webauthn==0.10.3

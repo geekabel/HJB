@@ -36,6 +36,11 @@ INSTALLED_APPS = [
     "residents",
     "sms",
     "activation",
+    "connexion",
+    # Clés d'accès (carte T13) : django-otp et son extension WebAuthn.
+    # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
+    "django_otp",
+    "django_otp_webauthn",
 ]
 
 MIDDLEWARE = [
@@ -44,6 +49,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Après AuthenticationMiddleware (doc de django-otp) : request.user.is_verified().
+    "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -75,9 +82,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Modèle personnalisé, défini avant la première migration :
 # https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
-# Provisoire : la page de connexion de l'administration, en attendant la
-# connexion par clé d'accès (carte T13).
-LOGIN_URL = "admin:login"
+# Connexion par clé d'accès (carte T13). Le mot de passe (ModelBackend) ne sert
+# plus qu'à la page de l'administration, pour le personnel, jusqu'à la carte T14.
+LOGIN_URL = "connexion:connexion"
+LOGIN_REDIRECT_URL = "accueil"
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "django_otp_webauthn.backends.WebAuthnBackend",
+]
+
+# Durée d'une session sans activité. Les résidents connectés par clé d'accès
+# gardent la leur bien plus longtemps (voir connexion/session.py).
+SESSION_COOKIE_AGE = 12 * 60 * 60
+# La durée repart à chaque requête : c'est bien une durée « sans activité ».
+SESSION_SAVE_EVERY_REQUEST = True
 
 AUTH_USER_MODEL = "comptes.User"
 
@@ -190,3 +208,12 @@ SMS = reglage_sms("console")
 
 # Tests : aucun vrai SMS, voir outils/lanceur_tests.py.
 TEST_RUNNER = "outils.lanceur_tests.LanceurTests"
+
+
+# Clés d'accès (passkeys), carte T13
+# https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
+# Le domaine (RP ID) et les origines autorisées dépendent de l'adresse du site :
+# ils sont dans dev.py et prod.py. Changer de domaine rend les clés inutilisables.
+
+OTP_WEBAUTHN_RP_NAME = "Habitat Jeunes Belfort"
+OTP_WEBAUTHN_HELPER_CLASS = "connexion.webauthn.AideWebAuthn"

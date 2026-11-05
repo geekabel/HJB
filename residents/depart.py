@@ -7,49 +7,21 @@ Docs Django :
   https://docs.djangoproject.com/en/6.1/ref/contrib/auth/#django.contrib.auth.backends.ModelBackend
 """
 
-from importlib import import_module
-
-from django.conf import settings
-from django.contrib.auth import SESSION_KEY
-from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.dispatch import Signal
 from django.utils import timezone
 
 from comptes.models import CodeActivation
+from comptes.sessions import cles_de_session, fermer_sessions
 from journal.models import Action
 from journal.service import journaliser
 from logement.services import sejour_en_cours
 
 # Envoyé pendant la transaction du départ, avec resident, sejour (ou None) et le.
-# Les cartes T13 (clés d'accès) et T15 (wifi) s'y branchent pour couper leurs accès :
+# Les cartes T13 (clés d'accès, connexion/signaux.py) et T15 (wifi) s'y branchent :
 # si l'un d'eux échoue, le départ entier est annulé.
 depart_enregistre = Signal()
-
-
-def cles_de_session(utilisateur):
-    """Clés des sessions ouvertes de cet utilisateur.
-
-    Lit la table des sessions : vaut pour les moteurs « db » (réglage actuel)
-    et « cached_db ». Avec un autre moteur, il faudra revoir cette fonction ;
-    le changement d'empreinte du mot de passe ferme de toute façon les
-    sessions restantes à leur prochaine requête.
-    """
-    identifiant = str(utilisateur.pk)
-    return [
-        session.session_key
-        for session in Session.objects.filter(expire_date__gt=timezone.now()).iterator()
-        if session.get_decoded().get(SESSION_KEY) == identifiant
-    ]
-
-
-def fermer_sessions(cles):
-    """Supprime ces sessions avec le moteur configuré (base et cache éventuel)."""
-    moteur = import_module(settings.SESSION_ENGINE)
-    for cle in cles:
-        moteur.SessionStore(session_key=cle).delete()
-    return len(cles)
 
 
 def est_parti(resident):
@@ -104,18 +76,21 @@ def enregistrer_depart(resident, le, *, requete=None):
         resident.set_unusable_password()
         resident.save(update_fields=["is_active", "password"])
 
-        depart_enregistre.send(sender=resident.__class__, resident=resident, sejour=sejour, le=le)
-        sessions = fermer_sessions(cles)
-        journaliser(
-            Action.DEPART_RESIDENT,
-            cible=resident,
-            details={
-                "chambre": sejour.chambre.numero if sejour else "",
-                "depart": le.isoformat(),
-                "sessions_fermees": sessions,
-            },
-            requete=requete,
+        # Chaque récepteur peut renvoyer un dict, ajouté aux détails du journal
+        # (par exemple le nombre de clés d'accès supprimées).
+        reponses = depart_enregistre.send(
+            sender=resident.__class__, resident=resident, sejour=sejour, le=le
         )
+        sessions = fermer_sessions(cles)
+        details = {
+            "chambre": sejour.chambre.numero if sejour else "",
+            "depart": le.isoformat(),
+            "sessions_fermees": sessions,
+        }
+        for _recepteur, reponse in reponses:
+            if isinstance(reponse, dict):
+                details.update(reponse)
+        journaliser(Action.DEPART_RESIDENT, cible=resident, details=details, requete=requete)
     return sejour
 
 
@@ -141,6 +116,11 @@ def enregistrer_retour(resident, chambre, le, *, requete=None):
         resident.save(
             update_fields=["is_active", "last_login", "telephone_verifie", "telephone_verifie_le"]
         )
+        # Aucune ancienne clé d'accès ne doit survivre au retour (elles sont
+        # supprimées au départ ; ceci couvre une clé créée de justesse).
+        from django_otp_webauthn.utils import get_credential_model
+
+        get_credential_model().objects.filter(user=resident).delete()
         sejour = affecter_chambre(resident, chambre, le)
         journaliser(
             Action.RETOUR_RESIDENT,

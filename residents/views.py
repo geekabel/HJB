@@ -23,6 +23,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
+from django_otp_webauthn.utils import get_credential_model
 
 from comptes.activation import (
     DUREE_VALIDITE,
@@ -211,6 +212,13 @@ def fiche(request, pk):
             "jeton_code": jeton_code_activation(request, resident)
             if request.user.has_perm("comptes.generer_code_activation")
             else "",
+            # Dernière clé d'accès : montrée avec l'activation, à l'Accueil et à l'Administration.
+            "cle_acces": get_credential_model()
+            .objects.filter(user=resident)
+            .order_by("-created_at")
+            .first()
+            if request.user.has_perm("comptes.generer_code_activation")
+            else None,
             "dernier_depart": resident.sejours.filter(depart__isnull=False)
             .order_by("-depart")
             .values_list("depart", flat=True)
@@ -296,6 +304,24 @@ def jeton_code_activation(request, resident):
     jetons = request.session.get(CLE_JETONS_CODE, [])[-(JETONS_MAX - 1) :]
     request.session[CLE_JETONS_CODE] = [*jetons, [jeton, resident.pk]]
     return jeton
+
+
+@require_POST
+@login_required
+@permission_required("comptes.generer_code_activation", raise_exception=True)
+def couper_acces(request, pk):
+    """Téléphone perdu ou volé : l'appareil est déconnecté tout de suite (carte T13)."""
+    from connexion.services import couper_acces as couper
+
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    cles, sessions = couper(resident, par=request.user, requete=request)
+    sc, ss = ("s" if cles > 1 else ""), ("s" if sessions > 1 else "")
+    messages.success(
+        request,
+        f"Accès coupé : {cles} clé{sc} d'accès supprimée{sc}, {sessions} session{ss} "
+        f"fermée{ss}. Vérifiez le numéro de téléphone, puis générez un nouveau code.",
+    )
+    return redirect("residents:fiche", pk=resident.pk)
 
 
 @require_POST

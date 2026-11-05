@@ -9,4 +9,6 @@ urlpatterns = [
     path("telephone/", views.telephone, name="telephone"),
     path("telephone/pas-mon-numero/", views.mauvais_numero, name="mauvais_numero"),
     path("cle/", views.cle, name="cle"),
+    path("cle/debut/", views.cle_debut, name="cle_debut"),
+    path("cle/fin/", views.cle_fin, name="cle_fin"),
 ]

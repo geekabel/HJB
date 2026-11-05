@@ -25,3 +25,10 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
     }
 }
+
+# Clés d'accès : WebAuthn refuse les adresses IP. Ouvrir http://localhost:8000,
+# pas http://127.0.0.1:8000 (doc de django-otp-webauthn).
+OTP_WEBAUTHN_RP_ID = os.environ.get("DJANGO_WEBAUTHN_RP_ID", "localhost")
+OTP_WEBAUTHN_ALLOWED_ORIGINS = os.environ.get(
+    "DJANGO_WEBAUTHN_ORIGINES", "http://localhost:8000"
+).split(",")

@@ -4,19 +4,37 @@
 Étape 3 : clé d'accès (T13).
 """
 
+import json
+import logging
 import time
 
 from django.contrib import messages
+from django.contrib.auth import login
+from django.db import IntegrityError, transaction
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
+from django_otp import login as otp_login
+from django_otp_webauthn.exceptions import OTPWebAuthnApiError
+from django_otp_webauthn.utils import get_credential_model, rewrite_exceptions
 
 from comptes import verification
 from comptes.activation import ErreurActivation, utiliser_code
-from journal.service import adresse_ip
+from comptes.models import User
+from connexion import session
+from connexion.erreurs import reponse_erreur
+from connexion.webauthn import AideActivation
+from journal.models import Action
+from journal.service import adresse_ip, journaliser
+from residents.depart import cles_de_session, fermer_sessions
 
 from . import parcours
 from .forms import FormulaireCode, FormulaireCodeSms
+
+journal_webauthn = logging.getLogger("django_otp_webauthn")
 
 # Échecs de saisie dans ce navigateur, sur la dernière heure.
 CLE_ECHECS = "activation_echecs"
@@ -101,15 +119,119 @@ def mauvais_numero(request):
     return render(request, "activation/mauvais_numero.html", {"etape": 2})
 
 
+# État de la cérémonie WebAuthn, gardé dans le parcours entre le début et la fin.
+ETAT_CLE = "cle_etat"
+BACKEND_CLE = "django_otp_webauthn.backends.WebAuthnBackend"
+
+
+def _personne_prete(request):
+    """La personne du parcours, si son téléphone est vérifié (revérifié à chaque fois)."""
+    personne = parcours.personne_en_cours(request)
+    if (
+        personne is not None
+        and parcours.etape_faite(request, "telephone_verifie")
+        and personne.telephone_est_verifie
+    ):
+        return personne
+    return None
+
+
 @never_cache
 def cle(request):
-    """Étape 3 : clé d'accès (carte T13). En attendant, la vérification est confirmée."""
-    personne = parcours.personne_en_cours(request)
-    # Le numéro a pu changer depuis la vérification : on le revérifie.
-    if (
-        personne is None
-        or not parcours.etape_faite(request, "telephone_verifie")
-        or not personne.telephone_est_verifie
-    ):
-        return redirect("activation:telephone" if personne else "activation:saisie")
-    return render(request, "activation/cle.html", {"etape": 3, "personne": personne})
+    """Étape 3 : création de la clé d'accès (carte T13)."""
+    personne = _personne_prete(request)
+    if personne is None:
+        if parcours.personne_en_cours(request):
+            return redirect("activation:telephone")
+        return redirect("activation:saisie")
+    configuration = {
+        "mode": "creation",
+        "debut": reverse("activation:cle_debut"),
+        "fin": reverse("activation:cle_fin"),
+        "suite": "",
+    }
+    return render(
+        request,
+        "activation/cle.html",
+        {"etape": 3, "personne": personne, "configuration": configuration},
+    )
+
+
+class ParcoursFini(Exception):
+    """Le parcours n'est plus valable (départ, nouveau code…) : tout est annulé."""
+
+
+PARCOURS_FINI = (
+    "Votre activation a expiré. Recommencez avec le code remis par l'accueil, "
+    "ou demandez-en un nouveau."
+)
+
+
+@require_POST
+@never_cache
+def cle_debut(request):
+    """Options de création de la clé, pour navigator.credentials.create()."""
+    personne = _personne_prete(request)
+    if personne is None:
+        return reponse_erreur("parcours", 403, PARCOURS_FINI)
+    options, etat = AideActivation(request).register_begin(user=personne)
+    parcours.noter(request, ETAT_CLE, etat)
+    return JsonResponse(options)
+
+
+@require_POST
+@never_cache
+def cle_fin(request):
+    """Vérifie et enregistre la clé, remplace les anciennes, puis connecte la personne."""
+    etat = parcours.retirer(request, ETAT_CLE)  # usage unique, même en cas d'erreur
+    personne = _personne_prete(request)
+    if personne is None:
+        return reponse_erreur("parcours", 403, PARCOURS_FINI)
+    if not etat:
+        return reponse_erreur("invalid_state", 400)
+    try:
+        donnees = json.loads(request.body)
+    except ValueError:
+        return reponse_erreur("malformed_request", 400)
+
+    try:
+        with transaction.atomic():
+            # Verrou sur le compte : une création, un départ ou un nouveau code passent
+            # l'un après l'autre. Tout est revérifié une fois le verrou pris.
+            User.objects.select_for_update().get(pk=personne.pk)
+            personne = _personne_prete(request)
+            if personne is None:
+                raise ParcoursFini
+            with rewrite_exceptions(logger=journal_webauthn):
+                cle_acces = AideActivation(request).register_complete(
+                    user=personne, state=etat, data=donnees
+                )
+            # Récupération (téléphone perdu ou changé) : les anciennes clés ne servent plus.
+            anciennes = (
+                get_credential_model().objects.filter(user=personne).exclude(pk=cle_acces.pk)
+            )
+            nombre = anciennes.count()
+            anciennes.delete()
+            journaliser(
+                Action.CLE_ACCES_CREEE,
+                acteur=personne,
+                cible=personne,
+                details={"anciennes_retirees": nombre},
+                requete=request,
+            )
+    except ParcoursFini:
+        return reponse_erreur("parcours", 403, PARCOURS_FINI)
+    except IntegrityError:
+        # Identifiant de clé déjà enregistré (réponse rejouée ou forgée).
+        return reponse_erreur("credential_exists", 422)
+    except OTPWebAuthnApiError as erreur:
+        return reponse_erreur(erreur.code, erreur.status_code)
+
+    # Les autres sessions de la personne (ancien téléphone) sont fermées.
+    autres_sessions = cles_de_session(personne)
+    login(request, personne, backend=BACKEND_CLE)  # nouvelle clé de session, last_login rempli
+    otp_login(request, cle_acces)
+    fermer_sessions(autres_sessions)
+    parcours.terminer(request)
+    session.ouvrir(request, personne)
+    return JsonResponse({"id": cle_acces.pk, "redirect_url": reverse("accueil")})

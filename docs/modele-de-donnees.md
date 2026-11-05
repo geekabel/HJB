@@ -15,6 +15,7 @@ Version 1, novembre 2026. Ce document décrit les tables de l'application. Il é
 | Application | Contenu |
 |---|---|
 | `comptes` | Utilisateur, rôles, code d'activation, vérification du téléphone, abonnements aux notifications |
+| `connexion` | Connexion par clé d'accès, confirmation avant une action sensible, durée des sessions. Les clés sont les modèles de la bibliothèque django-otp-webauthn |
 | `logement` | Étages, chambres, séjours, accès wifi, journal des consultations wifi |
 | `messagerie` | Modèles de message, campagnes, envois, réponses de présence, notifications dans l'appli |
 | `sondages` | Sondages, options, participations, votes |
@@ -35,6 +36,8 @@ erDiagram
     UTILISATEUR ||--o{ CONSULTATION_WIFI : "consulte"
     UTILISATEUR ||--o{ CODE_ACTIVATION : "reçoit"
     UTILISATEUR ||--o{ VERIFICATION_TELEPHONE : "vérifie"
+    UTILISATEUR ||--o{ CLE_ACCES : "se connecte avec"
+    UTILISATEUR ||--o| IDENTIFIANT_WEBAUTHN : "est désigné par"
     UTILISATEUR ||--o{ ABONNEMENT_PUSH : "s'abonne"
     UTILISATEUR }o--o{ GROUPE_ROLE : "a pour rôles"
 
@@ -124,7 +127,7 @@ erDiagram
     }
     ECHEC_ACTIVATION {
         int id PK
-        string adresse_ip "10 échecs par heure au plus"
+        string adresse_ip "50 échecs par heure et par adresse au plus"
         datetime cree_le
     }
     VERIFICATION_TELEPHONE {
@@ -136,6 +139,23 @@ erDiagram
         int tentatives "5 au plus"
         datetime expire_le "création + 10 min"
         datetime verifie_le
+    }
+    CLE_ACCES {
+        int id PK
+        int user_id FK
+        string credential_id_sha256 UK "recherche rapide"
+        binary credential_id "créé par l'appareil"
+        binary public_key "clé publique COSE ; la clé privée reste sur l'appareil"
+        int sign_count
+        json transports
+        bool discoverable "obligatoire : connexion sans identifiant"
+        bool confirmed
+        datetime created_at
+        datetime last_used_at
+    }
+    IDENTIFIANT_WEBAUTHN {
+        int user_id PK
+        string handle_hex UK "64 octets aléatoires, jamais l'identifiant du compte"
     }
     ABONNEMENT_PUSH {
         int id PK
@@ -288,7 +308,7 @@ erDiagram
         datetime cree_le
         int acteur_id FK "vide si le compte est supprimé"
         string acteur_libelle "nom gardé pour la lecture"
-        string action "ROLES_MODIFIES, CODE_ACTIVATION_GENERE, CODE_WIFI_AFFICHE, DEPART_RESIDENT"
+        string action "ROLES_MODIFIES, CODE_ACTIVATION_GENERE, CODE_WIFI_AFFICHE, DEPART_RESIDENT, RETOUR_RESIDENT, CLE_ACCES_CREEE, ACCES_COUPE"
         int cible_type_id FK "type de l'objet concerné"
         string cible_id
         string cible_libelle
@@ -326,6 +346,15 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 - Une entrée ne se modifie pas et ne se supprime pas (le modèle refuse, l'administration est en lecture seule).
 - L'objet concerné est désigné par son type et son identifiant (relation générique) : le journal peut viser un compte, un séjour ou un accès wifi sans changer de table.
 - Lecture réservée à la permission `voir_journal`.
+
+## Clés d'accès (connexion)
+
+- Les tables `CLE_ACCES` et `IDENTIFIANT_WEBAUTHN` viennent de django-otp-webauthn (`WebAuthnCredential`, `WebAuthnUserHandle`). Le serveur ne garde que la clé publique.
+- La clé est créée à l'étape 3 de l'activation. Une nouvelle activation (téléphone perdu) supprime les anciennes clés et ferme les autres sessions.
+- Le départ d'un résident supprime ses clés (signal `depart_enregistre`) ; le nombre va au journal.
+- Supprimer une clé, par n'importe quel chemin, ferme les sessions du compte (signal `post_delete`). La fiche du résident propose « Couper l'accès » pour un téléphone perdu.
+- Changer les rôles d'une personne ferme ses sessions : ses droits et la durée de sa session changent.
+- Durée des sessions (repart à chaque requête) : 90 jours sans activité pour un résident connecté par clé, 12 heures pour le personnel. Une action sensible demande une vérification par clé de moins de 10 minutes.
 
 ## Règles métier portées par le modèle
 
