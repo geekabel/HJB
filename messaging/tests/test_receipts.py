@@ -12,12 +12,12 @@ from accounts.tests.helpers import log_in_verified, make_user
 from housing.models import Floor, Room, Stay
 from push.models import PushSubscription
 from push.services import SendResult
-from sms.providers.base import DeliveryState, Receipt, SendError
+from sms.providers.base import ConfigurationError, DeliveryState, Receipt, SendError
 from sms.providers.base import SendResult as SmsResult
 from tools.html_capture import save_page
 
 from .. import receipts, sending
-from ..models import Campaign, Delivery
+from ..models import Campaign, Delivery, EarlyReceipt
 from ..models import Receipt as State
 
 ARRIVAL = date(2026, 9, 1)
@@ -155,6 +155,74 @@ class PollTests(ReceiptTestCase):
             all(d.receipt == State.PENDING for d in campaign.deliveries.exclude(receipt=""))
         )
 
+    def test_access_refused_stops_the_round_and_time_budget(self):
+        campaign = self.send()
+        ids = [self.sms_of(campaign, u).provider_message_id for u in self.people]
+        gate = FakeGate(dict.fromkeys(ids, ConfigurationError("401")))
+        with (
+            mock.patch("messaging.receipts.active_provider", return_value=gate),
+            self.assertLogs("messaging.receipts", "WARNING"),
+        ):
+            receipts.poll()
+        self.assertEqual(len(gate.asked), 1)
+        # A slow provider: the run stops after its time budget.
+        gate = FakeGate(dict.fromkeys(ids, Receipt(DeliveryState.PENDING)))
+        clock = iter([0, 5, 25, 50, 75])
+        with (
+            mock.patch("messaging.receipts.active_provider", return_value=gate),
+            mock.patch("messaging.receipts.time.monotonic", side_effect=lambda: next(clock)),
+        ):
+            receipts.poll(timezone.now() + timedelta(minutes=10))
+        self.assertEqual(len(gate.asked), 1)
+
+    def test_asked_less_often_with_age(self):
+        campaign = self.send()
+        sent = timezone.now()
+        Delivery.objects.filter(campaign=campaign).update(sent_at=sent - timedelta(hours=7))
+        gate = FakeGate(
+            dict.fromkeys(
+                (self.sms_of(campaign, u).provider_message_id for u in self.people),
+                Receipt(DeliveryState.PENDING),
+            )
+        )
+        with mock.patch("messaging.receipts.active_provider", return_value=gate):
+            self.assertEqual(receipts.poll(sent), 3)
+            self.assertEqual(receipts.poll(sent + timedelta(minutes=30)), 0)  # 2 h now
+            self.assertEqual(receipts.poll(sent + timedelta(hours=2)), 3)
+
+    def test_last_check_before_unknown_and_late_answers(self):
+        campaign = self.send()
+        yanis = self.sms_of(campaign, self.people[0])
+        gate = FakeGate(
+            dict.fromkeys(
+                (self.sms_of(campaign, u).provider_message_id for u in self.people),
+                Receipt(DeliveryState.PENDING),
+            )
+        )
+        gate.answers[yanis.provider_message_id] = Receipt(DeliveryState.DELIVERED)
+        later = timezone.now() + timedelta(hours=49)
+        with mock.patch("messaging.receipts.active_provider", return_value=gate):
+            receipts.poll(later)  # asked first, then the others become "Inconnu"
+            self.assertEqual(self.sms_of(campaign, self.people[0]).receipt, State.DELIVERED)
+            self.assertEqual(self.sms_of(campaign, self.people[1]).receipt, State.UNKNOWN)
+            # The phone was off: SMSGate still asked, every 2 hours, for a week.
+            lina = self.sms_of(campaign, self.people[1]).provider_message_id
+            gate.answers[lina] = Receipt(DeliveryState.DELIVERED)
+            receipts.poll(later + timedelta(hours=2))
+            self.assertEqual(self.sms_of(campaign, self.people[1]).receipt, State.DELIVERED)
+            gate.asked.clear()
+            receipts.poll(later + timedelta(days=8))
+        self.assertEqual(gate.asked, [])
+
+    def test_received_wins(self):
+        campaign = self.send()
+        rows = Delivery.objects.filter(pk=self.sms_of(campaign, self.people[0]).pk)
+        receipts.record(rows, Receipt(DeliveryState.UNDELIVERED, "x"))
+        receipts.record(rows, Receipt(DeliveryState.DELIVERED))
+        self.assertEqual(rows.get().receipt, State.DELIVERED)
+        receipts.record(rows, Receipt(DeliveryState.UNDELIVERED, "x"))
+        self.assertEqual(rows.get().receipt, State.DELIVERED)
+
     def test_unknown_after_48_hours_then_a_late_answer(self):
         campaign = self.send()
         later = timezone.now() + timedelta(hours=49)
@@ -203,6 +271,14 @@ class OvhCallbackTests(ReceiptTestCase):
             (lina.receipt, lina.receipt_detail),
             (State.UNDELIVERED, "Numéro invalide, bloqué ou interdit."),
         )
+        # A code missing from the published list, then "delivered".
+        omar = self.sms_of(campaign, self.people[2])
+        client.get(self.url(), {"id": omar.provider_message_id, "ptt": "77"})
+        omar.refresh_from_db()
+        self.assertEqual(omar.receipt, State.PENDING)
+        client.get(self.url(), {"id": omar.provider_message_id, "ptt": "4"})
+        omar.refresh_from_db()
+        self.assertEqual(omar.receipt, State.DELIVERED)
         # Unknown id (an activation code), bad code: accepted, nothing changes.
         self.assertEqual(client.get(self.url(), {"id": "zzz", "ptt": "4"}).status_code, 200)
         self.assertEqual(
@@ -220,6 +296,21 @@ class OvhCallbackTests(ReceiptTestCase):
                 self.client.get(self.url("x"), {"id": message_id, "ptt": "4"}).status_code, 404
             )
         self.assertEqual(self.sms_of(campaign, self.people[0]).receipt, State.PENDING)
+
+    def test_receipt_before_the_save(self):
+        self.client.get(self.url(), {"id": "m1", "ptt": "4"})  # the first SMS, not saved yet
+        self.assertEqual(EarlyReceipt.objects.get().message_id, "m1")
+        self.sms.side_effect = lambda number, text: SmsResult("ovh", "m1", tracked=True)
+        campaign = Campaign.objects.create(title="T", body="B", author=self.nadia, everyone=False)
+        campaign.people.add(self.people[0])
+        with self.captureOnCommitCallbacks(execute=True):
+            sending.schedule(campaign, send_at=timezone.now(), by=self.nadia)
+        self.assertEqual(self.sms_of(campaign, self.people[0]).receipt, State.DELIVERED)
+        self.assertFalse(EarlyReceipt.objects.exists())
+        # Never matched (an activation code): deleted after one hour.
+        self.client.get(self.url(), {"id": "zzz", "ptt": "4"})
+        receipts.give_up(timezone.now() + timedelta(hours=2))
+        self.assertFalse(EarlyReceipt.objects.exists())
 
     def test_only_ovh_sms(self):
         campaign = self.send()  # sent by SMSGate
@@ -259,6 +350,35 @@ class TrackingPageTests(ReceiptTestCase):
         )
         self.assertContains(response, '<span class="badge badge--success">SMS reçu</span>')
         self.assertContains(response, '<span class="badge badge--error">SMS non reçu</span>')
+
+    def test_one_line_per_person(self):
+        campaign = self.send()
+        yanis, lina, _ = (self.sms_of(campaign, u) for u in self.people)
+        for delivery, kind_state in ((yanis, State.UNKNOWN), (lina, State.UNDELIVERED)):
+            Delivery.objects.filter(pk=delivery.pk).update(receipt=kind_state)
+        # The reminders: Yanis's SMS fails too; Lina's arrives.
+        for delivery, receipt in ((yanis, State.UNDELIVERED), (lina, State.DELIVERED)):
+            Delivery.objects.create(
+                campaign=campaign,
+                recipient=delivery.recipient,
+                kind=Delivery.Kind.REMINDER,
+                channel="sms",
+                status="sent",
+                room_number=delivery.room_number,
+                title="R",
+                body="B",
+                receipt=receipt,
+                receipt_detail="Numéro invalide, bloqué ou interdit.",
+            )
+        rows = receipts.to_warn(campaign)
+        self.assertEqual(
+            [(r.recipient.first_name, r.reason) for r in rows],
+            [("Yanis", "Numéro invalide, bloqué ou interdit.")],  # the latest problem
+        )
+        log_in_verified(self.client, self.nadia)
+        response = self.client.get(reverse("messaging:tracking", args=[campaign.pk]))
+        self.assertContains(response, "1 personne à prévenir autrement")
+        self.assertEqual(response.context["receipts"]["total"], 3)  # the message only
 
     def test_nothing_to_warn(self):
         campaign = self.send()

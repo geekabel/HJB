@@ -11,8 +11,10 @@ API user at each status change, with ``id``, ``ptt`` (status code), ``date``
 and ``description`` in the query string
 (https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/faq-sms and
 https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/sms-users).
-The address is set by hand in the OVHcloud manager (see the README); it holds
-a secret (SMS_RECEIPT_SECRET), since the call carries no signature.
+The callback is set on an API user, by hand in the OVHcloud manager (see the
+README), so the SMS are sent through that user (POST
+/sms/{serviceName}/users/{login}/jobs, option "user"). The address holds a
+secret (SMS_RECEIPT_SECRET), since the call carries no signature.
 
 ``noStopClause``: our messages are service information, not marketing.
 Without this option, OVHcloud adds "STOP" and blocks sending
@@ -28,7 +30,9 @@ from .base import ConfigurationError, DeliveryState, Receipt, SendError, SendRes
 PENDING_CODES = {1, 2, 3, 24, 25, 26}
 DELIVERED_CODE = 4
 UNKNOWN_CODE = 6
-# The others: it will not arrive. A French reason for the frequent ones.
+# Final failures listed by OVHcloud, with a French reason. A code missing
+# from the list (the list is "non-exhaustive") stays "on its way": the 48 h
+# limit ends it, and a later code 4 can still say "received".
 REASONS = {
     5: "Non distribué, sans précision de l'opérateur.",
     8: "Expiré : le téléphone est resté injoignable.",
@@ -39,11 +43,15 @@ REASONS = {
     28: "Refusé par l'opérateur comme spam.",
     29: "Contenu refusé par l'opérateur.",
     33: "Bloqué par un contrôle parental.",
+    39: "Échec chez l'opérateur.",
+    73: "Numéro porté chez un autre opérateur, injoignable.",
     74: "Le destinataire est à l'étranger (itinérance).",
+    76: "Numéro porté, refusé pour ce client.",
+    202: "Numéro porté, bloqué : voir le support OVHcloud.",
 }
 
 
-def callback_receipt(ptt, description=""):
+def callback_receipt(ptt):
     """Receipt for the ``ptt`` code sent to the callback address."""
     try:
         code = int(ptt)
@@ -55,8 +63,9 @@ def callback_receipt(ptt, description=""):
         return Receipt(DeliveryState.PENDING, f"En cours d'acheminement (code {code}).")
     if code == UNKNOWN_CODE:
         return Receipt(DeliveryState.UNKNOWN, "L'opérateur ne dit pas si le SMS est arrivé.")
-    reason = REASONS.get(code) or f"Non reçu (code OVHcloud {code})."
-    return Receipt(DeliveryState.UNDELIVERED, reason)
+    if code in REASONS:
+        return Receipt(DeliveryState.UNDELIVERED, REASONS[code])
+    return Receipt(DeliveryState.PENDING, f"Code OVHcloud {code}, sans état final.")
 
 
 class OvhProvider(SmsProvider):
@@ -64,8 +73,9 @@ class OvhProvider(SmsProvider):
     required_options = ("service", "application_key", "application_secret", "consumer_key")
 
     def tracks_delivery(self):
-        # Only if the callback address can be checked (secret set).
-        return bool(getattr(settings, "SMS_RECEIPT_SECRET", ""))
+        # The callback is set on an API user: the SMS must go through it
+        # ("user" option), and the address must be checked (secret).
+        return bool(self.options.get("user") and getattr(settings, "SMS_RECEIPT_SECRET", ""))
 
     def _client(self):
         import ovh
@@ -80,6 +90,13 @@ class OvhProvider(SmsProvider):
             )
         except ovh.exceptions.APIError as error:  # unknown region, inconsistent keys
             raise ConfigurationError(f"Configuration OVHcloud invalide : {error}") from error
+
+    def _jobs_path(self):
+        path = f"/sms/{self.options['service']}"
+        if self.options.get("user"):
+            # Through the API user: its callback gives the delivery receipts.
+            path += f"/users/{self.options['user']}"
+        return path + "/jobs"
 
     def send(self, number, text):
         from ovh import exceptions
@@ -97,7 +114,7 @@ class OvhProvider(SmsProvider):
             # OVHcloud short number, which also allows receiving replies.
             body["senderForResponse"] = True
         try:
-            response = self._client().post(f"/sms/{self.options['service']}/jobs", **body)
+            response = self._client().post(self._jobs_path(), **body)
         except exceptions.HTTPError as error:
             # The library wraps the requests error (2nd argument).
             cause = error.args[1] if len(error.args) > 1 else None

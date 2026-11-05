@@ -13,10 +13,19 @@ password shown in the app (the only option in local mode).
 
 import requests
 
-from .base import DeliveryState, Receipt, SendError, SendResult, SmsProvider
+from .base import (
+    ConfigurationError,
+    DeliveryState,
+    Receipt,
+    SendError,
+    SendResult,
+    SmsProvider,
+)
 
 # Status codes after which a new attempt later may succeed (SMSGate docs).
 TEMPORARY_CODES = {429, 500, 502, 503, 504}
+# Asking for a receipt: short waits (connection, answer), the run stays short.
+RECEIPT_TIMEOUT = (3, 5)
 
 # States of SMSGate (ProcessState) and ours. "Processed" can stay forever
 # when Android loses the confirmation (SMSGate docs): our 48 h limit ends it.
@@ -108,12 +117,14 @@ class SmsGateProvider(SmsProvider):
                 self._url("/" + requests.utils.quote(message_id, safe="")),
                 headers=headers,
                 auth=auth,
-                timeout=float(self.options.get("timeout", 10)),
+                timeout=RECEIPT_TIMEOUT,
             )
         except requests.RequestException as error:
             raise SendError(
                 f"SMSGate est injoignable ({type(error).__name__}).", temporary=True
             ) from error
+        if response.status_code in (401, 403):
+            raise ConfigurationError(f"SMSGate refuse l'accès (code {response.status_code}).")
         if response.status_code == 404:
             return Receipt(DeliveryState.UNKNOWN, "SMSGate ne connaît plus ce SMS.")
         if not 200 <= response.status_code < 300:
@@ -126,7 +137,8 @@ class SmsGateProvider(SmsProvider):
         recipients = data.get("recipients")
         first = recipients[0] if isinstance(recipients, list) and recipients else {}
         first = first if isinstance(first, dict) else {}
-        state = STATES.get(first.get("state") or data.get("state"))
+        raw = first.get("state") or data.get("state")
+        state = STATES.get(raw) if isinstance(raw, str) else None
         if state is None:
             raise SendError("État du SMS illisible dans la réponse de SMSGate.")
         detail = ""

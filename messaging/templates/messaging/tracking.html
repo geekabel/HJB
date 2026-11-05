@@ -37,20 +37,20 @@
   <h2 id="warn-title" class="icon-text">{% icon "alert" %}<span>{{ to_warn|length }} personne{{ to_warn|length|pluralize }} à prévenir autrement</span></h2>
   <p>Le message n'est peut-être pas arrivé. Prévenez-les par un appel, une affiche ou un passage en chambre.</p>
   <ul class="plain-list stack stack--tight">
-    {% for delivery in to_warn %}
-    <li><strong>{{ delivery.recipient.get_full_name|default:delivery.recipient.get_username }}</strong>{% if delivery.room_number %}, chambre {{ delivery.room_number }}{% endif %}{% if delivery.kind == "reminder" %} (relance){% endif %} : {% if delivery.status == "failed" %}{{ delivery.error|default:"échec de l'envoi." }}{% else %}{{ delivery.receipt_detail|default:delivery.get_receipt_display }}{% endif %}</li>
+    {% for row in to_warn %}
+    <li><strong>{{ row.recipient.get_full_name|default:row.recipient.get_username }}</strong>{% if row.room_number %}, chambre {{ row.room_number }}{% endif %} : {{ row.reason }}</li>
     {% endfor %}
   </ul>
 </section>
 {% endif %}
 {% if receipts.total %}
 <section class="stack" aria-labelledby="receipts-title">
-  <h2 id="receipts-title">Accusés de réception des SMS</h2>
+  <h2 id="receipts-title">Accusés de réception des SMS du message</h2>
   <div class="grid-auto">
     <div class="card stat"><span class="text-muted text-small">Reçus</span><span class="stat__value">{{ receipts.delivered }}</span></div>
-    <div class="card stat"><span class="text-muted text-small">En route</span><span class="stat__value">{{ receipts.pending }}</span>{% if receipts.pending %}<span class="text-muted text-small">mis à jour toutes les 5 minutes environ</span>{% endif %}</div>
+    <div class="card stat"><span class="text-muted text-small">En route</span><span class="stat__value">{{ receipts.pending }}</span>{% if receipts.pending %}<span class="text-muted text-small">mis à jour automatiquement</span>{% endif %}</div>
     <div class="card stat"><span class="text-muted text-small">Non reçus</span><span class="stat__value">{{ receipts.undelivered }}</span></div>
-    <div class="card stat"><span class="text-muted text-small">Inconnus</span><span class="stat__value">{{ receipts.unknown }}</span><span class="text-muted text-small">l'opérateur ne dit rien</span></div>
+    <div class="card stat"><span class="text-muted text-small">Inconnus</span><span class="stat__value">{{ receipts.unknown }}</span><span class="text-muted text-small">pas de nouvelle</span></div>
   </div>
 </section>
 {% endif %}

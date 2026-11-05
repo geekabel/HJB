@@ -295,14 +295,39 @@ class ReceiptTests(SimpleTestCase):
             (receipt.state, receipt.detail),
             (DeliveryState.UNDELIVERED, "Numéro invalide, bloqué ou interdit."),
         )
-        self.assertEqual(callback_receipt("999").detail, "Non reçu (code OVHcloud 999).")
+        # Not in the published list: stays on its way (the list is non-exhaustive).
+        receipt = callback_receipt("999")
+        self.assertEqual(
+            (receipt.state, receipt.detail),
+            (DeliveryState.PENDING, "Code OVHcloud 999, sans état final."),
+        )
         self.assertIsNone(callback_receipt("abc"))
         self.assertIsNone(callback_receipt(None))
 
-    def test_ovh_tracks_only_with_the_secret(self):
-        provider = OvhProvider()
-        self.assertFalse(provider.can_poll)
+    def test_ovh_tracks_only_with_the_secret_and_the_user(self):
+        self.assertFalse(OvhProvider().can_poll)
         with self.settings(SMS_RECEIPT_SECRET=""):
-            self.assertFalse(provider.tracks_delivery())
+            self.assertFalse(OvhProvider(user="hjb").tracks_delivery())
         with self.settings(SMS_RECEIPT_SECRET="x" * 40):
-            self.assertTrue(provider.tracks_delivery())
+            self.assertFalse(OvhProvider().tracks_delivery())
+            self.assertTrue(OvhProvider(user="hjb").tracks_delivery())
+
+    @mock.patch("ovh.Client")
+    def test_ovh_sends_through_the_api_user(self, client):
+        client.return_value.post.return_value = {"ids": [7], "invalidReceivers": []}
+        options = dict.fromkeys(("application_key", "application_secret", "consumer_key"), "k")
+        OvhProvider(service="sms-ab1", user="hjb", **options).send(NUMBER, "Bonjour")
+        self.assertEqual(client.return_value.post.call_args.args, ("/sms/sms-ab1/users/hjb/jobs",))
+
+    @mock.patch("sms.providers.smsgate.requests.get")
+    def test_smsgate_odd_answers(self, get):
+        provider = self.smsgate()
+        get.return_value = http_response(401, {})
+        with self.assertRaises(ConfigurationError):
+            provider.receipt("x")
+        get.return_value = http_response(200, {"state": ["Sent"], "recipients": [{"state": {}}]})
+        with self.assertRaises(SendError):
+            provider.receipt("x")
+        get.return_value = http_response(200, {"state": "Delivered"})  # no recipients
+        self.assertEqual(provider.receipt("x").state, DeliveryState.DELIVERED)
+        self.assertEqual(get.call_args.kwargs["timeout"], (3, 5))

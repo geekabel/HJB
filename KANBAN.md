@@ -414,6 +414,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Page de suivi : bilan des accusés et liste des personnes à prévenir autrement (envoi en échec, SMS non reçu ou inconnu), avec la raison
 - [x] Contrôles : secret trop court refusé, avertissement au déploiement si OVHcloud est choisi sans secret
 - **Notes** : l'appel d'OVHcloud n'est pas signé, d'où le secret dans l'adresse (voir le README). L'identifiant envoyé au rappel par OVHcloud n'est pas documenté : à vérifier au premier essai réel. Les codes d'activation (T11, T12) ne sont pas suivis : ce ne sont pas des envois de message.
+- **Revue** : corrigé après la revue indépendante. OVHcloud règle le rappel sur un utilisateur API : les SMS passent donc par cet utilisateur (`OVH_SMS_USER`), sinon aucun accusé n'est attendu. Un code OVHcloud absent de la liste publiée reste « en route » (au lieu de « non reçu ») ; « reçu » remplace toujours un autre état. SMSGate : 20 secondes au plus par minute, attente courte, arrêt si l'accès est refusé, interrogations de plus en plus espacées, dernière question avant « inconnu », puis encore une semaine toutes les 2 heures. Un accusé arrivé avant l'enregistrement de l'envoi est gardé une heure puis appliqué. La liste à prévenir compte les personnes (une ligne chacune, sans celles qu'une relance a jointes). Bilan sur le message seul. Index pour le rappel. Secret : lettres, chiffres, - et _ seulement. À vérifier au premier essai réel OVHcloud : l'envoi par l'utilisateur, l'arrivée du rappel et l'identifiant.
 
 ### E5 Votes
 

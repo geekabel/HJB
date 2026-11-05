@@ -200,6 +200,7 @@ SMS_PROVIDERS = {
             "application_secret": "OVH_APPLICATION_SECRET",
             "consumer_key": "OVH_CONSUMER_KEY",
             "sender": "OVH_SMS_SENDER",
+            "user": "OVH_SMS_USER",
         },
     ),
 }
@@ -224,6 +225,7 @@ def sms_setting(default):
 SMS = sms_setting("console")
 
 # Delivery receipts of OVHcloud (card T24): secret part of the callback address.
+# Letters, digits, "-" and "_" only (sms/checks.py).
 SMS_RECEIPT_SECRET = os.environ.get("DJANGO_SMS_RECEIPT_SECRET", "")
 
 # Tests: no real SMS, see tools/test_runner.py.

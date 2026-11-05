@@ -136,15 +136,20 @@ class ChecksTests(SimpleTestCase):
         ovh = {
             "BACKEND": "sms.providers.ovh.OvhProvider",
             "OPTIONS": dict.fromkeys(
-                ("service", "application_key", "application_secret", "consumer_key"), "x"
+                ("service", "application_key", "application_secret", "consumer_key", "user"), "x"
             ),
         }
         with override_settings(SMS=ovh, SMS_RECEIPT_SECRET=""):
             self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W002"])
         with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="short"):
             self.assertEqual(self.ids(), ["sms.E003"])
-        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="s" * 32):
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="s/" * 20):  # "/" breaks the address
+            self.assertEqual(self.ids(), ["sms.E003"])
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="s-_9" * 8):
             self.assertEqual(self.ids(include_deployment_checks=True), [])
+        no_user = {**ovh, "OPTIONS": {**ovh["OPTIONS"], "user": ""}}
+        with override_settings(SMS=no_user, SMS_RECEIPT_SECRET="s" * 32):
+            self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W002"])
 
 
 class SendTestSmsCommandTests(SimpleTestCase):

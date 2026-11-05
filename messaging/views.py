@@ -283,7 +283,7 @@ def tracking(request, pk):
             "reminder_stats": sending.summary(campaign, Delivery.Kind.REMINDER),
             "answers": replies.counts(campaign) if campaign.reply_type == "attendance" else None,
             "receipts": receipts.summary(campaign),
-            "to_warn": list(receipts.to_warn(campaign)),
+            "to_warn": receipts.to_warn(campaign),
             "audience": audience(campaign)
             if campaign.status == Campaign.Status.SCHEDULED
             else None,

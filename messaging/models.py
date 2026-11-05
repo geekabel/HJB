@@ -242,10 +242,36 @@ class Delivery(models.Model):
         indexes = [
             models.Index(fields=["campaign", "status"]),
             models.Index(fields=["receipt", "sms_provider"], name="delivery_receipt_idx"),
+            # Callback of OVHcloud: the SMS by its id.
+            models.Index(
+                fields=["sms_provider", "provider_message_id"], name="delivery_provider_id_idx"
+            ),
         ]
 
     def __str__(self):
         return f"{self.campaign} · {self.recipient}"
+
+
+class EarlyReceipt(models.Model):
+    """A receipt that came before its sending was saved (card T24).
+
+    OVHcloud can call within milliseconds, while the worker has not yet saved
+    the id of the SMS. Applied right after the save, deleted after one hour.
+    """
+
+    provider = models.CharField(max_length=20)
+    message_id = models.CharField(max_length=64)
+    state = models.CharField(max_length=12)
+    detail = models.CharField(max_length=200, blank=True)
+    received_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "message_id"], name="one_early_receipt")
+        ]
+
+    def __str__(self):
+        return f"{self.provider} · {self.message_id}"
 
 
 class AttendanceReply(models.Model):
