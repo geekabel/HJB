@@ -8,16 +8,17 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.management import CommandError, call_command
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.roles import Role
-from accounts.tests.helpers import make_user
+from accounts.tests.helpers import log_in_verified, make_user
 from audit.models import Action, AuditEntry
 from residents.departure import record_departure
 
 from . import wifi, wifi_crypto
 from .checks import wifi_encryption_keys
-from .models import Floor, Room, Stay, WifiAccess
+from .models import DEFAULT_WIFI_ALPHABET, Floor, Room, Stay, WifiAccess, WifiSettings
 from .services import assign_room
 
 KEY_A = Fernet.generate_key().decode()
@@ -74,17 +75,61 @@ class WifiTestCase(TestCase):
 
 
 class ServiceTests(WifiTestCase):
-    def test_generated_password(self):
+    def test_generated_in_the_portal_format(self):
+        # Default format: 6 characters, lowercase letters and digits (e.g. vre8th / 72ptmk).
         passwords = {wifi.generate_password() for _ in range(20)}
         self.assertEqual(len(passwords), 20)
-        for password in passwords:
-            self.assertEqual(len(password), wifi.GENERATED_LENGTH)
-            self.assertTrue(set(password) <= set(wifi.ALPHABET))
-        self.assertFalse(set("Il0O1") & set(wifi.ALPHABET))
+        for value in passwords | {wifi.generate_username()}:
+            self.assertEqual(len(value), 6)
+            self.assertTrue(set(value) <= set(DEFAULT_WIFI_ALPHABET))
+        self.assertFalse(set("Il0O1") & set(DEFAULT_WIFI_ALPHABET))
 
-    def test_suggested_username(self):
-        self.assertEqual(wifi.suggest_username(self.r312, self.ines), "ch312-ines")
-        self.assertEqual(wifi.suggest_username(self.r312), "ch312")
+    def test_format_changed_by_an_administrator(self):
+        settings_row = WifiSettings.load()
+        settings_row.username_length = 8
+        settings_row.password_length = 12
+        settings_row.alphabet = "ABCDEFGHJK23456789"
+        settings_row.save()
+        self.assertEqual(len(wifi.generate_username()), 8)
+        password = wifi.generate_password()
+        self.assertEqual(len(password), 12)
+        self.assertTrue(set(password) <= set("ABCDEFGHJK23456789"))
+
+    def test_generated_username_is_free(self):
+        self.record(username="aaaaaa")
+        settings_row = WifiSettings.load()
+        settings_row.alphabet = "ab23456789"
+        settings_row.username_length = 1
+        settings_row.save()
+        WifiAccess.objects.filter(username="aaaaaa").update(username="a")
+        self.assertNotEqual(wifi.generate_username(), "a")
+
+    def test_check_credential(self):
+        for value in ("vre8th", "72ptmk", "Soleil-2026!", "x" * 64):
+            self.assertEqual(wifi.check_credential(value), "", value)
+        self.assertEqual(wifi.check_credential("ab c"), "Les espaces ne sont pas permis.")
+        self.assertIn("de 4 à 64", wifi.check_credential("abc"))
+        self.assertIn("de 4 à 64", wifi.check_credential("x" * 65))
+
+    def test_settings_row(self):
+        settings_row = WifiSettings.load()
+        self.assertEqual(settings_row.pk, 1)
+        self.assertEqual(WifiSettings.load().pk, 1)
+        settings_row.alphabet = "aabbccddeeffgghhiijj"
+        settings_row.save()
+        self.assertEqual(WifiSettings.load().alphabet, "abcdefghij")
+        for alphabet, message in (("abc def ghij", "espace"), ("abcdefghi", "10 caractères")):
+            settings_row.alphabet = alphabet
+            with (
+                self.subTest(alphabet=alphabet),
+                self.assertRaisesMessage(ValidationError, message),
+            ):
+                settings_row.full_clean()
+
+    def test_one_active_access_per_username(self):
+        self.record(username="vre8th")
+        with self.assertRaises(ValidationError):
+            self.record(room=self.r304, username="vre8th")
 
     def test_default_expiry_one_year(self):
         self.assertEqual(wifi.default_expiry(date(2026, 11, 5)), date(2027, 11, 5))
@@ -234,3 +279,56 @@ class RotationTests(WifiTestCase):
         self.assertEqual(after, before)
         self.assertIn(readable.pk, after)
         self.assertIn(unreadable.pk, after)
+
+
+class WifiSettingsAdminTests(TestCase):
+    """The format of the portal is changed in the admin site (card T15b)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.marie = make_user("marie", Role.ADMIN, is_staff=True)
+        cls.nadia = make_user("nadia", Role.FRONT_DESK, is_staff=True)
+
+    def test_admin_changes_the_format(self):
+        log_in_verified(self.client, self.marie)
+        response = self.client.get(reverse("admin:housing_wifisettings_changelist"))
+        change = reverse("admin:housing_wifisettings_change", args=[1])
+        self.assertRedirects(response, change)
+        response = self.client.get(change)
+        self.assertContains(response, "Format des accès générés")
+        self.assertNotContains(response, "deletelink")
+        response = self.client.post(
+            change,
+            {
+                "network_name": "HJB-Residents",
+                "username_length": "8",
+                "password_length": "12",
+                "alphabet": "abcdefghijkmnpqrstuvwxyz23456789",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(wifi.generate_username()), 8)
+        self.assertEqual(len(wifi.generate_password()), 12)
+        self.assertEqual(WifiSettings.objects.count(), 1)
+        # Out of bounds: refused with a message, nothing changed.
+        response = self.client.post(
+            change,
+            {"username_length": "3", "password_length": "64", "alphabet": "abc"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(WifiSettings.load().username_length, 8)
+
+    def test_front_desk_cannot_change_it(self):
+        log_in_verified(self.client, self.nadia)
+        for url in (
+            reverse("admin:housing_wifisettings_changelist"),
+            reverse("admin:housing_wifisettings_change", args=[1]),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(
+            self.client.post(
+                reverse("admin:housing_wifisettings_change", args=[1]), {"username_length": "4"}
+            ).status_code,
+            403,
+        )

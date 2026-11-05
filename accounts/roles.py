@@ -42,6 +42,7 @@ PERMISSIONS = {
     "manage_residents": "Peut gérer les résidents et leurs séjours",
     "issue_activation_codes": "Peut générer un code d'activation",
     "view_wifi_password": "Peut afficher un mot de passe wifi",
+    "manage_wifi_settings": "Peut changer le format des accès wifi",
     "send_messages": "Peut envoyer des messages aux résidents",
     "manage_reports": "Peut traiter les signalements",
     "manage_appointments": "Peut gérer ses disponibilités et ses rendez-vous",

@@ -8,6 +8,7 @@ Constraints: https://docs.djangoproject.com/en/6.1/ref/models/constraints/
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
@@ -172,6 +173,70 @@ class Stay(models.Model):
             raise ValidationError(errors)
 
 
+DEFAULT_WIFI_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
+
+
+class WifiSettings(models.Model):
+    """Format of the captive portal credentials, changed by an administrator (card T15b).
+
+    The residence portal uses 6 characters for the username and 6 for the
+    password today (for example "vre8th" / "72ptmk"). If the portal changes,
+    an administrator changes these values in the admin site: no code change.
+    A single row (pk=1), read with WifiSettings.load().
+    """
+
+    network_name = models.CharField(
+        "nom du réseau",
+        max_length=64,
+        blank=True,
+        help_text="Nom du wifi que voient les résidents (SSID). Affiché sur leur écran wifi.",
+    )
+    username_length = models.PositiveSmallIntegerField(
+        "longueur de l'identifiant",
+        default=6,
+        validators=[MinValueValidator(4), MaxValueValidator(32)],
+        help_text="Pour les identifiants générés par l'application.",
+    )
+    password_length = models.PositiveSmallIntegerField(
+        "longueur du mot de passe",
+        default=6,
+        validators=[MinValueValidator(4), MaxValueValidator(63)],
+        help_text="Pour les mots de passe générés par l'application.",
+    )
+    alphabet = models.CharField(
+        "caractères permis",
+        max_length=100,
+        default=DEFAULT_WIFI_ALPHABET,
+        help_text=(
+            "Caractères utilisés pour générer. Par défaut, minuscules et chiffres, "
+            "sans l, o, 0 ni 1 (faciles à confondre)."
+        ),
+    )
+
+    class Meta:
+        verbose_name = "réglages wifi"
+        verbose_name_plural = "réglages wifi"
+
+    def __str__(self):
+        return "Réglages wifi"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # a single row
+        self.alphabet = "".join(dict.fromkeys(self.alphabet))  # without duplicates
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        if any(c.isspace() for c in self.alphabet):
+            raise ValidationError({"alphabet": "Les espaces ne sont pas permis."})
+        if len(set(self.alphabet)) < 10:
+            raise ValidationError({"alphabet": "Il faut au moins 10 caractères différents."})
+
+    @classmethod
+    def load(cls):
+        settings_row, _ = cls.objects.get_or_create(pk=1)
+        return settings_row
+
+
 WIFI_VALIDITY_DAYS = 365
 # Below this many days, staff see "renew soon" in the lists (card T15).
 WIFI_RENEWAL_WARNING_DAYS = 30
@@ -228,6 +293,12 @@ class WifiAccess(models.Model):
                 condition=Q(active=True),
                 name="one_active_wifi_per_room",
                 violation_error_message="Cette chambre a déjà un accès wifi actif.",
+            ),
+            models.UniqueConstraint(
+                fields=["username"],
+                condition=Q(active=True),
+                name="one_active_wifi_per_username",
+                violation_error_message="Cet identifiant wifi sert déjà à une autre chambre.",
             ),
             models.CheckConstraint(
                 condition=Q(expires_on__gt=F("created_on")),

@@ -1,7 +1,8 @@
 """Wifi access of the rooms (card T15): record, renew, show, cut.
 
 - Front desk and administration record the access of a room: they type the
-  password given by the network, or let the application generate one.
+  username and password of the captive portal, or let the application
+  generate them in the portal format (WifiSettings, card T15b).
 - Only administrators can show a stored password again; every display goes
   to the audit log. The lists never contain a password.
 - When a stay ends (departure, change of room), the access of the room is
@@ -9,7 +10,6 @@
 """
 
 import secrets
-import unicodedata
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
@@ -21,29 +21,41 @@ from audit.models import Action
 from audit.service import log_action
 
 from . import wifi_crypto
-from .models import WIFI_VALIDITY_DAYS, Room, Stay, WifiAccess
+from .models import WIFI_VALIDITY_DAYS, Room, Stay, WifiAccess, WifiSettings
 
-# No I, l, O, 0 or 1: nothing to confuse when the password is copied by hand.
-ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
-GENERATED_LENGTH = 12  # about 69 bits
-# Length allowed by WPA2 personal passphrases.
-MIN_LENGTH = 8
-MAX_LENGTH = 63
-
-
-def generate_password():
-    return "".join(secrets.choice(ALPHABET) for _ in range(GENERATED_LENGTH))
+# Typed credentials (copied from the captive portal) are checked loosely, so a
+# change of format on the portal never blocks the staff: no spaces, 4 to 64
+# characters. Generated ones follow WifiSettings (card T15b).
+MIN_LENGTH = 4
+MAX_LENGTH = 64
 
 
-def suggest_username(room, person=None):
-    """For example "ch312-awa": the room number, then the first name without accents."""
-    base = f"ch{room.number}".lower()
-    if person is not None and person.first_name:
-        name = unicodedata.normalize("NFKD", person.first_name)
-        name = "".join(c for c in name if c.isascii() and c.isalnum()).lower()
-        if name:
-            base = f"{base}-{name}"
-    return base[:64]
+def check_credential(value):
+    """Return an error message in French, or "" if the typed value is acceptable."""
+    if any(c.isspace() for c in value):
+        return "Les espaces ne sont pas permis."
+    if not MIN_LENGTH <= len(value) <= MAX_LENGTH:
+        return f"Il faut de {MIN_LENGTH} à {MAX_LENGTH} caractères."
+    return ""
+
+
+def _random(alphabet, length):
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def generate_password(settings_row=None):
+    settings_row = settings_row or WifiSettings.load()
+    return _random(settings_row.alphabet, settings_row.password_length)
+
+
+def generate_username(settings_row=None):
+    """A username in the portal format, not used by any active access."""
+    settings_row = settings_row or WifiSettings.load()
+    for _ in range(20):
+        username = _random(settings_row.alphabet, settings_row.username_length)
+        if not WifiAccess.objects.filter(username=username, active=True).exists():
+            return username
+    raise RuntimeError("Could not find a free wifi username.")
 
 
 def default_expiry(on=None):
