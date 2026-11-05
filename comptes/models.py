@@ -182,6 +182,11 @@ class CodeActivation(models.Model):
     annule_le = models.DateTimeField(
         "annulé le", null=True, blank=True, help_text="Remplacé par un code plus récent."
     )
+    pour_personnel = models.BooleanField(
+        "pour le personnel",
+        default=False,
+        help_text="Remis par un administrateur à un membre du personnel (carte T14).",
+    )
 
     objects = CodeActivationQuerySet.as_manager()
 

@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 
 from .models import Chambre, Etage, Sejour
 from .services import affecter_chambre, sejour_en_cours
@@ -167,7 +167,7 @@ class AffecterChambreTests(LogementTestCase):
 class AdministrationTests(LogementTestCase):
     def setUp(self):
         admin = creer_utilisateur("chef", Role.ADMIN, is_staff=True, is_superuser=True)
-        self.client.force_login(admin)
+        connecter(self.client, admin)
 
     def test_pages_de_l_administration(self):
         Sejour.objects.create(resident=self.awa, chambre=self.c312, arrivee=J1)

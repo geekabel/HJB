@@ -70,7 +70,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T14 | Sécurité de l'espace équipe | E2 Connexion | T04, T13 |
+| T14b | Code en anglais | Qualité | T14 |
 | T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
 | T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
@@ -120,6 +120,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T11 | Code d'activation | 5 nov. 2026 |
 | T12 | Vérification du téléphone par code SMS | 5 nov. 2026 |
 | T13 | Connexion par clé d'accès (passkey) | 5 nov. 2026 |
+| T14 | Sécurité de l'espace équipe | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -277,11 +278,26 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : version 0.10.3 de la bibliothèque, qui corrige une faille d'ajout de clé (GHSA-8r76-c459-ww98). Elle n'a pas de traduction française et son script affiche des fenêtres `alert()` : la doc dit de faire son propre script dans ce cas. `cle-acces.js` appelle les mêmes adresses avec le même JSON, sans dépendance. Les tests utilisent un authentificateur logiciel (vraie clé ES256) : le serveur vérifie tout, sans simulacre. Essai de bout en bout dans Chromium avec un authentificateur virtuel : activation, connexion, confirmation, annulation. En développement, ouvrir http://localhost:8000 (pas 127.0.0.1). Le personnel garde la connexion par mot de passe de l'administration jusqu'à T14.
 - **Revue indépendante (5 nov.)** : corrigé après relecture. Un téléphone perdu restait connecté : supprimer une clé (administration, « Couper l'accès ») ferme maintenant les sessions du compte. La création de clé revérifie tout une fois la ligne du compte verrouillée, et la génération d'un code prend le même verrou (un départ simultané ne laisse plus de clé). Face ID, empreinte ou code exigés dès la création, sinon une clé inutilisable aurait remplacé les autres. Un compte devenu membre du personnel ne s'active plus par ce chemin. Changer les rôles ferme les sessions de la personne et annule son code. La durée de session repart à chaque requête (`SESSION_SAVE_EVERY_REQUEST`). Un identifiant de clé déjà connu renvoie une erreur claire au lieu d'une erreur 500. Messages du script plus justes (réseau coupé, page expirée). 340 tests.
 
-#### T14 Sécurité de l'espace équipe
-- [ ] Espace équipe réservé aux rôles du personnel
-- [ ] Clé d'accès obligatoire pour le personnel
-- [ ] Adresse de l'administration Django changée
-- [ ] Limite de tentatives de connexion
+#### T14 Sécurité de l'espace équipe (fait le 5 nov. 2026)
+- **Docs** : [django-otp (OTPMiddleware, is_verified, OTPAdminSite)](https://django-otp-official.readthedocs.io/en/stable/), [remplacer le site d'administration](https://docs.djangoproject.com/en/6.1/ref/contrib/admin/#overriding-the-default-admin-site), [permissions dans un backend](https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#handling-authorization-in-custom-backends), [middleware](https://docs.djangoproject.com/en/6.1/topics/http/middleware/), [API bas niveau du cache](https://docs.djangoproject.com/en/6.1/topics/cache/#the-low-level-cache-api), [commandes d'administration](https://docs.djangoproject.com/en/6.1/howto/custom-management-commands/), [contrôles système](https://docs.djangoproject.com/en/6.1/topics/checks/).
+- [x] Espace équipe réservé au personnel : un middleware protège /equipe/, /guide/ et l'administration (anonyme : connexion ; résident : refus ; personnel sans clé vérifiée : confirmation). Les vues gardent leurs permissions
+- [x] Clé d'accès obligatoire pour le personnel, et plus aucun mot de passe : la connexion par mot de passe est coupée (les permissions des rôles restent), l'administration exige une session vérifiée par clé et renvoie vers /connexion/
+- [x] Premier accès du personnel : code d'activation généré par un administrateur (action « Générer un code d'activation (personnel) »), puis SMS et clé, comme les résidents. Un code du personnel ne sert pas à un résident, et inversement. Premier administrateur : `python manage.py code_activation <identifiant> --telephone "06 …"`
+- [x] Adresse de l'administration réglable (`DJANGO_ADMIN_URL`) ; `check --deploy` signale « admin/ » (connexion.W001)
+- [x] Limite de tentatives de connexion par adresse IP : 300 débuts de connexion en 10 minutes (réponse 429). Une adresse IPv6 compte pour son réseau /64
+- [x] `check` refuse une adresse d'administration déjà prise (/connexion/, /equipe/…) (connexion.E001)
+- **Notes** : retirer ModelBackend coupait aussi les permissions (c'est lui qui les lit) : un backend `PermissionsSansMotDePasse` garde les permissions et refuse tout mot de passe. Les comptes se créent sans mot de passe dans l'administration. Les compteurs des limites sont dans le cache de Django, en mémoire par processus tant qu'aucun cache partagé n'est choisi (T38). Essai de bout en bout dans Chromium : activation d'un administrateur, puis espace équipe et administration.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Le blocage après 30 échecs permettait à n'importe qui de bloquer tout le wifi de la résidence avec des requêtes vides : il est retiré, car une clé d'accès ne se devine pas ; seule la limite des débuts reste, plus large. Une personne qui pouvait seulement modifier des comptes pouvait se donner le rôle Administration et le statut de super-utilisateur : les rôles et l'accès technique demandent maintenant le rôle Administration, et le statut de super-utilisateur demande d'en être un. Le code d'un super-utilisateur ne peut venir que d'un super-utilisateur. Ajouter un rôle ne supprime plus le code du personnel déjà remis. Une adresse d'administration déjà prise est refusée. Un test prouvait moins qu'il ne disait. 367 tests.
+
+### Qualité
+
+#### T14b Code en anglais
+- Décidé le 5 nov. 2026, à faire juste après T14.
+- [ ] Noms en anglais : applications, modèles, champs, fonctions, variables, adresses internes (noms d'URL), classes CSS, fichiers JavaScript, tests
+- [ ] Commentaires et docstrings en anglais
+- [ ] Les textes affichés restent en français ; les adresses visibles par les résidents (/activer/, /connexion/) aussi
+- [ ] Migrations recréées depuis zéro (aucune donnée réelle pour l'instant), base de développement recréée
+- [ ] Mêmes tests, W3C et essais de bout en bout qu'avant ; documentation mise à jour
 
 ### E3 Wifi
 
@@ -428,6 +444,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 #### T38 Déploiement
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
+- [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
 - [ ] Fichiers statiques et médias
 

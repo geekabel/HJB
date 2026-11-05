@@ -344,20 +344,26 @@ def code_activation(request, pk):
         messages.info(request, "Ce compte est désactivé : enregistrez d'abord le retour.")
         return redirect("residents:fiche", pk=resident.pk)
     code = generer_code(resident, par=request.user, requete=request)
+    return feuille_code(request, resident, code, reverse("residents:fiche", args=[resident.pk]))
+
+
+def feuille_code(request, utilisateur, code, retour):
+    """Feuille imprimable du code, jamais mise en cache. Sert aussi pour le personnel (T14)."""
     adresse = request.build_absolute_uri(reverse("activation:saisie"))
     qr = segno.make_qr(f"{adresse}#{code}", error="m").svg_inline(
-        scale=4, title=f"Code QR pour activer le compte de {resident.get_full_name()}"
+        scale=4, title=f"Code QR pour activer le compte de {utilisateur.get_full_name()}"
     )
     reponse = render(
         request,
         "residents/code_activation.html",
         {
             "actif": "residents",
-            "resident": resident,
+            "resident": utilisateur,
             "code": code,
             "adresse": adresse,
             "expire_le": timezone.now() + DUREE_VALIDITE,
             "qr": mark_safe(qr),  # SVG produit par segno à partir de notre propre lien
+            "retour": retour,
         },
     )
     add_never_cache_headers(reponse)

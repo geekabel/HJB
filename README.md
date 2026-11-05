@@ -21,11 +21,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 python manage.py migrate
-python manage.py createsuperuser
+python manage.py createsuperuser --noinput --username marie --email ""
+python manage.py code_activation marie --telephone "06 12 34 56 78"
 python manage.py runserver
 ```
 
-`manage.py` utilise les réglages de développement (`config.settings.dev`) par défaut. L'administration est sur http://127.0.0.1:8000/admin/.
+Il n'y a aucun mot de passe : le premier administrateur active son compte comme tout le monde. Ouvrez http://localhost:8000/activer/, saisissez le code affiché, puis le code SMS (en développement, il s'affiche dans la console du serveur), et créez votre clé d'accès.
+
+`manage.py` utilise les réglages de développement (`config.settings.dev`) par défaut. L'administration est sur http://localhost:8000/admin/. En production, son adresse vient de `DJANGO_ADMIN_URL`.
 
 ## Tests et contrôles
 
@@ -74,7 +77,7 @@ Les serveurs WSGI et ASGI utilisent `config.settings.prod` par défaut.
 
 ## Clés d'accès (connexion)
 
-Les résidents se connectent avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. Il n'y a pas de mot de passe. La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
+Tout le monde se connecte avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. Il n'y a pas de mot de passe, ni pour les résidents ni pour le personnel. Un membre du personnel reçoit son premier code d'un administrateur (action « Générer un code d'activation (personnel) » dans l'administration). La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
 
 - En développement, ouvrir **http://localhost:8000**, pas http://127.0.0.1:8000 : les navigateurs refusent les clés d'accès sur une adresse IP.
 - En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINES` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.

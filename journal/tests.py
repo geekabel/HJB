@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from comptes.models import User
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from outils.capture_html import enregistrer_page
 
 from .models import Action, EntreeJournal, EntreeJournalNonModifiable
@@ -67,7 +67,7 @@ class ChangementDeRolesJournaliseTests(TestCase):
     def test_l_admin_django_journalise_le_changement(self):
         admin = User.objects.create_superuser(username="admin", password="mot-de-passe-test")
         marc = creer_utilisateur("marc", Role.MAINTENANCE)
-        self.client.force_login(admin)
+        connecter(self.client, admin)
         donnees = {
             "username": "marc",
             "telephone": "",
@@ -105,11 +105,11 @@ class PageJournalTests(TestCase):
     def test_reserve_a_l_administration(self):
         url = reverse("journal:liste")
         self.assertEqual(self.client.get(url).status_code, 302)
-        self.client.force_login(self.accueil)
+        connecter(self.client, self.accueil)
         self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_liste_et_lien_dans_le_menu(self):
-        self.client.force_login(self.admin)
+        connecter(self.client, self.admin)
         reponse = self.client.get(reverse("journal:liste"))
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, "Avant : aucun (résident). Après : Accueil.")
@@ -121,7 +121,7 @@ class PageJournalTests(TestCase):
         enregistrer_page("journal-audit", reponse)
 
     def test_filtre_par_action(self):
-        self.client.force_login(self.admin)
+        connecter(self.client, self.admin)
         reponse = self.client.get(reverse("journal:liste"), {"action": Action.DEPART_RESIDENT})
         self.assertEqual(len(reponse.context["page_obj"]), 1)
         # Une valeur inconnue est ignorée.
@@ -129,12 +129,12 @@ class PageJournalTests(TestCase):
         self.assertEqual(len(reponse.context["page_obj"]), 2)
 
     def test_aucune_entree_pour_cette_action(self):
-        self.client.force_login(self.admin)
+        connecter(self.client, self.admin)
         reponse = self.client.get(reverse("journal:liste"), {"action": Action.CODE_WIFI_AFFICHE})
         self.assertContains(reponse, "Aucune entrée pour cette action")
         enregistrer_page("journal-audit-vide", reponse)
 
     def test_lien_absent_pour_les_autres_roles(self):
-        self.client.force_login(self.accueil)
+        connecter(self.client, self.accueil)
         reponse = self.client.get(reverse("interface:guide"))
         self.assertNotContains(reponse, reverse("journal:liste"))

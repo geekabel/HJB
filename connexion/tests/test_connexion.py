@@ -8,13 +8,14 @@ from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, SESSION_KEY
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sessions.backends.db import SessionStore
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from connexion import session
 from connexion.decorateurs import confirmation_recente
 from journal.models import Action, EntreeJournal
@@ -34,6 +35,7 @@ def json_post(client, url, donnees=None):
 
 class BaseConnexion(TestCase):
     def setUp(self):
+        cache.clear()  # compteurs des limites de tentatives (connexion/limites.py)
         self.awa = creer_utilisateur("awa", first_name="Awa", last_name="Diallo")
         self.telephone = Authentificateur()
         self.cle = self.telephone.enregistrer(self.awa)
@@ -291,7 +293,7 @@ class AdministrationTests(TestCase):
     def test_cles_visibles_et_non_modifiables(self):
         admin = creer_utilisateur("admin", Role.ADMIN, is_staff=True, is_superuser=True)
         cle = Authentificateur().enregistrer(creer_utilisateur("awa"))
-        self.client.force_login(admin)
+        connecter(self.client, admin)
         url = reverse("admin:django_otp_webauthn_webauthncredential_changelist")
         self.assertEqual(self.client.get(url).status_code, 200)
         url = reverse("admin:django_otp_webauthn_webauthncredential_change", args=[cle.pk])
@@ -319,7 +321,7 @@ class RevueSessionsTests(BaseConnexion):
         self.se_connecter()
         admin = creer_utilisateur("admin", Role.ADMIN, is_staff=True, is_superuser=True)
         equipe = Client()
-        equipe.force_login(admin)
+        connecter(equipe, admin)
         url = reverse("admin:django_otp_webauthn_webauthncredential_delete", args=[self.cle.pk])
         with self.captureOnCommitCallbacks(execute=True):
             reponse = equipe.post(url, {"post": "yes"})
@@ -334,3 +336,37 @@ class RevueSessionsTests(BaseConnexion):
         reponse = json_post(client, FIN, {})
         self.assertEqual(reponse.status_code, 403)
         self.assertNotEqual(reponse["Content-Type"], "application/json")
+
+
+class LimitesTests(BaseConnexion):
+    """Carte T14 : limites de tentatives par adresse IP."""
+
+    def test_debuts_limites(self):
+        from unittest import mock
+
+        with mock.patch("connexion.limites.DEBUTS_MAX", 3):
+            for _ in range(3):
+                self.assertEqual(json_post(self.client, DEBUT).status_code, 200)
+            reponse = json_post(self.client, DEBUT)
+        self.assertEqual(reponse.status_code, 429)
+        self.assertEqual(reponse.json()["code"], "trop_d_essais")
+        self.assertIn("Réessayez dans quelques minutes", reponse.json()["detail"])
+        # Une autre adresse n'est pas touchée.
+        autre = Client(REMOTE_ADDR="192.0.2.8")
+        with mock.patch("connexion.limites.DEBUTS_MAX", 3):
+            self.assertEqual(json_post(autre, DEBUT).status_code, 200)
+
+    def test_les_echecs_ne_bloquent_personne(self):
+        """Revue T14 : un blocage après des échecs permettait de bloquer tout le wifi."""
+        for _ in range(40):
+            json_post(Client(), FIN, {})  # requêtes vides, refusées sans effet
+        self.assertEqual(self.se_connecter().status_code, 200)
+
+    def test_ipv6_compte_par_reseau(self):
+        from connexion.limites import groupe
+
+        self.assertEqual(groupe("2001:db8::1"), groupe("2001:db8::ffff:2"))
+        self.assertEqual(groupe("2001:db8::1"), "2001:db8::/64")
+        self.assertNotEqual(groupe("2001:db8:0:1::1"), groupe("2001:db8::1"))
+        self.assertEqual(groupe("192.0.2.8"), "192.0.2.8")
+        self.assertEqual(groupe(""), "inconnue")

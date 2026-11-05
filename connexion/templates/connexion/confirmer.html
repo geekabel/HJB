@@ -12,7 +12,7 @@
 {% if a_une_cle %}
 {% include "connexion/_bouton_cle.html" with libelle="Confirmer avec ma clé d'accès" %}
 {% else %}
-<div class="alerte alerte--attention">{% icone "alerte" %}<p>Votre compte n'a pas encore de clé d'accès. Cette page en demande une.</p></div>
+<div class="alerte alerte--attention">{% icone "alerte" %}<p>Votre compte n'a pas encore de clé d'accès. Cette page en demande une. Demandez un code d'activation à l'accueil, ou à un administrateur si vous faites partie du personnel.</p></div>
 {% endif %}
 
 <p><a href="{% url 'accueil' %}">Retour à l'accueil</a></p>

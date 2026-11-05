@@ -22,7 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Applications
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # Site d'administration réservé au personnel vérifié par clé d'accès (T14).
+    "config.apps.AdminHJBConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -51,6 +52,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Après AuthenticationMiddleware (doc de django-otp) : request.user.is_verified().
     "django_otp.middleware.OTPMiddleware",
+    # Espace équipe et administration : personnel avec clé d'accès (T14).
+    "connexion.middleware.EspaceEquipeMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -82,14 +85,19 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Modèle personnalisé, défini avant la première migration :
 # https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
-# Connexion par clé d'accès (carte T13). Le mot de passe (ModelBackend) ne sert
-# plus qu'à la page de l'administration, pour le personnel, jusqu'à la carte T14.
+# Connexion par clé d'accès seulement (cartes T13 et T14) : aucun mot de passe,
+# pour les résidents comme pour le personnel.
 LOGIN_URL = "connexion:connexion"
 LOGIN_REDIRECT_URL = "accueil"
 AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
     "django_otp_webauthn.backends.WebAuthnBackend",
+    # Permissions des rôles seulement : ce backend refuse tout mot de passe.
+    "comptes.backends.PermissionsSansMotDePasse",
 ]
+
+# Adresse de l'administration Django. En production, elle vient de
+# DJANGO_ADMIN_URL (voir prod.py) : on évite l'adresse « admin/ », la plus visée.
+ADMIN_URL = "admin/"
 
 # Durée d'une session sans activité. Les résidents connectés par clé d'accès
 # gardent la leur bien plus longtemps (voir connexion/session.py).

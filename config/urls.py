@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
@@ -22,7 +23,7 @@ from connexion import views as connexion_views
 
 urlpatterns = [
     path("", connexion_views.accueil, name="accueil"),
-    path("admin/", admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
     # Connexion par clé d'accès (carte T13).
     path("connexion/", include("connexion.urls")),
     # Espace résident : activation du compte (cartes T11 à T13).

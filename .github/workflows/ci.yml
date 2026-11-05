@@ -50,6 +50,7 @@ jobs:
           DJANGO_ALLOWED_HOSTS: ci.example
           DJANGO_WEBAUTHN_RP_ID: ci.example
           DJANGO_WEBAUTHN_ORIGINES: https://ci.example
+          DJANGO_ADMIN_URL: gestion-ci
           DJANGO_SQLITE_PATH: ${{ runner.temp }}/check-deploy.sqlite3
         run: |
           # Clé jetable générée à chaque exécution : aucun secret dans le dépôt.
