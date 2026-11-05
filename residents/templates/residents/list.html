@@ -9,6 +9,9 @@
   </div>
   {% if perms.accounts.manage_residents %}
   <div class="row">
+    {% if perms.accounts.view_wifi_password %}
+    <a class="button button--quiet" href="{% url 'residents:wifi_import' %}">{% icon "import" %}Importer la liste wifi</a>
+    {% endif %}
     <a class="button button--quiet" href="{% url 'residents:import' %}">{% icon "import" %}Importer CSV ou Excel</a>
     <a class="button" href="{% url 'residents:create' %}">{% icon "plus" %}Nouveau résident</a>
   </div>
