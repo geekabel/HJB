@@ -17,6 +17,7 @@
 
 <nav class="grid-2" aria-label="Raccourcis">
   <a class="card card--link" href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span class="card__title">Mon wifi</span></a>
+  <a class="card card--link" href="{% url 'install' %}" data-hide-when-installed>{% icon "plus" %}<span class="card__title">Installer l'application</span></a>
 </nav>
 
 <section class="card stack" aria-labelledby="passkeys-title">

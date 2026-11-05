@@ -1,0 +1,41 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Installer l'application{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'home' %}">{% icon "back" %}<span class="visually-hidden">Retour à l'accueil</span></a>
+  <h1>Installer l'application</h1>
+</div>
+
+<p class="alert alert--success" data-show-when-installed hidden>{% icon "check" %}<span>L'application est installée. Vous pouvez fermer cette page.</span></p>
+
+<p>Avec l'application sur l'écran d'accueil, vous ouvrez la résidence d'un geste, comme une autre application. Sur iPhone, c'est aussi la seule façon de recevoir les notifications.</p>
+
+<div class="card stack" data-install-box hidden>
+  <p>Votre navigateur peut l'installer tout de suite.</p>
+  <p><button class="button" type="button" data-install-button>{% icon "plus" %}Installer l'application</button></p>
+</div>
+
+<div class="card stack">
+  <h2>Sur iPhone ou iPad</h2>
+  <ol class="numbered-list">
+    <li>Ouvrez cette page dans Safari.</li>
+    <li>Touchez le bouton Partager, le carré avec une flèche vers le haut.</li>
+    <li>Choisissez « Sur l'écran d'accueil ». Si vous ne le voyez pas, faites défiler la liste vers le bas.</li>
+    <li>Touchez « Ajouter ».</li>
+    <li>Ouvrez ensuite la résidence avec sa nouvelle icône, et plus depuis Safari.</li>
+  </ol>
+  <p class="text-muted text-small">Les notifications demandent iOS 16.4 ou plus récent (Réglages, Général, Informations).</p>
+</div>
+
+<div class="card stack">
+  <h2>Sur Android</h2>
+  <ol class="numbered-list">
+    <li>Ouvrez cette page dans Chrome.</li>
+    <li>Touchez le menu, les trois points en haut à droite.</li>
+    <li>Choisissez « Installer l'application » ou « Ajouter à l'écran d'accueil ».</li>
+    <li>Confirmez avec « Installer ».</li>
+  </ol>
+</div>
+{% endblock %}
+{% block nav %}{% if user.is_authenticated %}{{ block.super }}{% endif %}{% endblock %}
