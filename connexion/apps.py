@@ -12,6 +12,7 @@ class ConnexionConfig(AppConfig):
 
         from residents.depart import depart_enregistre
 
+        from . import checks  # noqa: F401 (enregistre les contrôles)
         from .signaux import fermer_sessions_apres_suppression, retirer_cles_au_depart
 
         depart_enregistre.connect(retirer_cles_au_depart, dispatch_uid="connexion.retirer_cles")

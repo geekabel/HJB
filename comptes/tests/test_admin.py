@@ -4,7 +4,7 @@ from django.urls import reverse
 from comptes.models import User
 from comptes.roles import Role
 
-from .outils import creer_utilisateur
+from .outils import connecter, creer_utilisateur
 
 
 def donnees(utilisateur, **champs):
@@ -29,7 +29,7 @@ class AdministrationUtilisateursTests(TestCase):
         cls.admin = User.objects.create_superuser(username="admin", password="mot-de-passe-test")
 
     def setUp(self):
-        self.client.force_login(self.admin)
+        connecter(self.client, self.admin)
 
     def test_pages_de_creation_de_modification_et_liste(self):
         resident = creer_utilisateur("awa")
@@ -83,13 +83,18 @@ class AdministrationUtilisateursTests(TestCase):
             reverse("admin:comptes_user_add"),
             {
                 "username": "samia",
-                "telephone": "",
+                "first_name": "Samia",
+                "last_name": "B.",
+                "telephone": "06 12 34 56 78",
                 "roles": [Role.EDUCATEUR],
-                "usable_password": "false",
             },
         )
         self.assertEqual(reponse.status_code, 302)
-        self.assertEqual(User.objects.get(username="samia").roles, {Role.EDUCATEUR})
+        samia = User.objects.get(username="samia")
+        self.assertEqual(samia.roles, {Role.EDUCATEUR})
+        self.assertEqual(samia.telephone, "+33612345678")
+        # Carte T14 : aucun mot de passe, la personne activera son compte par code.
+        self.assertFalse(samia.has_usable_password())
 
     def test_numero_refuse_avec_message_clair(self):
         marc = creer_utilisateur("marc")

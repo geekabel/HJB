@@ -9,7 +9,7 @@ from django.utils import timezone
 from comptes.activation import utiliser_code
 from comptes.models import CodeActivation
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from journal.models import Action, EntreeJournal
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
@@ -33,7 +33,7 @@ class EquipeTestCase(TestCase):
         Sejour.objects.create(resident=cls.awa, chambre=cls.c312, arrivee=date(2026, 9, 1))
 
     def setUp(self):
-        self.client.force_login(self.accueil)
+        connecter(self.client, self.accueil)
 
     def url_code(self, resident=None):
         return reverse("residents:code_activation", args=[(resident or self.awa).pk])
@@ -148,7 +148,7 @@ class CodeActivationTests(EquipeTestCase):
 
     def test_couper_l_acces_reserve(self):
         educ = creer_utilisateur("eli", Role.EDUCATEUR)
-        self.client.force_login(educ)
+        connecter(self.client, educ)
         url = reverse("residents:couper_acces", args=[self.awa.pk])
         self.assertEqual(self.client.post(url).status_code, 403)
 
@@ -157,9 +157,9 @@ class CodeActivationTests(EquipeTestCase):
 
     def test_reserve(self):
         for roles in ([Role.EDUCATEUR], [Role.MAINTENANCE], []):
-            self.client.force_login(creer_utilisateur(f"u{len(roles)}{roles}", *roles))
+            connecter(self.client, creer_utilisateur(f"u{len(roles)}{roles}", *roles))
             self.assertEqual(self.client.post(self.url_code()).status_code, 403)
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
         self.assertNotContains(reponse, "Activation du compte")
         self.assertFalse(CodeActivation.objects.exists())
@@ -220,7 +220,7 @@ class RetourTests(EquipeTestCase):
         gestion.user_permissions.set(
             Permission.objects.filter(codename__in=["voir_residents", "gerer_residents"])
         )
-        self.client.force_login(gestion)
+        connecter(self.client, gestion)
         reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
         self.assertContains(reponse, f'href="{self.url}"')
         self.assertNotContains(reponse, "Activation du compte")
@@ -231,7 +231,7 @@ class RetourTests(EquipeTestCase):
         self.assertRedirects(reponse, reverse("residents:fiche", args=[lina.pk]))
 
     def test_reserve_a_la_gestion(self):
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         self.assertEqual(self.client.get(self.url).status_code, 403)
 
 

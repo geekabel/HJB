@@ -39,10 +39,18 @@ def personne_en_cours(request):
             utilisateur_id=donnees["utilisateur"], cree_le__gt=code.cree_le
         ).exists()
     )
-    # Les codes ne sont remis qu'aux résidents : un compte devenu membre du
-    # personnel entre-temps n'est pas activé par ce chemin (carte T14).
-    personnel = personne is not None and not est_resident(personne)
-    if time.time() - donnees.get("debut", 0) > DUREE or personne is None or remplace or personnel:
+    # Le code doit correspondre au compte : code de l'accueil pour un résident,
+    # code d'un administrateur pour le personnel (carte T14). Un compte qui a
+    # changé de statut depuis la remise du code s'arrête ici.
+    mauvais_type = (
+        personne is not None and code is not None and code.pour_personnel == est_resident(personne)
+    )
+    if (
+        time.time() - donnees.get("debut", 0) > DUREE
+        or personne is None
+        or remplace
+        or mauvais_type
+    ):
         del request.session[CLE]
         return None
     return personne

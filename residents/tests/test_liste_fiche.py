@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from comptes.models import EtatCompte, User
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
 from outils.capture_html import enregistrer_page
@@ -38,7 +38,7 @@ class ResidentsTestCase(TestCase):
         User.objects.filter(pk__in=[cls.awa.pk, cls.yanis.pk]).update(last_login=timezone.now())
 
     def setUp(self):
-        self.client.force_login(self.accueil)
+        connecter(self.client, self.accueil)
 
 
 class AccesTests(ResidentsTestCase):
@@ -51,7 +51,7 @@ class AccesTests(ResidentsTestCase):
         roles_sans_acces = [("max", [Role.MAINTENANCE]), ("lina", []), ("mod", [Role.MODERATEUR])]
         for nom, roles in roles_sans_acces:
             with self.subTest(nom=nom):
-                self.client.force_login(creer_utilisateur(nom, *roles))
+                connecter(self.client, creer_utilisateur(nom, *roles))
                 for url in [
                     reverse("residents:liste"),
                     reverse("residents:creer"),
@@ -60,7 +60,7 @@ class AccesTests(ResidentsTestCase):
                     self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_educateur_en_lecture_seule(self):
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         reponse = self.client.get(reverse("residents:liste"))
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, "Résidents et wifi")
@@ -86,7 +86,7 @@ class AccesTests(ResidentsTestCase):
 
     def test_accueil_et_administration(self):
         for utilisateur in [self.accueil, creer_utilisateur("chef", Role.ADMIN)]:
-            self.client.force_login(utilisateur)
+            connecter(self.client, utilisateur)
             self.assertEqual(self.client.get(reverse("residents:liste")).status_code, 200)
 
     def test_lien_dans_le_menu(self):
@@ -97,7 +97,7 @@ class AccesTests(ResidentsTestCase):
             html=True,
         )
         # La maintenance n'a pas accès aux fiches : pas de lien.
-        self.client.force_login(creer_utilisateur("max", Role.MAINTENANCE))
+        connecter(self.client, creer_utilisateur("max", Role.MAINTENANCE))
         reponse = self.client.get(reverse("interface:guide"))
         self.assertNotContains(reponse, reverse("residents:liste"))
 
@@ -179,8 +179,9 @@ class ListeTests(ResidentsTestCase):
     def test_nombre_de_requetes_stable(self):
         url = reverse("residents:liste")
         self.client.get(url)
-        # Dont 3 pour la session, enregistrée à chaque requête (SESSION_SAVE_EVERY_REQUEST).
-        with self.assertNumQueries(14):
+        # Dont 3 pour la session (enregistrée à chaque requête) et 2 pour la clé qui a
+        # vérifié la session (django-otp, carte T14).
+        with self.assertNumQueries(16):
             self.client.get(url)
         for i in range(10):
             resident = User.objects.create_user(f"x{i}", first_name="X", last_name=str(i))
@@ -189,7 +190,7 @@ class ListeTests(ResidentsTestCase):
                 chambre=Chambre.objects.create(numero=f"2{i:02}", etage=self.e1),
                 arrivee=J1,
             )
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(16):
             self.client.get(url)
 
 

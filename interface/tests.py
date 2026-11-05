@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from outils.capture_html import enregistrer_page
 
 
@@ -25,11 +25,11 @@ class GuideDeStyleTests(TestCase):
         # Résident connecté, modérateur ou non : accès refusé, sans boucle de connexion.
         for compte in (self.resident, self.moderateur):
             with self.subTest(compte=compte.username):
-                self.client.force_login(compte)
+                connecter(self.client, compte)
                 self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_guide_de_style(self):
-        self.client.force_login(self.equipe)
+        connecter(self.client, self.equipe)
         reponse = self.client.get(reverse("interface:guide"))
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, '<html lang="fr">')
@@ -38,7 +38,7 @@ class GuideDeStyleTests(TestCase):
         enregistrer_page("guide-de-style", reponse)
 
     def test_accueil_resident_d_exemple(self):
-        self.client.force_login(self.equipe)
+        connecter(self.client, self.equipe)
         reponse = self.client.get(reverse("interface:guide-resident"))
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, 'aria-label="Navigation principale"')

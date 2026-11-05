@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from comptes.models import User
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from journal.models import Action, EntreeJournal
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
@@ -36,7 +36,7 @@ class DepartTestCase(TestCase):
         Sejour.objects.create(resident=cls.awa, chambre=cls.c312, arrivee=ARRIVEE)
 
     def setUp(self):
-        self.client.force_login(self.accueil)
+        connecter(self.client, self.accueil)
 
     def url(self):
         return reverse("residents:depart", args=[self.awa.pk])
@@ -82,7 +82,7 @@ class ServiceTests(DepartTestCase):
             self.assertNotIn("_auth_user_id", client.session)
 
     def test_les_sessions_des_autres_restent(self):
-        Client().force_login(self.accueil)
+        connecter(Client(), self.accueil)
         Client().force_login(self.awa)
         self.assertEqual(fermer_sessions(cles_de_session(self.awa)), 1)
         self.assertEqual(len(cles_de_session(self.awa)), 0)
@@ -154,7 +154,7 @@ class PageDepartTests(DepartTestCase):
         self.assertContains(reponse, "Le départ de cette personne est déjà enregistré.")
 
     def test_reserve_a_la_gestion_des_residents(self):
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         self.assertEqual(self.client.get(self.url()).status_code, 403)
         self.assertEqual(self.client.post(self.url(), {"depart": "2026-11-01"}).status_code, 403)
         reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
@@ -267,7 +267,7 @@ class RevueTests(DepartTestCase):
 
     def test_educateurs_ne_voient_pas_les_anciens_residents(self):
         enregistrer_depart(self.awa, timezone.localdate())
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         reponse = self.client.get(reverse("residents:liste"), {"compte": "desactive"})
         self.assertEqual(list(reponse.context["page_obj"]), [])
         self.assertNotContains(reponse, "ancien résident")

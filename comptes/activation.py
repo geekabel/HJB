@@ -59,10 +59,11 @@ def empreinte(code):
     return hmac.new(cle, normaliser(code).encode(), hashlib.sha256).hexdigest()
 
 
-def generer_code(utilisateur, *, par=None, requete=None):
+def generer_code(utilisateur, *, par=None, requete=None, pour_personnel=False):
     """Crée un code pour ``utilisateur`` et le renvoie en clair, formaté.
 
-    Les codes encore valides de cette personne sont annulés.
+    Les codes encore valides de cette personne sont annulés. Un code du
+    personnel (T14) ne sert qu'à un compte du personnel, et inversement.
     """
     maintenant = timezone.now()
     for _ in range(5):  # une collision d'empreinte est très improbable ; on réessaie
@@ -80,12 +81,16 @@ def generer_code(utilisateur, *, par=None, requete=None):
                     empreinte=empreinte(code),
                     cree_par=par,
                     expire_le=maintenant + DUREE_VALIDITE,
+                    pour_personnel=pour_personnel,
                 )
                 journaliser(
                     Action.CODE_ACTIVATION_GENERE,
                     acteur=par,
                     cible=utilisateur,
-                    details={"expire_le": code_activation.expire_le.isoformat()},
+                    details={
+                        "expire_le": code_activation.expire_le.isoformat(),
+                        "personnel": pour_personnel,
+                    },
                     requete=requete,
                 )
         except IntegrityError:

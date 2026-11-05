@@ -23,6 +23,13 @@ SECRET_KEY_FALLBACKS = _liste("DJANGO_SECRET_KEY_FALLBACKS")
 
 ALLOWED_HOSTS = _liste("DJANGO_ALLOWED_HOSTS")
 
+# Adresse de l'administration (T14), par exemple « gestion-7f3k/ ». Elle reste
+# protégée par la clé d'accès ; une adresse peu connue évite seulement le bruit
+# des robots. `check --deploy` signale « admin/ » (connexion.W001).
+ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "").strip("/") + "/"
+if ADMIN_URL == "/":
+    ADMIN_URL = "admin/"
+
 
 # Base de données : PostgreSQL si POSTGRES_DB est défini, sinon SQLite.
 # Le choix final est fait en T38 (déploiement).

@@ -124,6 +124,7 @@ erDiagram
         datetime expire_le "création + 72 h"
         datetime utilise_le
         datetime annule_le "remplacé par un code plus récent"
+        bool pour_personnel "remis par un administrateur (T14)"
     }
     ECHEC_ACTIVATION {
         int id PK
@@ -354,6 +355,8 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 - Le départ d'un résident supprime ses clés (signal `depart_enregistre`) ; le nombre va au journal.
 - Supprimer une clé, par n'importe quel chemin, ferme les sessions du compte (signal `post_delete`). La fiche du résident propose « Couper l'accès » pour un téléphone perdu.
 - Changer les rôles d'une personne ferme ses sessions : ses droits et la durée de sa session changent.
+- Aucun mot de passe (T14) : le backend `PermissionsSansMotDePasse` lit les permissions des rôles et refuse toute connexion par mot de passe. L'espace équipe et l'administration exigent une session vérifiée par clé.
+- Un code d'activation `pour_personnel` ne sert qu'à un compte du personnel, un code de l'accueil qu'à un résident.
 - Durée des sessions (repart à chaque requête) : 90 jours sans activité pour un résident connecté par clé, 12 heures pour le personnel. Une action sensible demande une vérification par clé de moins de 10 minutes.
 
 ## Règles métier portées par le modèle

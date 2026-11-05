@@ -1,9 +1,13 @@
 {% extends "interface/equipe.html" %}
 {% load icones static %}
+{% comment %}
+  Feuille du code d'activation. Variables : resident, code, adresse, expire_le,
+  qr, retour (adresse de la fiche : résident, ou compte dans l'administration).
+{% endcomment %}
 {% block titre %}Code d'activation de {{ resident.get_full_name|default:resident.get_username }}{% endblock %}
 {% block tete %}<script src="{% static 'interface/js/imprimer.js' %}" defer></script>{% endblock %}
 {% block contenu %}
-<a class="lien-retour" href="{% url 'residents:fiche' resident.pk %}">{% icone "retour" %}Retour à la fiche</a>
+<a class="lien-retour" href="{{ retour }}">{% icone "retour" %}Retour à la fiche</a>
 
 <div class="alerte alerte--attention masque-impression" role="status">{% icone "alerte" %}<p><strong>Ce code ne s'affichera qu'une fois.</strong> Remettez-le maintenant à {{ resident.first_name|default:"la personne" }}, en main propre, après avoir vérifié son identité.</p></div>
 
@@ -23,6 +27,6 @@
 
 <div class="rangee masque-impression">
   <button class="bouton" type="button" data-imprimer>Imprimer</button>
-  <a class="bouton bouton--discret" href="{% url 'residents:fiche' resident.pk %}">C'est fait, retour à la fiche</a>
+  <a class="bouton bouton--discret" href="{{ retour }}">C'est fait, retour à la fiche</a>
 </div>
 {% endblock %}

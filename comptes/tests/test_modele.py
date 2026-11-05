@@ -19,9 +19,12 @@ class ModeleUtilisateurTests(TestCase):
         self.assertNotEqual(utilisateur.password, "un-mot-de-passe-solide")
         self.assertTrue(utilisateur.check_password("un-mot-de-passe-solide"))
 
-    def test_page_de_connexion_admin_repond(self):
+    def test_page_de_connexion_admin_renvoie_vers_la_cle_d_acces(self):
+        # Carte T14 : plus de formulaire de mot de passe.
         reponse = self.client.get("/admin/login/")
-        self.assertEqual(reponse.status_code, 200)
+        self.assertRedirects(
+            reponse, "/connexion/?next=/admin/login/", fetch_redirect_response=False
+        )
 
 
 class ReglagesCommunsTests(SimpleTestCase):

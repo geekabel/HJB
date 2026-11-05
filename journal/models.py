@@ -92,7 +92,8 @@ class EntreeJournal(models.Model):
             from django.utils import timezone
 
             fin = timezone.localtime(datetime.fromisoformat(self.details["expire_le"]))
-            return f"Valable jusqu'au {fin:%d/%m/%Y à %H:%M}."
+            texte = f"Valable jusqu'au {fin:%d/%m/%Y à %H:%M}."
+            return f"Code du personnel. {texte}" if self.details.get("personnel") else texte
         if self.action == Action.DEPART_RESIDENT:
             from datetime import date
 

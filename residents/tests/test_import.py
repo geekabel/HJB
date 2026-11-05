@@ -13,7 +13,7 @@ from openpyxl import Workbook
 
 from comptes.models import User
 from comptes.roles import Role
-from comptes.tests.outils import creer_utilisateur
+from comptes.tests.outils import connecter, creer_utilisateur
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
 from outils.capture_html import enregistrer_page
@@ -205,7 +205,7 @@ class ImporterTests(ImportTestCase):
 
 class PagesImportTests(ImportTestCase):
     def setUp(self):
-        self.client.force_login(creer_utilisateur("nadia", Role.ACCUEIL))
+        connecter(self.client, creer_utilisateur("nadia", Role.ACCUEIL))
 
     def envoyer(self, fichier):
         return self.client.post(reverse("residents:import"), {"fichier": fichier})
@@ -228,7 +228,7 @@ class PagesImportTests(ImportTestCase):
         )
 
     def test_reserve_a_la_gestion_des_residents(self):
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
         for nom in ["import", "import_apercu", "import_modele"]:
             self.assertEqual(self.client.get(reverse(f"residents:{nom}")).status_code, 403)
 
