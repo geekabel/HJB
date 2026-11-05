@@ -24,13 +24,13 @@
     <dt>Motif</dt><dd>{{ meeting.get_reason_display }}</dd>
   </dl>
   <p class="text-muted text-small">Le motif n'est visible que par {{ meeting.educator.first_name|default:"l'éducateur" }}.</p>
-  {% if meeting.status == "confirmed" and reminders %}<p class="text-small">Un rappel vous est envoyé la veille au soir et une heure avant.</p>{% endif %}
+  {% if reminder %}<p class="text-small">{{ reminder }}</p>{% endif %}
 </article>
 
 {% if can_cancel %}
 <details class="card stack">
   <summary>Annuler ce rendez-vous</summary>
-  <p class="text-small">{{ meeting.educator.first_name|default:"L'éducateur" }} recevra une notification. Le créneau redevient libre pour quelqu'un d'autre.</p>
+  <p class="text-small">Nous prévenons {{ meeting.educator.first_name|default:meeting.educator.get_username }}. Le créneau redevient libre pour quelqu'un d'autre.</p>
   <form method="post" action="{% url 'rdv:cancel' meeting.pk %}">
     {% csrf_token %}
     <button class="button button--danger button--block" type="submit">Oui, annuler le rendez-vous</button>

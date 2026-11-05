@@ -1912,6 +1912,14 @@
     }
   }
 
+  /* Cancel a meeting (card T29): a summary large enough for a finger */
+  .cancel summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    cursor: pointer;
+  }
+
   @media (forced-colors: active) {
     .button,
     .chip,

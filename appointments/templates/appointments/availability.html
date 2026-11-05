@@ -52,6 +52,7 @@
       <h2 id="settings-title" class="card__title">Réglages</h2>
       {{ form.slot_minutes.as_field_group }}
       {{ form.notice.as_field_group }}
+      {{ form.remind_residents.as_field_group }}
       {{ form.reply_hours.as_field_group }}
       <button class="button" type="submit">{% icon "check" %}Enregistrer</button>
     </section>
@@ -83,19 +84,31 @@
         <strong><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}–{{ meeting.end|time:"H:i" }}</time></strong>
         <span>{{ meeting.resident.get_full_name|default:meeting.resident.get_username }}{% if meeting.room %} · chambre {{ meeting.room }}{% endif %}</span>
         <span class="text-muted text-small">Motif : {{ meeting.get_reason_display }}{% if meeting.holiday %} · jour férié ({{ meeting.holiday }}){% endif %}</span>
-        <details>
-          <summary class="text-small">Annuler<span class="visually-hidden"> le rendez-vous du {{ meeting.start|date:"j F à H:i" }}</span></summary>
+        {% if meeting.can_cancel %}
+        <details class="cancel">
+          <summary>Annuler<span class="visually-hidden"> le rendez-vous du {{ meeting.start|date:"j F à H:i" }}</span></summary>
           <form method="post" action="{% url 'appointments:cancel_meeting' meeting.pk %}">
             {% csrf_token %}
             <button class="button button--danger" type="submit">Oui, annuler et prévenir la personne</button>
           </form>
         </details>
+        {% else %}
+        <span class="text-muted text-small">En cours</span>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
     <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Le motif n'est montré qu'à vous.</span></p>
     {% else %}
     <p class="text-muted">Aucun rendez-vous à venir.</p>
+    {% endif %}
+    {% if cancelled %}
+    <h3 class="text-small">Annulés</h3>
+    <ul class="plain-list stack stack--tight">
+      {% for meeting in cancelled %}
+      <li class="text-muted"><s><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}</time></s> · {{ meeting.resident.get_full_name|default:meeting.resident.get_username }}, {% if meeting.cancelled_by_id %}annulé par la personne{% else %}départ de la résidence{% endif %}</li>
+      {% endfor %}
+    </ul>
     {% endif %}
   </section>
 

@@ -172,7 +172,7 @@ def book(resident, start, people, reason="", now=None):
             if upcoming(resident, now).count() >= MAX_UPCOMING:
                 raise BookingRefused(
                     f"Vous avez déjà {MAX_UPCOMING} rendez-vous à venir. "
-                    "Annulez-en un depuis sa page, ou attendez le premier."
+                    "Annulez-en un depuis sa page, ou attendez que le prochain soit passé."
                 )
             for slot in _order(candidates, day):
                 # Still offered, now that nobody else can change it.
@@ -206,6 +206,10 @@ class CancelRefused(Exception):
     """French message."""
 
 
+class AlreadyCancelled(CancelRefused):
+    """Cancelled before, by the same person (a double click)."""
+
+
 def cancel(meeting, by, now=None):
     """Cancel ``meeting`` (by its resident or its educator) and tell the other person.
 
@@ -221,6 +225,9 @@ def cancel(meeting, by, now=None):
         status=Appointment.Status.CANCELLED, cancelled_at=now, cancelled_by=by
     )
     if not changed:
+        meeting.refresh_from_db(fields=["cancelled_by"])
+        if meeting.cancelled_by_id == by.pk:
+            raise AlreadyCancelled("Ce rendez-vous est déjà annulé.")
         raise CancelRefused("Ce rendez-vous est déjà annulé.")
     transaction.on_commit(lambda: _cancel_notice(meeting.pk), robust=True)
 

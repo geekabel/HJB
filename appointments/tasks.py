@@ -15,19 +15,21 @@ from django.utils.formats import date_format
 
 from push.services import send_to_user
 from sms.providers.base import SmsError
+from sms.segments import analyze
 from sms.service import send_sms
 
+from . import reminders
 from .models import Appointment, DirectMessage
 
 logger = logging.getLogger(__name__)
 
 
-def push(user, *, title, body, url, tag):
+def push(user, *, title, body, url, tag, **options):
     """A notification on the devices of the person (best effort). Return the SendResult."""
     if user is None or not user.is_active:
         return None
     try:
-        return send_to_user(user, title=title, body=body, url=url, tag=tag)
+        return send_to_user(user, title=title, body=body, url=url, tag=tag, **options)
     except ImproperlyConfigured:
         logger.warning("Notification not sent: push is not configured")
         return None
@@ -76,14 +78,24 @@ def _sms(user, text):
     except SmsError as error:
         logger.warning("Appointment SMS not sent: %s", type(error).__name__)
         return False
+    logger.info("Appointment SMS sent: %s segment(s)", analyze(text).segments)
     return True
 
 
-def _reach(user, *, title, body, url, tag, sms=""):
-    """A notification; an SMS (``sms``) when no device received it."""
-    result = push(user, title=title, body=body, url=url, tag=tag)
-    if (result is None or not result.sent) and sms:
+def _reach(user, *, title, body, url, tag, sms="", **options):
+    """A notification; an SMS (``sms``) only for a person without any device.
+
+    A device that did not answer (push service down) gets no paid SMS: the
+    same rule as the messages (messaging.sending).
+    """
+    result = push(user, title=title, body=body, url=url, tag=tag, **options)
+    if sms and result is not None and not result.sent and not result.failed:
         _sms(user, sms)
+
+
+def _until(start, now):
+    """Seconds the push service keeps the reminder: never shown after the start."""
+    return max(60, int((start - now).total_seconds()))
 
 
 @task
@@ -96,28 +108,34 @@ def remind_task(meeting_id, kind):
     )
     if meeting is None:
         return  # cancelled meanwhile
+    # The queue may run late (worker stopped, long campaign): check again.
+    now = timezone.now()
+    if kind == "day_before":
+        if not reminders.day_before_due(meeting, now):
+            return
+    elif meeting.start <= now + reminders.HOUR_BEFORE_LATEST:
+        return
     start, when = _when(meeting)
     who = meeting.educator.first_name or meeting.educator.get_username()
-    url = reverse("rdv:detail", args=[meeting.pk])
+    options = {
+        "url": reverse("rdv:detail", args=[meeting.pk]),
+        "tag": f"rendez-vous-{meeting.pk}",
+        "ttl": _until(meeting.start, now),
+    }
     if kind == "day_before":
-        body = f"Rendez-vous demain, {when}, avec {who}."
-        sms = f"HJB : rappel, rendez-vous demain {when} avec {who}."
         _reach(
             meeting.resident,
             title="Rappel de rendez-vous",
-            body=body,
-            url=url,
-            tag=f"rendez-vous-{meeting.pk}",
-            sms=sms,
+            body=f"Rendez-vous demain, {when}, avec {who}.",
+            sms=f"HJB : rappel, rendez-vous demain {when} avec {who}.",
+            **options,
         )
     else:
-        body = f"Rendez-vous à {start:%H:%M} avec {who}, dans une heure."
         _reach(
             meeting.resident,
-            title="Rendez-vous dans une heure",
-            body=body,
-            url=url,
-            tag=f"rendez-vous-{meeting.pk}",
+            title="Rendez-vous bientôt",
+            body=f"Rendez-vous aujourd'hui à {start:%H:%M} avec {who}.",
+            **options,
         )
 
 
@@ -151,4 +169,5 @@ def cancel_notice_task(meeting_id):
             url=reverse("rdv:book"),
             tag=f"rendez-vous-{meeting.pk}",
             sms=f"HJB : {body}",
+            ttl=_until(meeting.start, timezone.now()),
         )
