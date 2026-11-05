@@ -55,6 +55,7 @@
         <th scope="col">Téléphone</th>
         <th scope="col">Compte</th>
         <th scope="col">Arrivée</th>
+        <th scope="col">Wifi valable jusqu'au</th>
         <th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr>
     </thead>
@@ -66,6 +67,7 @@
         <td class="table__number">{% if r.phone %}<span class="masked-phone" aria-hidden="true">{{ r.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ r.phone|slice:"-2:" }}</span>{% else %}<span class="text-muted">Aucun</span>{% endif %}</td>
         <td>{% with state=r.account_state %}<span class="badge {% if state == 'active' %}badge--info{% elif state == 'pending' %}badge--warning{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% endwith %}</td>
         <td class="table__number">{% if r.stay %}<time datetime="{{ r.stay.arrival|date:'Y-m-d' }}">{{ r.stay.arrival|date:"j F Y" }}</time>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+        <td class="table__number">{% if r.wifi %}<time datetime="{{ r.wifi.expires_on|date:'Y-m-d' }}">{{ r.wifi.expires_on|date:"j F Y" }}</time>{% if r.wifi.is_expired %} <span class="badge badge--error">Expiré</span>{% elif r.wifi.renew_soon %} <span class="badge badge--warning">dans {{ r.wifi.days_left }} j</span>{% endif %}{% elif r.stay %}<span class="text-muted">Aucun</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
         <td class="table__action"><a href="{% url 'residents:detail' r.pk %}">{% if perms.accounts.manage_residents %}Gérer{% else %}Voir{% endif %}<span class="visually-hidden"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
       </tr>
       {% endfor %}

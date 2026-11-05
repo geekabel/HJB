@@ -91,6 +91,14 @@ OTP_WEBAUTHN_ALLOWED_ORIGINS = _list("DJANGO_WEBAUTHN_ORIGINS")
 # The admin does not show the public keys.
 OTP_ADMIN_HIDE_SENSITIVE_DATA = True
 
+# Wifi passwords (T15): Fernet keys, separated by commas, the newest first.
+# An invalid key is reported by `check` (housing.E001). Losing them makes the
+# stored wifi passwords unreadable: keep a copy outside the server.
+# Required: the application refuses to start without a key, like SECRET_KEY.
+WIFI_ENCRYPTION_KEYS = [
+    key.strip() for key in os.environ["DJANGO_WIFI_KEYS"].split(",") if key.strip()
+]
+
 
 # HTTPS
 # https://docs.djangoproject.com/en/6.1/topics/security/#ssl-https

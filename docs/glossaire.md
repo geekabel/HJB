@@ -278,6 +278,18 @@ Les chemins ne changent pas. Seuls les noms changent.
 | `HTML_CAPTURE_DIR` | inchangé |
 | Contrôles : `connexion.E001`, `connexion.W001`, `sms.E001`… | `access.E001`, `access.W001`, `sms.E001`… |
 
+## Wifi (carte T15)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Accès wifi d'une chambre | `housing.models.WifiAccess` (`room`, `username`, `encrypted_password`, `generated`, `created_on`, `expires_on`, `created_by`, `active`, `ended_at`, `end_reason`) |
+| Raison de la coupure | `WifiAccess.EndReason` : `renewed`, `departure`, `move` |
+| Chiffrement | `housing.wifi_crypto` : `encrypt()`, `decrypt()`, `rotate()`, `WifiDecryptionError` ; réglage `WIFI_ENCRYPTION_KEYS` (variable `DJANGO_WIFI_KEYS`) |
+| Opérations | `housing.wifi` : `set_access()`, `end_access()`, `reveal_password()`, `generate_password()`, `suggest_username()`, `current_access()`, `cut_on_departure()` |
+| Actions du journal | `Action.WIFI_ACCESS_SET`, `Action.WIFI_PASSWORD_SHOWN` |
+| Pages de l'équipe | `residents:wifi_access`, `residents:wifi_password` |
+| Commande | `rotate_wifi_keys` |
+
 ## Modèles prévus
 
 Les modèles des cartes à venir (wifi, messages, sondages, rendez-vous, signalements,

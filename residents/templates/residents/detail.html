@@ -131,6 +131,29 @@
     {% endwith %}
     {% endif %}
 
+    {% if stay %}
+    <section class="card stack" aria-labelledby="wifi-title">
+      <h2 id="wifi-title">Wifi de la chambre {{ stay.room.number }}</h2>
+      {% if wifi_access %}
+      <dl class="details">
+        <dt>Identifiant</dt>
+        <dd>{{ wifi_access.username }}</dd>
+        <dt>Valable jusqu'au</dt>
+        <dd><time datetime="{{ wifi_access.expires_on|date:'Y-m-d' }}">{{ wifi_access.expires_on|date:"j F Y" }}</time>{% if wifi_access.is_expired %} <span class="badge badge--error">Expiré</span>{% elif wifi_access.renew_soon %} <span class="badge badge--warning">À renouveler</span>{% endif %}</dd>
+      </dl>
+      <p class="text-muted text-small">Le mot de passe est chiffré. Seuls les administrateurs peuvent l'afficher, et chaque affichage est noté dans le journal.</p>
+      {% else %}
+      <p class="text-muted">Aucun accès wifi actif pour cette chambre.</p>
+      {% endif %}
+      {% if perms.accounts.manage_residents or perms.accounts.view_wifi_password %}
+      <div class="row">
+        {% if perms.accounts.manage_residents %}<a class="button button--quiet" href="{% url 'residents:wifi_access' resident.pk %}">{% if wifi_access %}Renouveler l'accès{% else %}Enregistrer un accès{% endif %}</a>{% endif %}
+        {% if wifi_access and perms.accounts.view_wifi_password %}<a class="button button--quiet" href="{% url 'residents:wifi_password' resident.pk %}">Afficher le mot de passe</a>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
     {% if form and not resident.is_active and perms.accounts.manage_residents %}
     <section class="card stack" aria-labelledby="return-title">
       <h2 id="return-title">Retour dans la résidence</h2>

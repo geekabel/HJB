@@ -1,0 +1,35 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Wifi de la chambre {{ stay.room.number }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:detail' resident.pk %}">{% icon "back" %}Retour à la fiche</a>
+
+<header class="stack stack--tight">
+  <h1>Wifi de la chambre {{ stay.room.number }}</h1>
+  <p class="text-muted">{{ resident.get_full_name|default:resident.get_username }} · {{ stay.room.floor }}</p>
+</header>
+
+<form class="card stack" method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="token" value="{{ token }}">
+  <input type="hidden" name="replaces" value="{{ current.pk|default:'' }}">
+  {% if form.errors %}
+  <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>L'accès n'est pas enregistré.</strong> Corrigez les champs signalés.</p></div>
+  {% endif %}
+  {% if current %}
+  <p class="text-muted">Accès actuel : <strong>{{ current.username }}</strong>, valable jusqu'au <time datetime="{{ current.expires_on|date:'Y-m-d' }}">{{ current.expires_on|date:"j F Y" }}</time>. Le nouvel accès le remplace.</p>
+  {% endif %}
+  {{ form.username.as_field_group }}
+  {{ form.password.as_field_group }}
+  {{ form.expires_on.as_field_group }}
+  <ul class="bullet-list text-muted text-small">
+    <li>Le mot de passe est chiffré. Il n'apparaît dans aucune liste.</li>
+    <li>Mot de passe laissé vide : l'application en génère un et l'affiche une seule fois, pour le recopier sur le réseau.</li>
+    <li>L'enregistrement est noté dans le journal d'audit.</li>
+  </ul>
+  <div class="row">
+    <button class="button" type="submit">Enregistrer l'accès</button>
+    <a class="button button--quiet" href="{% url 'residents:detail' resident.pk %}">Annuler</a>
+  </div>
+</form>
+{% endblock %}

@@ -180,8 +180,8 @@ class ListTests(ResidentsTestCase):
         url = reverse("residents:list")
         self.client.get(url)
         # Including 3 for the session (saved on each request) and 2 for the passkey
-        # that verified the session (django-otp, card T14).
-        with self.assertNumQueries(16):
+        # that verified the session (django-otp, card T14), and 1 for the wifi (T15).
+        with self.assertNumQueries(17):
             self.client.get(url)
         for i in range(10):
             resident = User.objects.create_user(f"x{i}", first_name="X", last_name=str(i))
@@ -190,7 +190,7 @@ class ListTests(ResidentsTestCase):
                 room=Room.objects.create(number=f"2{i:02}", floor=self.f1),
                 arrival=D1,
             )
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             self.client.get(url)
 
 

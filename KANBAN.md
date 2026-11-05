@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
 | T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
 | T18 | Application installable (PWA) | E4 Messages | T03 |
@@ -122,6 +121,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T13 | Connexion par clé d'accès (passkey) | 5 nov. 2026 |
 | T14 | Sécurité de l'espace équipe | 5 nov. 2026 |
 | T14b | Code en anglais | 5 nov. 2026 |
+| T15 | Accès wifi chiffré (équipe) | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -225,7 +225,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Trace dans le journal d'audit (chambre, date, nombre de sessions fermées) ; le journal nomme maintenant la personne (« Awa Koné (awa.kone) »)
 - [x] Liste : les anciens résidents sont à part, derrière le lien « N anciens résidents »
 - [x] Fiche d'un ancien résident : identité modifiable, pas de relogement depuis la fiche
-- [ ] Accès wifi désactivé : à faire en T15, branché sur le signal `depart_enregistre`
+- [x] Accès wifi désactivé : fait en T15, branché sur le signal du départ
 - **Notes** : le signal `depart_enregistre` est envoyé dans la transaction du départ : si la coupure du wifi (T15) ou des clés d'accès (T13) échoue, rien n'est enregistré (testé). Le mot de passe inutilisable est renouvelé, ce qui invalide aussi toute session restante. Le départ prévu à l'avance (« Départ le 30 nov. » de la maquette) demande une tâche quotidienne : ajouté à T21. Le retour d'un ancien résident : ajouté à T11.
 - **Revue indépendante (5 nov.)** : corrigé après relecture. Verrou sur la ligne du compte : une fiche ouverte avant le départ ne peut plus le défaire, et deux départs ne se croisent pas. Un compte désactivé dans l'administration mais encore logé reste dans la liste et peut recevoir son départ. Un compte d'administration (is_staff, super-utilisateur) n'est jamais traité comme résident. Les éducateurs ne voient que les résidents actuels (minimisation des données). Les sessions sont lues avant la transaction, puis supprimées avec le moteur de sessions configuré. 18 tests.
 
@@ -304,12 +304,16 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E3 Wifi
 
-#### T15 Accès wifi chiffré (équipe)
-- **Docs** : bibliothèque cryptography (Fernet).
-- [ ] Modèle `AccesWifi` : mot de passe chiffré, clé dans une variable d'environnement
-- [ ] Saisie ou génération par l'équipe, date d'expiration à un an
-- [ ] Affichage réservé aux administrateurs, chaque affichage dans le journal
-- [ ] Au départ (T09) : désactiver l'accès wifi de la chambre, via le signal `depart_enregistre`
+#### T15 Accès wifi chiffré (équipe) (fait le 5 nov. 2026)
+- **Maquette** : S-Residents (colonne « Wifi valable jusqu'au »).
+- **Docs** : [cryptography : Fernet et MultiFernet](https://cryptography.io/en/latest/fernet/), [module secrets](https://docs.python.org/3/library/secrets.html), [Prefetch](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#prefetch-objects), [contraintes](https://docs.djangoproject.com/en/6.1/ref/models/constraints/), [contrôles système](https://docs.djangoproject.com/en/6.1/topics/checks/).
+- [x] Modèle `WifiAccess` (application `housing`) : mot de passe chiffré avec Fernet, clés dans `DJANGO_WIFI_KEYS`, jamais dans le dépôt. Un seul accès actif par chambre ; le renouvellement garde l'historique. `check` signale une clé absente ou invalide (housing.E001). Commande `rotate_wifi_keys` pour changer de clé
+- [x] Saisie ou génération par l'accueil et l'administration, depuis la fiche du résident : mot de passe donné par le réseau, ou généré (12 caractères, sans I, l, O, 0 ni 1) et affiché une seule fois. Date d'expiration à un an, modifiable. Confirmation par clé d'accès de moins de 10 minutes, jeton à usage unique (un rechargement ne génère pas deux fois)
+- [x] Affichage réservé aux administrateurs (`view_wifi_password`), après confirmation par clé d'accès, page jamais mise en cache, chaque affichage dans le journal à leur nom. Les listes ne montrent jamais de mot de passe
+- [x] Au départ (T09) : accès wifi de la chambre coupé, via le signal `departure_recorded`, noté dans le journal ; le message du départ rappelle de changer l'accès sur le réseau. Un changement de chambre coupe aussi l'accès de l'ancienne
+- [x] Liste des résidents : colonne « Wifi valable jusqu'au », avec « dans N j » à 30 jours de l'expiration et « Expiré » ensuite (une seule requête de plus, quel que soit le nombre de résidents)
+- **Notes** : la table des consultations prévue (`WIFI_VIEW`) n'est pas créée : chaque affichage est une entrée du journal d'audit, qui garde déjà qui, quand et depuis quelle adresse. L'application ne change pas le mot de passe sur le réseau lui-même : elle note l'accès, et la coupure rappelle de le changer. En développement, la clé est dérivée de la clé secrète de développement. Captures vérifiées (mobile et ordinateur, clair et sombre).
+- **Revue indépendante (5 nov.)** : aucun moyen d'afficher un mot de passe sans droit, sans confirmation ou sans trace. Corrigé : un enregistrement au moment d'un départ pouvait laisser un accès actif sur une chambre vide (l'enregistrement revérifie le séjour sous le verrou de la chambre, et la coupure prend le même verrou) ; la correction de chambre le jour de l'arrivée ne coupait pas la première ; un double clic pouvait afficher un mot de passe déjà remplacé (le formulaire indique l'accès qu'il a vu, et rien n'est enregistré si un autre est arrivé entre-temps) ; un mot de passe saisi revenait dans la page en cas d'erreur ; sans clé, erreur 500 (la production refuse maintenant de démarrer sans `DJANGO_WIFI_KEYS`, et les pages affichent un message) ; le jeton du formulaire est lié à la chambre ; le message du départ ne parle du wifi que s'il y en avait un. Mots de passe masqués dans les rapports d'erreur de Django. 405 tests.
 
 #### T16 Écran « Mon wifi » du résident
 - **Maquette** : R6.

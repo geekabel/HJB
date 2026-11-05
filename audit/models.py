@@ -13,6 +13,7 @@ class Action(models.TextChoices):
     RESIDENT_RETURNED = "resident_returned", "Retour d'un ancien résident"
     PASSKEY_CREATED = "passkey_created", "Clé d'accès créée"
     ACCESS_CUT = "access_cut", "Accès coupé (téléphone perdu)"
+    WIFI_ACCESS_SET = "wifi_access_set", "Accès wifi enregistré"
 
 
 class AuditEntryImmutable(Exception):
@@ -115,7 +116,17 @@ class AuditEntry(models.Model):
             if passkeys:
                 s = "s" if passkeys > 1 else ""
                 text += f" {passkeys} clé{s} d'accès supprimée{s}."
+            if self.details.get("wifi_cut"):
+                text += " Accès wifi coupé."
             return text.strip()
+        if self.action == Action.WIFI_ACCESS_SET:
+            from datetime import date
+
+            end = date.fromisoformat(self.details["expires_on"])
+            text = f"Chambre {self.details.get('room', '?')}, valable jusqu'au {end:%d/%m/%Y}."
+            return text + (" Mot de passe généré." if self.details.get("generated") else "")
+        if self.action == Action.WIFI_PASSWORD_SHOWN and "room" in self.details:
+            return f"Chambre {self.details['room']}."
         if self.action == Action.ACCESS_CUT:
             passkeys = self.details.get("passkeys_removed", 0)
             sessions = self.details.get("sessions_closed", 0)

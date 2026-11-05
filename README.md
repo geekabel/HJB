@@ -83,6 +83,10 @@ Tout le monde se connecte avec une clé d'accès (passkey) : Face ID, empreinte 
 - En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINS` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
 - Téléphone perdu : bouton « Couper l'accès » sur la fiche du résident. Les clés sont supprimées et les sessions fermées. Une clé supprimée dans l'administration ferme aussi les sessions.
 
+## Mots de passe wifi
+
+Les mots de passe wifi des chambres sont chiffrés (Fernet). En production, `DJANGO_WIFI_KEYS` est obligatoire : sans lui, l'application refuse de démarrer (voir [.env.example](.env.example)). Gardez une copie de la clé hors du serveur : sans elle, les mots de passe enregistrés sont perdus. Pour changer de clé, mettez la nouvelle en premier dans `DJANGO_WIFI_KEYS`, lancez `python manage.py rotate_wifi_keys`, puis retirez l'ancienne. En développement, une clé est dérivée de la clé secrète de développement.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :
