@@ -88,6 +88,23 @@
 </div>
 
 <div class="card stack">
+  <div class="row row--between">
+    <div>
+      <p><strong>Me prévenir avant la fin</strong></p>
+      <p class="text-muted text-small">{{ reminder_days }} jours avant, par notification.{% if user.wifi_expiry_reminder %} Activé.{% else %} Désactivé.{% endif %}</p>
+    </div>
+    <form method="post" action="{% url 'housing:my_wifi_reminder' %}">
+      {% csrf_token %}
+      {% if user.wifi_expiry_reminder %}
+      <button class="button button--quiet" type="submit" name="reminder" value="off">Désactiver<span class="visually-hidden"> le rappel</span></button>
+      {% else %}
+      <button class="button button--secondary" type="submit" name="reminder" value="on">Activer<span class="visually-hidden"> le rappel</span></button>
+      {% endif %}
+    </form>
+  </div>
+  {% if user.wifi_expiry_reminder and not has_push_device %}
+  <p class="icon-text text-small">{% icon "info" %}<span>Pour le recevoir, <a href="{% url 'push:settings' %}">activez les notifications</a> sur votre téléphone.</span></p>
+  {% endif %}
   <p>Votre accès ne marche plus ? Passez à l'accueil : l'équipe vérifiera et le renouvellera si besoin.</p>
 </div>
 

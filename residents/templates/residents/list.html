@@ -6,6 +6,7 @@
   <div class="stack stack--tight">
     <h1>Résidents</h1>
     <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluralize }} · {{ counts.active }} compte{{ counts.active|pluralize }} activé{{ counts.active|pluralize }} · {{ counts.pending }} pas encore activé{{ counts.pending|pluralize }}{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluralize }} résident{{ counts.former|pluralize }}</a>{% endif %}</p>
+    <p><a href="{% url 'residents:wifi_renewals' %}">{% if renewal_count %}{{ renewal_count }} accès wifi à renouveler{% else %}Accès wifi à renouveler : aucun{% endif %}</a></p>
   </div>
   {% if perms.accounts.manage_residents %}
   <div class="row">

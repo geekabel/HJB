@@ -14,12 +14,12 @@ from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_variables
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from access.decorators import recent_confirmation_required
 
 from . import wifi
-from .models import WifiSettings
+from .models import WIFI_REMINDER_DAYS, WifiSettings
 from .services import current_stay
 from .wifi_crypto import WifiDecryptionError
 
@@ -67,6 +67,8 @@ def _page(request, stay, access, password=None):
             "password": password,
             "time_left": time_left(access.days_left) if access else "",
             "validity_percent": validity_percent(access) if access else 0,
+            "reminder_days": WIFI_REMINDER_DAYS,
+            "has_push_device": request.user.push_subscriptions.exists(),
         },
     )
     # The username (and maybe the password) is on the page: never kept in a cache.
@@ -104,3 +106,19 @@ def my_wifi_password(request):
         messages.warning(request, CANNOT_SHOW)
         return redirect("housing:my_wifi")
     return _page(request, stay, access, password=password)
+
+
+@require_POST
+@login_required
+def my_wifi_reminder(request):
+    """Turn the reminder before the end of the access on or off (card T17)."""
+    wanted = request.POST.get("reminder") == "on"
+    request.user.wifi_expiry_reminder = wanted
+    request.user.save(update_fields=["wifi_expiry_reminder"])
+    messages.success(
+        request,
+        f"Rappel activé : vous serez prévenu {WIFI_REMINDER_DAYS} jours avant la fin."
+        if wanted
+        else "Rappel désactivé.",
+    )
+    return redirect("housing:my_wifi")

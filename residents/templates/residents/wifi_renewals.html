@@ -1,0 +1,43 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Accès wifi à renouveler{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:list' %}">{% icon "back" %}Tous les résidents</a>
+
+<header class="stack stack--tight">
+  <h1>Accès wifi à renouveler</h1>
+  <p class="text-muted">Les accès qui se terminent dans les {{ warning_days }} jours, ou déjà terminés. Le résident reçoit une notification {{ reminder_days }} jours avant la fin, s'il les a activées.</p>
+</header>
+
+{% if accesses %}
+<div class="table-scroll" role="region" aria-labelledby="renewals-caption" tabindex="0">
+  <table class="table">
+    <caption id="renewals-caption" class="visually-hidden">Accès wifi à renouveler, du plus urgent au moins urgent</caption>
+    <thead>
+      <tr>
+        <th scope="col">Chambre</th>
+        <th scope="col">Résident</th>
+        <th scope="col">Valable jusqu'au</th>
+        <th scope="col">Rappel au résident</th>
+        {% if perms.accounts.manage_residents %}<th scope="col"><span class="visually-hidden">Action</span></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for access in accesses %}
+      <tr>
+        <th scope="row" class="table__row-header">{{ access.room.number }}</th>
+        <td>{% if access.resident %}<a href="{% url 'residents:detail' access.resident.pk %}">{{ access.resident.get_full_name|default:access.resident.get_username }}</a>{% else %}<span class="text-muted">Chambre libre</span>{% endif %}</td>
+        <td class="table__number"><time datetime="{{ access.expires_on|date:'Y-m-d' }}">{{ access.expires_on|date:"j F Y" }}</time>{% if access.is_expired %} <span class="badge badge--error">Expiré</span>{% else %} <span class="badge badge--warning">{% if access.days_left == 0 %}aujourd'hui{% else %}dans {{ access.days_left }} j{% endif %}</span>{% endif %}</td>
+        <td>{% if access.reminder_sent_at %}Envoyé le <time datetime="{{ access.reminder_sent_at|date:'Y-m-d' }}">{{ access.reminder_sent_at|date:"j F" }}</time>{% else %}<span class="text-muted">Pas envoyé</span>{% endif %}</td>
+        {% if perms.accounts.manage_residents %}<td>{% if access.resident %}<a href="{% url 'residents:wifi_access' access.resident.pk %}">Renouveler<span class="visually-hidden"> l'accès de la chambre {{ access.room.number }}</span></a>{% endif %}</td>{% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card stack">
+  <p class="icon-text">{% icon "check" %}<span>Aucun accès à renouveler dans les {{ warning_days }} prochains jours.</span></p>
+</div>
+{% endif %}
+{% endblock %}
