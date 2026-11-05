@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
 | T18 | Application installable (PWA) | E4 Messages | T03 |
 | T19 | Notifications Web Push | E4 Messages | T18 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T14b | Code en anglais | 5 nov. 2026 |
 | T15 | Accès wifi chiffré (équipe) | 5 nov. 2026 |
 | T15b | Format du portail wifi et import de la liste | 5 nov. 2026 |
+| T16 | Écran « Mon wifi » du résident | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -326,10 +326,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : les mots de passe du fichier sont chiffrés dès la lecture ; ils n'apparaissent ni dans l'aperçu ni en clair dans la session, et l'aperçu expire après 30 minutes. Chaque accès importé va au journal d'audit, au nom de la personne qui importe. Une chambre sans résident est refusée : il faut d'abord importer ou créer sa fiche. Un nombre lu par Excel (par exemple `012345` devenu `12345`) donne un avertissement. Au renouvellement, le formulaire reprend l'identifiant actuel ; on le vide pour en générer un autre. Le nom du réseau servira à l'écran « Mon wifi » (T16). Captures vérifiées (mobile et ordinateur, clair et sombre).
 - **Revue indépendante (5 nov.)** : corrigé : un mot de passe lu comme un nombre par Excel apparaissait en clair dans un avertissement (aucun message ne cite plus un mot de passe) ; des colonnes « Code » ou « Utilisateur » étaient prises sans rien dire pour le mot de passe ou l'identifiant (titres retirés, deux colonnes pour un même champ refusent le fichier) ; une valeur abîmée par Excel (`2,34E+58`) passait (refusée maintenant, et un format différent de celui du portail donne un avertissement) ; le même identifiant enregistré au même moment pour deux chambres donnait une erreur 500 (message clair) ; renvoyer la même liste remplaçait tous les accès et repoussait leur date de fin (les lignes identiques sont « Déjà à jour » et ne changent rien) ; un second clic disait à tort que rien n'avait été enregistré ; la migration s'arrête avec un message clair si deux accès actifs ont déjà le même identifiant ; les caractères permis sont limités aux lettres sans accent, chiffres et signes. Les pages d'import demandent aussi `manage_residents`. 437 tests.
 
-#### T16 Écran « Mon wifi » du résident
+#### T16 Écran « Mon wifi » du résident (fait le 5 nov. 2026)
 - **Maquette** : R6.
-- [ ] Mot de passe masqué, affiché après confirmation par la clé d'accès
-- [ ] Boutons « copier », barre de validité
+- **Docs** : [Clipboard.writeText (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText), [NetworkInformation (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/type), [cache des réponses](https://docs.djangoproject.com/en/6.1/topics/cache/#controlling-cache-using-other-headers).
+- [x] Page `/wifi/`, raccourci « Mon wifi » sur l'accueil du résident : nom du réseau, identifiant, date de fin et barre de validité (« encore 10 mois », « encore 12 jours »). Rappel si l'accès se termine dans 30 jours ou a expiré
+- [x] Mot de passe masqué, affiché après confirmation par la clé d'accès de moins de 10 minutes. Chaque affichage va au journal d'audit, au nom du résident. Page jamais mise en cache
+- [x] Boutons « copier » pour l'identifiant et le mot de passe (Clipboard API), avec un message « copié ». Sans JavaScript ou sans presse-papiers, les boutons restent cachés et le texte se sélectionne d'un appui
+- [x] Nom du réseau (SSID) : saisi par un administrateur dans « Réglages wifi ». Sans nom, la page dit de le demander à l'accueil
+- **Notes** : une page web ne peut pas lire le nom du réseau du téléphone : l'API NetworkInformation ne donne que le type de connexion et la vitesse, et seulement dans Chrome. Le serveur ne le voit pas non plus. Il pourrait venir du portail captif lui-même, si son logiciel a une API : à voir avec la marque du portail. « Me prévenir avant l'expiration » arrive avec T17, et « prévenir l'accueil » avec les signalements (T27). Copie vérifiée dans Chromium. Captures vérifiées (mobile et ordinateur, clair et sombre).
 
 #### T17 Rappels d'expiration du wifi
 - [ ] Notification au résident 15 jours avant

@@ -278,7 +278,7 @@ Les chemins ne changent pas. Seuls les noms changent.
 | `HTML_CAPTURE_DIR` | inchangé |
 | Contrôles : `connexion.E001`, `connexion.W001`, `sms.E001`… | `access.E001`, `access.W001`, `sms.E001`… |
 
-## Wifi (cartes T15 et T15b)
+## Wifi (cartes T15, T15b et T16)
 
 | Mot du métier | Nom dans le code |
 |---|---|
@@ -291,6 +291,7 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Actions du journal | `Action.WIFI_ACCESS_SET`, `Action.WIFI_PASSWORD_SHOWN` |
 | Pages de l'équipe | `residents:wifi_access`, `residents:wifi_password`, `residents:wifi_import`, `residents:wifi_import_preview`, `residents:wifi_import_template` |
 | Commande | `rotate_wifi_keys` |
+| Écran « Mon wifi » du résident (carte T16) | `housing:my_wifi` (`/wifi/`), `housing:my_wifi_password` (`/wifi/mot-de-passe/`), gabarit `housing/my_wifi.html`, script `ui/js/copy.js` |
 
 ## Modèles prévus
 

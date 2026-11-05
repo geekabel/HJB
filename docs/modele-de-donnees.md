@@ -373,6 +373,7 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - Pas de table des consultations : chaque affichage d'un mot de passe est une entrée du journal d'audit (`wifi_password_shown`).
 - Le format du portail captif (`WIFI_SETTINGS`, une seule ligne) se règle dans l'administration : longueurs et caractères des accès générés. Les accès saisis à la main restent libres, de 4 à 64 caractères sans espace.
 - La liste existante s'importe depuis un fichier CSV ou Excel, avec aperçu puis confirmation (administrateurs seulement).
+- Le résident voit l'accès de sa chambre sur `/wifi/`. Le mot de passe s'affiche après une confirmation par clé d'accès ; chaque affichage va au journal, comme pour l'équipe.
 
 ## Règles métier portées par le modèle
 
