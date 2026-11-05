@@ -356,16 +356,17 @@ class LimitesTests(BaseConnexion):
         with mock.patch("connexion.limites.DEBUTS_MAX", 3):
             self.assertEqual(json_post(autre, DEBUT).status_code, 200)
 
-    def test_echecs_limites(self):
-        from unittest import mock
+    def test_les_echecs_ne_bloquent_personne(self):
+        """Revue T14 : un blocage après des échecs permettait de bloquer tout le wifi."""
+        for _ in range(40):
+            json_post(Client(), FIN, {})  # requêtes vides, refusées sans effet
+        self.assertEqual(self.se_connecter().status_code, 200)
 
-        self.cle.delete()
-        with (
-            mock.patch("connexion.limites.ECHECS_MAX", 2),
-            self.assertLogs("django_otp_webauthn", "ERROR"),
-        ):
-            self.assertEqual(self.se_connecter().status_code, 404)
-            self.assertEqual(self.se_connecter().status_code, 404)
-            # Ensuite, même le début est refusé pour cette adresse.
-            self.assertEqual(json_post(self.client, DEBUT).status_code, 429)
-            self.assertEqual(json_post(self.client, FIN, {}).status_code, 429)
+    def test_ipv6_compte_par_reseau(self):
+        from connexion.limites import groupe
+
+        self.assertEqual(groupe("2001:db8::1"), groupe("2001:db8::ffff:2"))
+        self.assertEqual(groupe("2001:db8::1"), "2001:db8::/64")
+        self.assertNotEqual(groupe("2001:db8:0:1::1"), groupe("2001:db8::1"))
+        self.assertEqual(groupe("192.0.2.8"), "192.0.2.8")
+        self.assertEqual(groupe(""), "inconnue")

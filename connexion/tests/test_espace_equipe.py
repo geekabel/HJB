@@ -2,7 +2,8 @@
 
 import json
 
-from django.contrib.auth import SESSION_KEY, authenticate
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -85,9 +86,26 @@ class AdministrationTests(TestCase):
         self.assertTrue(reponse["Location"].startswith(reverse("connexion:confirmer")))
 
     def test_aucun_mot_de_passe_accepte(self):
+        from django.contrib import admin
+        from django.test import RequestFactory
+
+        from comptes.backends import PermissionsSansMotDePasse
+
         self.assertIsNone(authenticate(username="marie", password="mot-de-passe-test"))
-        self.client.post("/admin/login/", {"username": "marie", "password": "mot-de-passe-test"})
-        self.assertNotIn(SESSION_KEY, self.client.session)
+        self.assertIsNone(
+            PermissionsSansMotDePasse().authenticate(
+                None, username="marie", password="mot-de-passe-test"
+            )
+        )
+        # Même appelée directement, la connexion de l'administration n'a pas de formulaire.
+        requete = RequestFactory().post(
+            "/admin/login/", {"username": "marie", "password": "mot-de-passe-test"}
+        )
+        requete.user = AnonymousUser()
+        requete.user.is_verified = lambda: False
+        reponse = admin.site.login(requete)
+        self.assertEqual(reponse.status_code, 302)
+        self.assertTrue(reponse["Location"].startswith("/connexion/"))
 
     def test_les_permissions_des_roles_restent(self):
         self.assertTrue(self.accueil.has_perm("comptes.gerer_residents"))
@@ -95,8 +113,13 @@ class AdministrationTests(TestCase):
 
     @override_settings(ADMIN_URL="gestion-7f3k/")
     def test_controle_de_l_adresse(self):
-        from connexion.checks import adresse_administration
+        from connexion.checks import adresse_administration, adresse_administration_libre
 
         self.assertEqual(adresse_administration(None), [])
+        self.assertEqual(adresse_administration_libre(None), [])
         with self.settings(ADMIN_URL="admin/"):
             self.assertEqual(adresse_administration(None)[0].id, "connexion.W001")
+        # Revue T14 : une adresse déjà prise masquerait une page, ou tournerait en boucle.
+        for adresse in ("connexion/", "equipe/", "activer/x/", "guide/", "/"):
+            with self.subTest(adresse=adresse), self.settings(ADMIN_URL=adresse):
+                self.assertEqual(adresse_administration_libre(None)[0].id, "connexion.E001")

@@ -8,7 +8,7 @@ Trois changements :
   est toujours exigée, même pour confirmer une personne déjà connectée ;
 - après la vérification, la session reçoit sa durée et l'heure de la
   confirmation (connexion/session.py) ;
-- les tentatives sont limitées par adresse IP (connexion/limites.py, T14).
+- les débuts de connexion sont limités par adresse IP (connexion/limites.py, T14).
 """
 
 from django.http import JsonResponse
@@ -28,9 +28,7 @@ TROP_D_ESSAIS = "Trop de tentatives depuis ce réseau. Réessayez dans quelques 
 class DebutVerification(ErreursEnFrancais, BeginCredentialAuthenticationView):
     def dispatch(self, request, *args, **kwargs):
         ip = adresse_ip(request)
-        if limites.atteinte("debut", ip, limites.DEBUTS_MAX) or limites.atteinte(
-            "echec", ip, limites.ECHECS_MAX
-        ):
+        if limites.atteinte("debut", ip, limites.DEBUTS_MAX):
             return reponse_erreur("trop_d_essais", 429, TROP_D_ESSAIS)
         limites.noter("debut", ip, limites.FENETRE_DEBUTS)
         return super().dispatch(request, *args, **kwargs)
@@ -45,15 +43,6 @@ class DebutVerification(ErreursEnFrancais, BeginCredentialAuthenticationView):
 
 
 class FinVerification(ErreursEnFrancais, CompleteCredentialAuthenticationView):
-    def dispatch(self, request, *args, **kwargs):
-        ip = adresse_ip(request)
-        if limites.atteinte("echec", ip, limites.ECHECS_MAX):
-            return reponse_erreur("trop_d_essais", 429, TROP_D_ESSAIS)
-        reponse = super().dispatch(request, *args, **kwargs)
-        if reponse.status_code >= 400:
-            limites.noter("echec", ip, limites.FENETRE_ECHECS)
-        return reponse
-
     def complete_auth(self, device):
         # Connecte la personne si besoin (backend WebAuthn, nouvelle clé de
         # session), puis note l'appareil vérifié (django-otp).

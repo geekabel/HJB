@@ -82,6 +82,74 @@ class ActionAdministrationTests(TestCase):
         self.assertFalse(CodeActivation.objects.exists())
 
 
+class RevueDroitsTests(TestCase):
+    """Cas trouvés par la relecture indépendante de T14."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth.models import Permission
+
+        modifier = Permission.objects.filter(codename__in=["view_user", "change_user"])
+        cls.tom = creer_utilisateur("tom", Role.MAINTENANCE, is_staff=True)
+        cls.tom.user_permissions.add(*modifier)
+        cls.ali = creer_utilisateur("ali", Role.ADMIN, is_staff=True)
+        cls.ali.user_permissions.add(*modifier)
+        cls.marie = creer_utilisateur("marie", Role.ADMIN, is_staff=True, is_superuser=True)
+        cls.samia = creer_utilisateur("samia", Role.EDUCATEUR, telephone="+33612345600")
+
+    def test_pas_d_auto_promotion(self):
+        """Modifier des comptes ne permet pas de se donner des rôles ni des droits."""
+        from comptes.tests.test_admin import donnees
+
+        connecter(self.client, self.tom)
+        url = reverse("admin:comptes_user_change", args=[self.tom.pk])
+        page = self.client.get(url)
+        self.assertNotContains(page, 'name="roles"')
+        self.assertNotContains(page, 'name="is_superuser"')
+        self.assertNotContains(page, 'name="is_staff"')
+        self.client.post(
+            url, donnees(self.tom, roles=[Role.ADMIN], is_staff="on", is_superuser="on")
+        )
+        tom = User.objects.get(pk=self.tom.pk)
+        self.assertEqual(tom.roles, {Role.MAINTENANCE})
+        self.assertFalse(tom.is_superuser)
+        self.assertFalse(tom.has_perm("comptes.gerer_roles"))
+
+    def test_seul_un_super_utilisateur_nomme_un_super_utilisateur(self):
+        from comptes.tests.test_admin import donnees
+
+        connecter(self.client, self.ali)
+        url = reverse("admin:comptes_user_change", args=[self.ali.pk])
+        self.assertContains(self.client.get(url), 'name="roles"')
+        self.client.post(
+            url, donnees(self.ali, roles=[Role.ADMIN], is_staff="on", is_superuser="on")
+        )
+        self.assertFalse(User.objects.get(pk=self.ali.pk).is_superuser)
+
+    def test_role_ajoute_garde_le_code_du_personnel(self):
+        """Ajouter un rôle à un membre du personnel n'annule pas son code du personnel."""
+        from comptes.tests.test_admin import donnees
+
+        generer_code(self.samia, pour_personnel=True)
+        connecter(self.client, self.marie)
+        self.client.post(
+            reverse("admin:comptes_user_change", args=[self.samia.pk]),
+            donnees(self.samia, telephone="06 12 34 56 00", roles=[Role.EDUCATEUR, Role.ACCUEIL]),
+        )
+        self.assertEqual(User.objects.get(pk=self.samia.pk).roles, {Role.EDUCATEUR, Role.ACCUEIL})
+        self.assertTrue(CodeActivation.objects.valides().filter(pour_personnel=True).exists())
+
+    def test_code_d_un_super_utilisateur(self):
+        connecter(self.client, self.ali)
+        reponse = self.client.post(
+            LISTE_COMPTES,
+            {"action": "generer_code_personnel", "_selected_action": [self.marie.pk]},
+            follow=True,
+        )
+        self.assertContains(reponse, "Seul un super-utilisateur")
+        self.assertFalse(CodeActivation.objects.exists())
+
+
 class ActivationDuPersonnelTests(TestCase):
     def setUp(self):
         memoire.boite.clear()
