@@ -259,9 +259,10 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Code à 6 chiffres (module `secrets`), empreinte HMAC, valable 10 minutes, 5 essais au plus, comptés en base même avec des envois simultanés
 - [x] Délai de 60 secondes avant renvoi, 3 envois par heure au plus ; un nouveau code remplace l'ancien
 - [x] Message clair si le numéro n'est pas le bon (« Ce n'est pas mon numéro » : passer à l'accueil) ou s'il n'y a pas de numéro
-- [x] `telephone_verifie_le` sur le compte, affiché sur la fiche ; remis à vide si le numéro change (fiche, administration, import)
+- [x] Le compte garde le numéro vérifié et la date (`telephone_verifie`, `telephone_verifie_le`) ; un autre numéro n'est jamais considéré comme vérifié, quelle que soit la façon dont il a changé
 - [x] Étape 3 : en attendant T13, page « Téléphone vérifié, la clé d'accès arrive bientôt »
-- **Notes** : un SMS qui n'a pas pu partir rend son code inutilisable, mais compte dans la limite horaire (pour ne pas épuiser le crédit SMS). Le code n'est jamais dans les journaux (voir T10). Le champ utilise `autocomplete="one-time-code"` : iOS et Android proposent le code reçu. 21 tests.
+- **Notes** : un SMS qui n'a pas pu partir rend son code inutilisable, mais compte dans la limite horaire (pour ne pas épuiser le crédit SMS). Le code n'est jamais dans les journaux (voir T10). Le champ utilise `autocomplete="one-time-code"` : iOS et Android proposent le code reçu.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Des clics en rafale passaient les limites d'envoi : la ligne du compte est verrouillée avant les vérifications. Le suivi des changements de numéro avait des trous (chargement partiel, `update()`, instance périmée) : on compare désormais au numéro vérifié. L'étape 3 revérifie le numéro. Un nouveau code d'activation ferme la session ouverte avec l'ancien (un code volé ne garde pas la main). La page du code ne garde plus le code en clair dans la session : un jeton à usage unique évite qu'un rechargement remplace le code remis. Afficher « Ce n'est pas mon numéro » ne change plus rien (GET). L'heure de renvoi est affichée au lieu d'un compte à rebours figé. Au plus 15 essais par heure et par personne (3 codes de 5 essais). 27 tests.
 
 #### T13 Connexion par clé d'accès (passkey)
 - **Docs** : django-otp-webauthn (à lire en entier avant de coder), [MDN Web Authentication API](https://developer.mozilla.org/fr/docs/Web/API/Web_Authentication_API).

@@ -73,7 +73,8 @@ erDiagram
         string telephone UK "portable, format E.164, unique s'il est renseigné"
         string email "facultatif"
         bool is_active
-        datetime telephone_verifie_le "remis à vide si le numéro change"
+        string telephone_verifie "numéro confirmé par SMS ; vérifié seulement s'il égale telephone"
+        datetime telephone_verifie_le
     }
     ETAGE {
         int id PK
