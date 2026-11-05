@@ -1730,7 +1730,10 @@
 
   .rdv-person {
     min-height: 6rem;
+    padding-inline: var(--s-1);
     font-size: var(--t-small);
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 
   .rdv-day {
@@ -1758,6 +1761,23 @@
   .rdv-person__initial--any {
     background: var(--warning-soft);
     color: var(--warning-text);
+  }
+
+  /* A card with the text on the left and its action on the right */
+  .rdv-line {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+
+  .rdv-line p {
+    margin: 0;
+  }
+
+  .rdv-line > svg {
+    flex: none;
+    color: var(--action);
   }
 
   .rdv-times {

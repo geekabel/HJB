@@ -25,19 +25,25 @@ ANY = "libre"
 
 
 def _choice(request, educators):
-    """The educator chosen (or None for "le premier libre") and the key in the address."""
-    key = request.GET.get("avec") or request.POST.get("avec") or ANY
+    """(educator or None for "le premier libre", key, known).
+
+    ``known`` is False when the address names someone who is not (or no
+    longer) an educator offering meetings.
+    """
+    key = request.POST.get("avec") or request.GET.get("avec") or ANY
     for educator in educators:
         if str(educator.pk) == key:
-            return educator, key
-    return None, ANY
+            return educator, key, True
+    return None, ANY, key == ANY
 
 
 def _day(value, days):
+    """(day, slots, found): the first day with slots if ``value`` has none."""
     for day, slots in days:
         if day.isoformat() == value:
-            return day, slots
-    return days[0] if days else (None, [])
+            return day, slots, True
+    first = days[0] if days else (None, [])
+    return first[0], first[1], not value
 
 
 def _times(slots):
@@ -59,8 +65,14 @@ def book(request):
     if not is_resident(request.user):
         return redirect("home")
     educators = list(booking.educators())
-    educator, key = _choice(request, educators)
+    educator, key, known = _choice(request, educators)
     people = [educator] if educator else educators
+    if request.method == "POST" and not known:
+        # Never another educator than the one chosen, without saying it.
+        messages.warning(
+            request, "Cet éducateur ne propose plus de rendez-vous. Choisissez à nouveau."
+        )
+        return redirect("rdv:book")
     if request.method == "POST":
         try:
             day = datetime.strptime(request.POST.get("jour", ""), "%Y-%m-%d").date()
@@ -79,10 +91,16 @@ def book(request):
         query = urlencode({"avec": key, "jour": request.POST.get("jour", "")[:10]})
         return redirect(f"{reverse('rdv:book')}?{query}")
 
+    if not known:
+        messages.info(request, "Cet éducateur ne propose plus de rendez-vous.")
     days = booking.days_with_slots(people)
-    day, slots = _day(request.GET.get("jour", ""), days)
+    day, slots, found = _day(request.GET.get("jour", ""), days)
     times = _times(slots)
-    wanted = request.GET.get("heure", "")
+    wanted = request.GET.get("heure", "") if found else ""
+    if not found:
+        messages.info(
+            request, "Ce jour n'a plus de créneau libre : voici le premier jour possible."
+        )
     first = days[0][1][0] if days else None
     length = None
     if educator is not None:
@@ -98,7 +116,7 @@ def book(request):
                 "educator": educator,
                 "key": key,
                 "any_key": ANY,
-                "days": days[:10],
+                "days": days,
                 "day": day,
                 "times": times,
                 "wanted": wanted,

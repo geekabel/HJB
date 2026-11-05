@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.roles import Role
@@ -70,7 +71,7 @@ def my_availability(request):
         }
         for moment in availability.cell_times()
     ]
-    return render(
+    response = render(
         request,
         "appointments/availability.html",
         {
@@ -88,6 +89,9 @@ def my_availability(request):
             "absence_form": AbsenceForm(),
         },
     )
+    # Names, rooms and reasons: never kept by the browser or a proxy.
+    add_never_cache_headers(response)
+    return response
 
 
 def _meetings(educator):
@@ -113,9 +117,12 @@ def _meetings(educator):
 def add_absence(request):
     form = AbsenceForm(request.POST)
     if form.is_valid():
-        absence = form.save(commit=False)
-        absence.educator = request.user
-        absence.save()
+        # Same lock as the bookings: none lands on a day being closed.
+        with transaction.atomic():
+            availability.lock(request.user)
+            absence = form.save(commit=False)
+            absence.educator = request.user
+            absence.save()
         busy = Appointment.objects.filter(
             educator=request.user,
             status=Appointment.Status.CONFIRMED,

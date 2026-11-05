@@ -140,7 +140,8 @@ class Appointment(models.Model):
         indexes = [models.Index(fields=["educator", "status", "start"])]
 
     def __str__(self):
-        return f"{self.educator} · {self.start:%Y-%m-%d %H:%M}"
+        # Neutral: the admin lists cascaded objects with it (who met whom).
+        return f"Rendez-vous n°{self.pk}"
 
     @property
     def minutes(self):

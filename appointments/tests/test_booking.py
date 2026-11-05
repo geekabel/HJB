@@ -81,8 +81,17 @@ class SlotTests(BookingTestCase):
         self.assertEqual(booking.free_slots([self.samia], armistice, NOW), [])
 
     def test_easter_and_days_after_it(self):
-        self.assertEqual(easter(2026), date(2026, 4, 5))
-        self.assertEqual(easter(2027), date(2027, 3, 28))
+        reference = {  # earliest and latest possible dates included
+            1818: date(1818, 3, 22),
+            1943: date(1943, 4, 25),
+            2024: date(2024, 3, 31),
+            2026: date(2026, 4, 5),
+            2027: date(2027, 3, 28),
+            2038: date(2038, 4, 25),
+            2285: date(2285, 3, 22),
+        }
+        for year, expected in reference.items():
+            self.assertEqual(easter(year), expected, year)
         self.assertEqual(holiday_name(date(2026, 4, 6)), "Lundi de Pâques")
         self.assertEqual(holiday_name(date(2026, 5, 14)), "Ascension")
         self.assertEqual(holiday_name(date(2026, 5, 25)), "Lundi de Pentecôte")
@@ -112,11 +121,13 @@ class BookTests(BookingTestCase):
 
     def test_limits(self):
         booking.book(self.ines, at(MONDAY, 10), [self.samia], now=NOW)
-        with self.assertRaisesMessage(booking.BookingRefused, "n'est plus libre"):
+        with self.assertRaisesMessage(
+            booking.BookingRefused, "Vous avez déjà un rendez-vous à cette heure-là."
+        ):
             booking.book(self.ines, at(MONDAY, 10), [self.julien], now=NOW)  # same time, me
         booking.book(self.ines, at(MONDAY, 11), [self.samia], now=NOW)
         with self.assertRaisesMessage(
-            booking.BookingRefused, "Vous avez déjà 2 rendez-vous à venir."
+            booking.BookingRefused, "Vous avez déjà 2 rendez-vous à venir. Passez à l'accueil"
         ):
             booking.book(self.ines, at(MONDAY + timedelta(days=2), 14), [self.samia], now=NOW)
         with self.assertRaisesMessage(booking.BookingRefused, "deux semaines"):
@@ -134,14 +145,75 @@ class BookTests(BookingTestCase):
                 end=at(MONDAY, 10, 30),
             )
 
-    def test_race_between_the_check_and_the_insert(self):
-        """Two residents at the same time: the constraint answers clearly."""
+    def test_the_constraint_has_the_last_word(self):
+        """If every check were fooled, the database still refuses, with a clear message."""
         free = booking.free_slots([self.samia], MONDAY, NOW)
         with mock.patch("appointments.booking.free_slots", return_value=free):
             booking.book(self.ines, at(MONDAY, 10), [self.samia], now=NOW)
-            with self.assertRaisesMessage(booking.BookingRefused, "n'est plus libre"):
+            with self.assertRaisesMessage(booking.BookingRefused, "Ce créneau vient d'être pris."):
                 booking.book(self.yanis, at(MONDAY, 10), [self.samia], now=NOW)
         self.assertEqual(Appointment.objects.count(), 1)
+
+    def _stale_then_real(self, people):
+        """free_slots as seen before the locks (stale), then the real one inside."""
+        stale = booking.free_slots(people, MONDAY, NOW)
+        real = booking.free_slots
+        calls = iter([stale])
+        return mock.patch(
+            "appointments.booking.free_slots",
+            side_effect=lambda *args, **kwargs: next(calls, None) or real(*args, **kwargs),
+        )
+
+    def test_checked_again_under_the_lock(self):
+        # The grid is closed between the first look and the booking.
+        with self._stale_then_real([self.samia]):
+            availability.save_grid(self.samia, [])
+            with self.assertRaisesMessage(booking.BookingRefused, "n'est plus libre"):
+                booking.book(self.ines, at(MONDAY, 10), [self.samia], now=NOW)
+        # An absence is added in between: same answer.
+        availability.save_grid(self.samia, ["0-1000"])
+        with self._stale_then_real([self.samia]):
+            Absence.objects.create(educator=self.samia, first_day=MONDAY, last_day=MONDAY)
+            with self.assertRaisesMessage(booking.BookingRefused, "n'est plus libre"):
+                booking.book(self.ines, at(MONDAY, 10), [self.samia], now=NOW)
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_first_free_tries_the_next_educator(self):
+        """Samia is taken in between: "le premier libre" books Julien instead of refusing."""
+        with self._stale_then_real([self.samia, self.julien]):
+            Appointment.objects.create(
+                educator=self.julien,
+                resident=self.yanis,
+                start=at(MONDAY, 11),
+                end=at(MONDAY, 11, 30),
+            )  # Julien is busier: Samia comes first
+            Appointment.objects.create(
+                educator=self.samia,
+                resident=self.yanis,
+                start=at(MONDAY, 10),
+                end=at(MONDAY, 10, 30),
+            )
+            meeting = booking.book(self.ines, at(MONDAY, 10), [self.samia, self.julien], now=NOW)
+        self.assertEqual(meeting.educator, self.julien)
+
+    def test_fourteen_days(self):
+        last = NOW.date() + timedelta(days=booking.DAYS_AHEAD - 1)
+        self.assertTrue(all(day <= last for day, _ in booking.days_with_slots([self.samia], NOW)))
+        with self.assertRaisesMessage(booking.BookingRefused, "deux semaines"):
+            booking.book(
+                self.ines,
+                at(NOW.date() + timedelta(days=booking.DAYS_AHEAD), 10),
+                [self.samia],
+                now=NOW,
+            )
+
+    def test_departure_cancels_upcoming_meetings(self):
+        from residents.departure import record_departure
+
+        booking.book(self.ines, at(MONDAY, 10), [self.samia], now=NOW)
+        with mock.patch("django.utils.timezone.now", return_value=NOW):
+            record_departure(self.ines, NOW.date())
+        self.assertEqual(Appointment.objects.get().status, Appointment.Status.CANCELLED)
 
 
 class ResidentPageTests(BookingTestCase):
@@ -156,7 +228,7 @@ class ResidentPageTests(BookingTestCase):
         log_in_verified(self.client, self.ines)
         response = self.client.get(BOOK)
         save_page("appointments-book", response)
-        self.assertContains(response, "Le 1er libre")
+        self.assertContains(response, "Le premier libre")
         self.assertContains(response, ">Samia</a>")
         self.assertNotContains(response, "Marie")  # not an educator
         first = response.context["first"]
@@ -186,6 +258,17 @@ class ResidentPageTests(BookingTestCase):
         )
         self.assertContains(response, "Ce créneau n&#x27;est plus libre.")
         self.assertEqual(self.client.get(reverse("rdv:detail", args=[meeting.pk])).status_code, 404)
+
+    def test_unknown_educator_and_stale_day(self):
+        log_in_verified(self.client, self.ines)
+        response = self.client.post(
+            BOOK, {"avec": self.marie.pk, "jour": "2026-11-16", "heure": "1000"}, follow=True
+        )
+        self.assertContains(response, "Cet éducateur ne propose plus de rendez-vous.")
+        self.assertFalse(Appointment.objects.exists())
+        response = self.client.get(BOOK, {"avec": "libre", "jour": "2000-01-03", "heure": "0900"})
+        self.assertContains(response, "Ce jour n&#x27;a plus de créneau libre")
+        self.assertNotContains(response, " checked>")
 
     def test_bad_input_and_staff(self):
         log_in_verified(self.client, self.ines)
@@ -224,21 +307,47 @@ class StaffPageTests(BookingTestCase):
         self.assertNotContains(response, "Inès Martin")
         self.assertContains(response, "Aucun rendez-vous à venir.")
 
+    def test_staff_page_is_never_cached(self):
+        log_in_verified(self.client, self.samia)
+        response = self.client.get(reverse("appointments:availability"))
+        self.assertIn("no-store", response["Cache-Control"])
+
+    def test_absence_dates_within_limits(self):
+        log_in_verified(self.client, self.samia)
+        add = reverse("appointments:add_absence")
+        today = timezone.localdate()
+        response = self.client.post(
+            add, {"first_day": "2020-01-01", "last_day": "2020-01-02"}, follow=True
+        )
+        self.assertContains(response, "Cette absence est déjà passée.")
+        far = today + timedelta(days=400)
+        response = self.client.post(
+            add, {"first_day": far.isoformat(), "last_day": far.isoformat()}, follow=True
+        )
+        self.assertContains(response, "Une absence se déclare un an à l&#x27;avance au plus.")
+        self.assertFalse(Absence.objects.exists())
+
     def test_absences(self):
+        soon = timezone.localdate() + timedelta(days=3)  # never in the past, whatever the date
         Appointment.objects.create(
-            educator=self.samia, resident=self.ines, start=at(MONDAY, 10), end=at(MONDAY, 10, 30)
+            educator=self.samia, resident=self.ines, start=at(soon, 10), end=at(soon, 10, 30)
         )
         log_in_verified(self.client, self.samia)
         add = reverse("appointments:add_absence")
         response = self.client.post(
-            add, {"first_day": MONDAY.isoformat(), "last_day": MONDAY.isoformat()}, follow=True
+            add, {"first_day": soon.isoformat(), "last_day": soon.isoformat()}, follow=True
         )
         self.assertContains(response, "Absence enregistrée")
         self.assertContains(response, "1 rendez-vous déjà pris pendant cette absence")
         absence = Absence.objects.get()
         self.assertEqual(absence.educator, self.samia)
         response = self.client.post(
-            add, {"first_day": "2026-11-20", "last_day": "2026-11-18"}, follow=True
+            add,
+            {
+                "first_day": (soon + timedelta(days=5)).isoformat(),
+                "last_day": (soon + timedelta(days=3)).isoformat(),
+            },
+            follow=True,
         )
         self.assertContains(response, "Le dernier jour ne peut pas précéder le premier.")
         # Another educator cannot remove it.
