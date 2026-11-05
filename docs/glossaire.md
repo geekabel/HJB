@@ -335,6 +335,12 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Classes CSS | `chips`, `inbox` (`__item`, `__item--unread`, `__top`, `__title`, `__when`, `__kind`, `__excerpt`, `__status`, `__answer`), `inbox-tools`, `button--text` (action discrète en forme de lien) |
 | Départ prévu | `Stay.planned_departure`, `residents.departure.plan_departure()`, `cancel_planned_departure()`, `messaging.sending.record_planned_departures()` |
 
+## Connexion de développement
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Lien de connexion sans clé (développement seulement) | commande `dev_login`, module `access.dev_login` (`make_link()`, `view`, `enabled()`), nom d'URL `dev_login` (`/dev/connexion/<jeton>/`, 404 sans `DEBUG`) |
+
 ## Rendez-vous (cartes T26 à T29)
 
 | Mot du métier | Nom dans le code |

@@ -20,6 +20,7 @@ RESERVED_SEGMENTS = {
     "notifications",
     "messages",
     "r",
+    "dev",
     "sms",
     "rendez-vous",
     "manifest.webmanifest",

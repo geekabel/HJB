@@ -19,6 +19,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
+from access import dev_login
 from access import views as access_views
 from messaging import receipts as messaging_receipts
 from messaging import resident_views as messaging_resident_views
@@ -42,6 +43,8 @@ urlpatterns = [
     # Messages of the residents, and the personal reply link of the SMS (card T22).
     path("messages/", include("messaging.resident_urls")),
     path("r/<str:token>/", messaging_resident_views.reply, name="reply"),
+    # Login without a passkey: development only, 404 when DEBUG is off (access/dev_login.py).
+    path("dev/connexion/<str:token>/", dev_login.view, name="dev_login"),
     # Delivery receipts of the SMS, called by OVHcloud (card T24).
     path("sms/ovh/<str:secret>/", messaging_receipts.ovh_callback, name="sms_receipt_ovh"),
     # Appointments with an educator, resident side (card T27).
