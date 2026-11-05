@@ -275,11 +275,15 @@ erDiagram
     }
     ENTREE_JOURNAL {
         int id PK
-        int acteur_id FK
-        string action
-        string objet
-        string adresse_ip
         datetime cree_le
+        int acteur_id FK "vide si le compte est supprimé"
+        string acteur_libelle "nom gardé pour la lecture"
+        string action "ROLES_MODIFIES, CODE_ACTIVATION_GENERE, CODE_WIFI_AFFICHE, DEPART_RESIDENT"
+        int cible_type_id FK "type de l'objet concerné"
+        string cible_id
+        string cible_libelle
+        json details "par exemple les rôles avant et après"
+        string adresse_ip
     }
 ```
 
@@ -305,6 +309,12 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 - Un résident n'a aucune permission, sauf s'il a le rôle Modérateur. Ce rôle ne donne pas accès à l'espace équipe.
 - `is_staff` (accès à l'administration Django) reste séparé des rôles et se règle à la main.
 - Un super-utilisateur créé avec `createsuperuser` reçoit le rôle Administration.
+
+## Journal d'audit
+
+- Une entrée ne se modifie pas et ne se supprime pas (le modèle refuse, l'administration est en lecture seule).
+- L'objet concerné est désigné par son type et son identifiant (relation générique) : le journal peut viser un compte, un séjour ou un accès wifi sans changer de table.
+- Lecture réservée à la permission `voir_journal`.
 
 ## Règles métier portées par le modèle
 
