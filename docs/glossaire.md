@@ -313,7 +313,7 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Pages | `push:settings` (`/notifications/`), `push:subscribe`, `push:unsubscribe`, `push:test`, `push:remove_device` |
 | Commandes | `vapid_key`, `prune_push_subscriptions` |
 
-## Messages (cartes T20 et T21)
+## Messages (cartes T20 à T22)
 
 | Mot du métier | Nom dans le code |
 |---|---|
@@ -325,7 +325,8 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Version SMS | `messaging.sms_text` (`to_gsm()`, `sms_text()`) |
 | Pages | `messaging:list`, `messaging:new`, `messaging:compose`, `messaging:delete`, `messaging:templates`, `messaging:template_new`, `messaging:template_edit`, `messaging:template_delete`, `messaging:review`, `messaging:tracking`, `messaging:cancel`, `messaging:cancel_reminder` |
 | Envoi (« Envoi » dans le plan) | `messaging.models.Delivery` (`kind` : `message` ou `reminder`, `channel`, `status` : `pending`, `sending`, `sent`, `failed`) |
-| Réponse présent ou absent | `messaging.models.AttendanceReply` (`answer` : `present` ou `absent`) |
+| Réponse présent ou absent | `messaging.models.AttendanceReply` (`answer` : `present` ou `absent`) ; `messaging.replies` (`make_token()`, `read_token()`, `reply_path()`, `sms_suffix()`, `closes_at()`, `is_open()`, `record()`, `counts()`) |
+| Lien de réponse, page du message | `reply` (`/r/<jeton>/`), `inbox:message` (`/messages/<n>/`), vues `messaging.resident_views` ; réglage `SITE_URL` |
 | Envoi programmé, relance | `messaging.sending` (`problems()`, `schedule()`, `cancel()`, `cancel_reminder()`, `run_due()`, `deliver()`), tâche `messaging.tasks.deliver_task`, commande `run_scheduled` |
 | Départ prévu | `Stay.planned_departure`, `residents.departure.plan_departure()`, `cancel_planned_departure()`, `messaging.sending.record_planned_departures()` |
 

@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T22 | Réponse Présent ou Absent | E4 Messages | T21 |
 | T23 | Boîte de réception du résident | E4 Messages | T21 |
 | T24 | Statuts de livraison des SMS | E4 Messages | T21 |
 | T25 | Sondages anonymes | E5 Votes | T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T17 | Rappels d'expiration du wifi | 5 nov. 2026 |
 | T20 | Modèles de message et composeur | 5 nov. 2026 |
 | T21 | Envoi programmé et relances | 5 nov. 2026 |
+| T22 | Réponse Présent ou Absent | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -387,11 +387,13 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : tant que les résidents ne peuvent pas répondre (T22), la relance va à tous ceux qui ont reçu le message ; la page de confirmation donne son coût en SMS. La chambre reste occupée jusqu'à midi le jour du départ prévu. L'exploitation (service du *worker*, lignes cron, nettoyage des tâches) est décrite dans le README.
 - **Revue indépendante (5 nov.)** : corrigé : une notification en échec passager devenait un SMS payant, parfois en double (nouvel essai de la notification) ; un message pouvait passer « Envoyé » sans aucun destinataire si l'écriture des envois échouait (démarrage et liste des envois dans une même transaction) ; certains départs prévus n'étaient jamais enregistrés (date avant l'arrivée, changement de chambre) ; « Changer la date » pouvait enregistrer le départ tout de suite (le formulaire part de la date prévue) ; titre de la page des messages cassé ; relance trop tardive, impossible à annuler, ou sur un ancien canal ; tâches empilées quand le *worker* est arrêté ; SMS non configuré non signalé ; date saisie sans « Programmer » ignorée ; un brouillon confirmé dans un autre onglet pouvait redevenir brouillon. 581 tests.
 
-#### T22 Réponse Présent ou Absent
-- **Docs** : [signature cryptographique](https://docs.djangoproject.com/en/6.1/topics/signing/).
-- [ ] Lien personnel signé dans le SMS
-- [ ] Réponse en un geste dans l'appli
-- [ ] Décompte des réponses côté équipe
+#### T22 Réponse Présent ou Absent (fait le 5 nov. 2026)
+- **Maquettes** : P2 (« Répondez ici » dans le SMS), R-Messages (« Réponse attendue »).
+- **Docs** : [signature cryptographique](https://docs.djangoproject.com/en/6.1/topics/signing/) et `salted_hmac` de Django, [actions de notification (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/showNotification#actions), [protection CSRF](https://docs.djangoproject.com/en/6.1/ref/csrf/).
+- [x] Lien personnel signé à la fin du SMS : `/r/<message>-<personne>-<signature>`, une vingtaine de caractères. La signature (HMAC de la clé secrète, 72 bits) est raccourcie : la signature complète de Django ajouterait une soixantaine de caractères à chaque SMS. Personne ne peut fabriquer le lien d'un autre. La page du lien n'a pas besoin de connexion ; l'ouvrir ne répond pas (les applications de SMS ouvrent les liens pour l'aperçu), seuls les boutons enregistrent
+- [x] Réponse en un geste : boutons « Présent » et « Absent » sur la page du message dans l'appli (`/messages/<n>/`), et directement sur la notification là où le navigateur les affiche (Chrome, Edge, Firefox ; pas sur iPhone, où un toucher ouvre la page du message)
+- [x] Décompte pour l'équipe sur la page de suivi : présents, absents, sans réponse, et la réponse de chacun
+- **Notes** : réponse modifiable jusqu'au soir du jour indiqué dans le message (sept jours sans date). Le lien compte dans la longueur du SMS : il est dans l'aperçu et dans le coût. Réglage `DJANGO_SITE_URL` (par défaut la première adresse des clés d'accès). La relance (T21) ne va plus à ceux qui ont répondu.
 
 #### T23 Boîte de réception du résident
 - **Maquette** : R2.
