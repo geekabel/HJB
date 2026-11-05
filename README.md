@@ -78,7 +78,7 @@ Les résidents se connectent avec une clé d'accès (passkey) : Face ID, emprein
 
 - En développement, ouvrir **http://localhost:8000**, pas http://127.0.0.1:8000 : les navigateurs refusent les clés d'accès sur une adresse IP.
 - En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINES` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
-- Une clé se supprime dans l'administration (Clés d'accès) : l'appareil ne peut plus se connecter.
+- Téléphone perdu : bouton « Couper l'accès » sur la fiche du résident. Les clés sont supprimées et les sessions fermées. Une clé supprimée dans l'administration ferme aussi les sessions.
 
 ## Envoi de SMS
 

@@ -308,7 +308,7 @@ erDiagram
         datetime cree_le
         int acteur_id FK "vide si le compte est supprimé"
         string acteur_libelle "nom gardé pour la lecture"
-        string action "ROLES_MODIFIES, CODE_ACTIVATION_GENERE, CODE_WIFI_AFFICHE, DEPART_RESIDENT, RETOUR_RESIDENT, CLE_ACCES_CREEE"
+        string action "ROLES_MODIFIES, CODE_ACTIVATION_GENERE, CODE_WIFI_AFFICHE, DEPART_RESIDENT, RETOUR_RESIDENT, CLE_ACCES_CREEE, ACCES_COUPE"
         int cible_type_id FK "type de l'objet concerné"
         string cible_id
         string cible_libelle
@@ -352,7 +352,9 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 - Les tables `CLE_ACCES` et `IDENTIFIANT_WEBAUTHN` viennent de django-otp-webauthn (`WebAuthnCredential`, `WebAuthnUserHandle`). Le serveur ne garde que la clé publique.
 - La clé est créée à l'étape 3 de l'activation. Une nouvelle activation (téléphone perdu) supprime les anciennes clés et ferme les autres sessions.
 - Le départ d'un résident supprime ses clés (signal `depart_enregistre`) ; le nombre va au journal.
-- Durée des sessions : 90 jours sans activité pour un résident connecté par clé, 12 heures pour le personnel. Une action sensible demande une vérification par clé de moins de 10 minutes.
+- Supprimer une clé, par n'importe quel chemin, ferme les sessions du compte (signal `post_delete`). La fiche du résident propose « Couper l'accès » pour un téléphone perdu.
+- Changer les rôles d'une personne ferme ses sessions : ses droits et la durée de sa session changent.
+- Durée des sessions (repart à chaque requête) : 90 jours sans activité pour un résident connecté par clé, 12 heures pour le personnel. Une action sensible demande une vérification par clé de moins de 10 minutes.
 
 ## Règles métier portées par le modèle
 
