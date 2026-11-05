@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T23 | Boîte de réception du résident | E4 Messages | T21 |
 | T24 | Statuts de livraison des SMS | E4 Messages | T21 |
 | T25 | Sondages anonymes | E5 Votes | T21 |
 | T26 | Disponibilités des éducateurs | E6 Rendez-vous | T04 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T20 | Modèles de message et composeur | 5 nov. 2026 |
 | T21 | Envoi programmé et relances | 5 nov. 2026 |
 | T22 | Réponse Présent ou Absent | 5 nov. 2026 |
+| T23 | Boîte de réception du résident | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -396,10 +396,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : réponse modifiable jusqu'au soir du jour indiqué dans le message (sept jours sans date). Le lien compte dans la longueur du SMS : il est dans l'aperçu et dans le coût. Réglage `DJANGO_SITE_URL` (par défaut la première adresse des clés d'accès). La relance (T21) ne va plus à ceux qui ont répondu.
 - **Revue** : corrigé après la revue indépendante. Le lien marche aussi quand le SMS est marqué « envoi incertain ». Un message dont le jour est passé (ou finit moins d'une heure après l'envoi) ne peut plus être programmé. Les anciens liens survivent à un changement de clé secrète (`SECRET_KEY_FALLBACKS`). Seul un bouton marque le message comme lu, pas l'aperçu. Sans réseau, un bouton de notification affiche « Réponse non enregistrée ». Le lien ajoute environ 90 caractères au SMS : un message court tient souvent en 2 SMS (choix à faire plus tard).
 
-#### T23 Boîte de réception du résident
-- **Maquette** : R2.
-- [ ] Filtres : tous, visites, annonces, votes, pour moi
-- [ ] Non lu et lu
+#### T23 Boîte de réception du résident (fait le 5 nov. 2026)
+- **Maquette** : R2 (« Messages »).
+- **Docs** : [pagination](https://docs.djangoproject.com/en/6.1/topics/pagination/), [sous-requêtes `Exists`](https://docs.djangoproject.com/en/6.1/ref/models/expressions/#exists-subqueries), [processeurs de contexte](https://docs.djangoproject.com/en/6.1/ref/templates/api/#writing-your-own-context-processors).
+- [x] Page `/messages/` : les messages reçus, du plus récent au plus ancien, 20 par page. Pour chacun : titre, type, deux lignes du texte, date courte (« 09:12 », « Hier », « Lun. », « 24 octobre »)
+- [x] Filtres : tous, visites, annonces, votes, pour moi. « Pour moi » : envoyé à la personne par son nom ou à sa chambre, pas à tout le monde ni à un étage entier
+- [x] Non lu et lu : un point et le titre en gras (pas la couleur seule), « Non lu » lu par les lecteurs d'écran. Le message devient lu quand on l'ouvre ou qu'on répond par un bouton. Bouton « Tout marquer comme lu »
+- [x] Nombre de messages non lus sur l'entrée « Messages » de la barre du bas ; « Réponse attendue » ou « Votre réponse » sur les messages qui demandent « Présent » ou « Absent »
+- [x] Un message dont le SMS a échoué reste visible dans l'appli
+- **Notes** : la carte de vote de la maquette arrive avec T25. Le nombre de requêtes ne dépend pas du nombre de messages (testé).
 
 #### T24 Statuts de livraison des SMS
 - [ ] Réception des accusés du fournisseur

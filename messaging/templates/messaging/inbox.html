@@ -1,0 +1,67 @@
+{% extends "ui/resident.html" %}
+{% load icons messaging_tags %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'home' %}">{% icon "back" %}<span class="visually-hidden">Retour à l'accueil</span></a>
+  <h1>Messages</h1>
+</div>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "check" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<nav aria-label="Filtrer les messages">
+  <ul class="chips">
+    {% for filter in filters %}
+    <li><a class="chip" href="{% url 'inbox:list' %}{% if filter.key != 'all' %}?show={{ filter.key }}{% endif %}"{% if filter.key == current.key %} aria-current="page"{% endif %}>{{ filter.label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{% if unread %}
+<form class="inbox-tools" method="post" action="{% url 'inbox:read_all' %}">
+  {% csrf_token %}
+  {% if current.key != "all" %}<input type="hidden" name="show" value="{{ current.key }}">{% endif %}
+  <p class="text-muted text-small">{{ unread }} message{{ unread|pluralize }} non lu{{ unread|pluralize }}</p>
+  <button class="button button--text" type="submit">Tout marquer comme lu</button>
+</form>
+{% endif %}
+
+{% if items %}
+<ul class="inbox">
+  {% for item in items %}
+  <li>
+    <a class="inbox__item{% if item.unread %} inbox__item--unread{% endif %}" href="{% url 'inbox:message' item.campaign.pk %}">
+      <span class="inbox__top">
+        <span class="inbox__title">{% if item.unread %}<span class="visually-hidden">Non lu : </span>{% endif %}{{ item.delivery.title }}</span>
+        {% if item.when %}<time class="inbox__when" datetime="{{ item.when|date:'Y-m-d\TH:i:sO' }}">{{ item.when|short_when }}</time>{% endif %}
+      </span>
+      <span class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}</span>
+      <span class="inbox__excerpt">{{ item.delivery.body|truncatechars:160 }}</span>
+      {% if item.waiting %}<span class="inbox__status">Réponse attendue</span>
+      {% elif item.answer %}<span class="inbox__answer">Votre réponse : {{ item.answer_label }}</span>{% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Pages des messages">
+  {% if page_obj.has_previous %}
+  <a class="button button--quiet" href="?page={{ page_obj.previous_page_number }}{% if current.key != 'all' %}&amp;show={{ current.key }}{% endif %}">Plus récents</a>
+  {% endif %}
+  <span class="text-muted">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a class="button button--quiet" href="?page={{ page_obj.next_page_number }}{% if current.key != 'all' %}&amp;show={{ current.key }}{% endif %}">Plus anciens</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p class="card text-muted">{{ current.empty }}</p>
+{% endif %}
+{% endblock %}

@@ -3,7 +3,7 @@
 {% block title %}{{ delivery.title }}{% endblock %}
 {% block content %}
 <div class="row">
-  <a class="icon-button" href="{% url 'home' %}">{% icon "back" %}<span class="visually-hidden">Retour à l'accueil</span></a>
+  <a class="icon-button" href="{% url 'inbox:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux messages</span></a>
   <p class="text-muted text-small">{{ campaign.get_type_display }}{% if delivery.sent_at %} · <time datetime="{{ delivery.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ delivery.sent_at|date:"j F à H:i" }}</time>{% endif %}</p>
 </div>
 
