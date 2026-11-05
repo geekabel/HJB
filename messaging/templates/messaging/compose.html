@@ -1,0 +1,146 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}{% if campaign.pk %}{{ campaign.title }}{% else %}Nouveau message{% endif %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
+
+<header class="page-header">
+  <h1>{% if campaign.pk %}Message en préparation{% else %}Nouveau message{% endif %}</h1>
+  {% if campaign.pk %}<p class="text-muted text-small">Brouillon enregistré le <time datetime="{{ campaign.updated_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.updated_at|date:"j F à H:i" }}</time></p>{% endif %}
+</header>
+
+{% if not campaign.pk and templates %}
+<form class="card row" method="get" action="{% url 'messaging:new' %}">
+  <div class="field compose__template">
+    <label for="template-choice">Partir d'un modèle</label>
+    <select id="template-choice" name="modele">
+      {% regroup templates by get_type_display as groups %}
+      {% for group in groups %}
+      <optgroup label="{{ group.grouper }}">
+        {% for template in group.list %}<option value="{{ template.pk }}"{% if template.pk == campaign.template_id %} selected{% endif %}>{{ template.name }}</option>{% endfor %}
+      </optgroup>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="button button--secondary" type="submit">Utiliser ce modèle</button>
+</form>
+{% endif %}
+
+<form class="compose" method="post" action="{% if campaign.pk %}{% url 'messaging:compose' campaign.pk %}{% else %}{% url 'messaging:new' %}{% if campaign.template_id %}?modele={{ campaign.template_id }}{% endif %}{% endif %}" novalidate>
+  {% csrf_token %}
+  <div class="compose__main stack">
+    {% if form.errors %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p><strong>Rien n'a été enregistré, ajouté ni envoyé.</strong> Corrigez {% if form.errors|length > 1 %}les champs signalés{% else %}le champ signalé{% endif %} ci-dessous.{% if form.non_field_errors %} {{ form.non_field_errors|join:" " }}{% endif %}</p></div>{% endif %}
+
+    <fieldset class="card stack">
+      <legend class="compose__step">1. Type de message</legend>
+      <div class="row">
+        {% for choice in form.type %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
+      </div>
+      {{ form.title.as_field_group }}
+    </fieldset>
+
+    <fieldset class="card stack">
+      <legend class="compose__step">2. Destinataires</legend>
+      <div class="row">
+        {% for choice in form.floors %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
+        <label class="choices">{{ form.everyone }}Tout le monde</label>
+      </div>
+      <div class="row row--bottom">
+        {{ form.add.as_field_group }}
+        <button class="button button--secondary" type="submit" name="action" value="add">{% icon "plus" %}Ajouter</button>
+      </div>
+      {% if added_rooms or added_people %}
+      <ul class="plain-list">
+        {% for room in added_rooms %}<li class="row row--between"><span>Chambre {{ room.number }}</span><button class="button button--quiet" type="submit" name="action" value="remove_room:{{ room.pk }}">Retirer<span class="visually-hidden"> la chambre {{ room.number }}</span></button></li>{% endfor %}
+        {% for person in added_people %}<li class="row row--between"><span>{{ person.get_full_name|default:person.get_username }}</span><button class="button button--quiet" type="submit" name="action" value="remove_person:{{ person.pk }}">Retirer<span class="visually-hidden"> {{ person.get_full_name|default:person.get_username }}</span></button></li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% if audience %}
+      <p class="compose__counts"><strong>{{ audience.total }}</strong> résident{{ audience.total|pluralize }} · <strong>{{ audience.push }}</strong> {% if audience.push > 1 %}recevront{% else %}recevra{% endif %} une notification (gratuit) · <strong>{{ audience.sms }}</strong> sans l'application : SMS{% if audience.unreachable %} · <strong class="text-warning">{{ audience.unreachable }}</strong> sans moyen de contact{% endif %}</p>
+      {% if audience.recipients %}
+      <details>
+        <summary>{% if audience.total > 1 %}Voir les {{ audience.total }} destinataires{% else %}Voir le destinataire{% endif %}</summary>
+        <ul class="plain-list compose__recipients">
+          {% for recipient in audience.recipients %}
+          <li class="row row--between">
+            <span>{{ recipient.user.get_full_name|default:recipient.user.get_username }}{% if recipient.room %} · {{ recipient.room.number }}{% endif %} <span class="badge {% if recipient.channel == 'push' %}badge--info{% elif recipient.channel == 'sms' %}badge--neutral{% else %}badge--warning{% endif %}">{% if recipient.channel == 'push' %}Notification{% elif recipient.channel == 'sms' %}SMS{% else %}Aucun moyen{% endif %}</span></span>
+            <button class="button button--quiet" type="submit" name="action" value="exclude:{{ recipient.user.pk }}">Ne pas envoyer<span class="visually-hidden"> à {{ recipient.user.get_full_name|default:recipient.user.get_username }}</span></button>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+      {% if excluded %}
+      <p class="text-small">Retirés :
+        {% for person in excluded %}<button class="button button--quiet" type="submit" name="action" value="restore:{{ person.pk }}">Remettre {{ person.get_full_name|default:person.get_username }}</button>{% endfor %}
+      </p>
+      {% endif %}
+      {% else %}
+      <p class="text-muted text-small">Le décompte s'affiche après l'enregistrement du brouillon.</p>
+      {% endif %}
+    </fieldset>
+
+    <fieldset class="card stack">
+      <legend class="compose__step">3. Message</legend>
+      {{ form.body.as_field_group }}
+      <p class="text-small">Champs possibles : {% for name, label in fields.items %}<code title="{{ label }}">{{ "{" }}{{ name }}{{ "}" }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+      <div class="grid-auto">
+        {{ form.event_date.as_field_group }}
+        {{ form.start_time.as_field_group }}
+        {{ form.end_time.as_field_group }}
+      </div>
+      {% if missing %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le texte utilise {% for name in missing %}{{ "{" }}{{ name }}{{ "}" }}{% if not forloop.last %}, {% endif %}{% endfor %} : indiquez {% if missing|length > 1 %}leurs valeurs{% else %}sa valeur{% endif %} ci-dessus.</p></div>{% endif %}
+      {{ form.ask_reply.as_field_group }}
+      {{ form.sms_body.as_field_group }}
+    </fieldset>
+  </div>
+
+  <aside class="compose__aside stack" aria-label="Aperçu et envoi">
+    {% if campaign.pk %}
+    <section class="card stack" aria-labelledby="notification-title">
+      <h2 id="notification-title" class="card__title">Aperçu de la notification</h2>
+      <div class="compose__bubble">
+        <p><strong>{{ preview_title }}</strong></p>
+        <p class="compose__text">{{ preview_body }}</p>
+      </div>
+      <p class="text-muted text-small">Tel que le verra {{ sample.user.get_full_name|default:sample.user.get_username }}{% if sample.room %}, chambre {{ sample.room.number }}{% endif %}.</p>
+    </section>
+
+    <section class="card stack" aria-labelledby="sms-title">
+      <h2 id="sms-title" class="card__title">Aperçu SMS{% if audience.sms %} ({{ audience.sms }} personne{{ audience.sms|pluralize }}){% endif %}</h2>
+      <div class="compose__bubble">
+        <p class="text-muted text-small">HJBelfort</p>
+        <p class="compose__text">{{ sms.text }}</p>
+      </div>
+      <p class="row row--between text-small"><span>{% if sms.varies %}Le plus long. {% endif %}{% if sms.info.encoding == "GSM-7" %}Alphabet SMS standard{% else %}Caractères spéciaux (UCS-2){% endif %}</span><strong>{{ sms.info.units }} / {{ sms.limit }} · {{ sms.info.segments }} SMS</strong></p>
+      {% if sms.replaced %}<p class="text-muted text-small">Remplacés pour rester à 160 caractères par SMS : {% for char, plain in sms.replaced %}<span class="nowrap">{{ char }} → {{ plain }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+      {% if sms.kept %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le SMS contient {% for char, words in sms.kept %}« {{ char }} »{% if words and words.0 != char %} (dans « {{ words.0 }} »){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %} : chaque SMS est alors limité à 70 caractères. Il coûte <strong>{{ sms.info.segments }} SMS par personne</strong>. Retirez {% if sms.kept|length > 1 %}ces caractères{% else %}ce caractère{% endif %} pour réduire le coût.</p></div>{% endif %}
+      {% if sms.too_long %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p>Trop long : {{ sms.info.segments }} SMS. Six au plus. Écrivez une version SMS plus courte.</p></div>
+      {% elif sms.from_full_text and sms.info.segments > 1 %}<p class="text-small">Sans version SMS, le texte complet part par SMS : {{ sms.info.segments }} SMS par personne. Une version courte coûte moins.</p>{% endif %}
+    </section>
+
+    <section class="card stack" aria-labelledby="summary-title">
+      <h2 id="summary-title" class="card__title">Récapitulatif</h2>
+      <dl class="details">
+        <dt>Notifications</dt><dd>{% if audience.push %}{{ audience.push }} · gratuit{% else %}aucune{% endif %}</dd>
+        <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
+        {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }}</dd>{% endif %}
+      </dl>
+      <p class="text-muted text-small">L'envoi aux résidents arrive bientôt. Pour l'instant : brouillon et essai.</p>
+      <button class="button" type="submit" name="action" value="save">Enregistrer le brouillon</button>
+      <label class="choices"><input type="checkbox" name="test_sms" value="yes">Aussi par SMS sur mon téléphone</label>
+      <button class="button button--secondary" type="submit" name="action" value="test">{% icon "send" %}M'envoyer un test</button>
+      <details class="stack">
+        <summary>Supprimer le brouillon</summary>
+        <button class="button button--danger" type="submit" formaction="{% url 'messaging:delete' campaign.pk %}" formnovalidate>Oui, supprimer ce brouillon</button>
+      </details>
+    </section>
+    {% else %}
+    <div class="card stack">
+      <p>Enregistrez le brouillon pour voir le décompte des destinataires et les aperçus.</p>
+      <button class="button" type="submit" name="action" value="save">Enregistrer le brouillon</button>
+    </div>
+    {% endif %}
+  </aside>
+</form>
+{% endblock %}

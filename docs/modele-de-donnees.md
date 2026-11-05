@@ -45,7 +45,8 @@ erDiagram
     MESSAGE_TEMPLATE ||--o{ CAMPAIGN : "sert de base"
     USER ||--o{ CAMPAIGN : "rédige"
     CAMPAIGN }o--o{ FLOOR : "cible"
-    CAMPAIGN }o--o{ USER : "cible en plus"
+    CAMPAIGN }o--o{ ROOM : "cible en plus"
+    CAMPAIGN }o--o{ USER : "ajoute ou retire"
     CAMPAIGN ||--o{ DELIVERY : "produit"
     USER ||--o{ DELIVERY : "reçoit"
     CAMPAIGN ||--o{ ATTENDANCE_REPLY : "recueille"
@@ -176,9 +177,10 @@ erDiagram
     }
     MESSAGE_TEMPLATE {
         int id PK
-        string type
-        string name
-        text body
+        string type "visit, maintenance, announcement, vote, custom"
+        string name UK "unique par type"
+        string title "titre de la notification"
+        text body "avec {champs}"
         text sms_body
         bool reply_expected
     }
@@ -189,6 +191,10 @@ erDiagram
         text body "texte complet, avec {champs}"
         text sms_body "version courte"
         string reply_type "none, attendance"
+        date event_date "valeur de {date}"
+        time start_time "valeur de {début}"
+        time end_time "valeur de {fin}"
+        bool everyone "tout le monde"
         string status "draft, scheduled, sending, sent, cancelled"
         datetime send_at
         datetime remind_at

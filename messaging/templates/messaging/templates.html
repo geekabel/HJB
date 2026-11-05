@@ -1,0 +1,37 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Modèles de message{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
+
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Modèles de message</h1>
+    <p class="text-muted">Les textes des messages habituels. Chacun peut les modifier ; les messages déjà rédigés ne changent pas.</p>
+  </div>
+  <a class="button" href="{% url 'messaging:template_new' %}">{% icon "plus" %}Nouveau modèle</a>
+</header>
+
+{% regroup templates by get_type_display as groups %}
+{% for group in groups %}
+<section class="stack" aria-labelledby="type-{{ forloop.counter }}">
+  <h2 id="type-{{ forloop.counter }}">{{ group.grouper }}</h2>
+  <ul class="plain-list">
+    {% for template in group.list %}
+    <li class="card row row--between">
+      <span class="stack stack--tight">
+        <strong>{{ template.name }}</strong>
+        <span class="text-muted text-small">{{ template.body|truncatechars:110 }}</span>
+      </span>
+      <span class="row">
+        <a class="button button--secondary" href="{% url 'messaging:new' %}?modele={{ template.pk }}">Utiliser<span class="visually-hidden"> le modèle {{ template.name }}</span></a>
+        <a class="button button--quiet" href="{% url 'messaging:template_edit' template.pk %}">Modifier<span class="visually-hidden"> le modèle {{ template.name }}</span></a>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% empty %}
+<p class="text-muted">Aucun modèle pour le moment.</p>
+{% endfor %}
+{% endblock %}

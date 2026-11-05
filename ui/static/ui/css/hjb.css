@@ -1324,6 +1324,71 @@
   }
 
   /* No :empty rule: the live region must stay in the accessibility tree */
+  /* Message composer (card T20): the form, and the previews beside it */
+  .compose {
+    display: grid;
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .compose {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    }
+
+    .compose__aside {
+      position: sticky;
+      inset-block-start: var(--s-4);
+    }
+  }
+
+  .compose__step {
+    padding-inline: var(--s-2);
+    font-family: var(--font-title);
+    font-size: var(--t-large);
+    font-weight: 700;
+  }
+
+  .compose__template {
+    flex: 1 1 16rem;
+  }
+
+  .compose__counts {
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-small);
+    background: var(--surface-2);
+    font-size: var(--t-small);
+  }
+
+  .compose__recipients {
+    max-height: 20rem;
+    overflow-y: auto;
+    margin-block-start: var(--s-2);
+  }
+
+  .compose__bubble {
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+  }
+
+  .compose__text {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .row--bottom {
+    align-items: flex-end;
+  }
+
+  .row--bottom > .field {
+    flex: 1 1 16rem;
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;

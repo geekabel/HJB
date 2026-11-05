@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T20 | Modèles de message et composeur | E4 Messages | T06, T10 |
 | T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
 | T22 | Réponse Présent ou Absent | E4 Messages | T21 |
 | T23 | Boîte de réception du résident | E4 Messages | T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T18 | Application installable (PWA) | 5 nov. 2026 |
 | T19 | Notifications Web Push | 5 nov. 2026 |
 | T17 | Rappels d'expiration du wifi | 5 nov. 2026 |
+| T20 | Modèles de message et composeur | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -364,13 +364,16 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : sur un téléphone partagé, l'appareil reste à la personne qui a appuyé sur « Activer » : une autre personne qui se connecte ne reçoit rien tant qu'elle n'a pas activé elle-même. L'envoi part pendant la requête, appareil par appareil (10 secondes au plus chacun) : les envois en nombre passeront par une tâche de fond avec T21. Vérifié dans Chromium : affichage d'un message par le service worker (titre, texte, icône, page à ouvrir). L'abonnement réel ne peut pas être essayé ici (les services d'envoi ne sont pas joignables depuis l'environnement de travail) : à essayer sur un téléphone.
 - **Revue indépendante (5 nov.)** : corrigé : une adresse truquée (`https://pirate.example\\.fcm.googleapis.com/`) passait le contrôle des services connus, et l'envoi suivait les redirections (adresse vérifiée par un motif strict, redirections refusées) ; un appareil aux clés invalides arrêtait l'envoi à tous les autres (clés vérifiées à l'abonnement, toute erreur d'un appareil reste limitée à lui) ; sur un téléphone partagé, la personne précédente continuait de recevoir ses notifications après la fin de sa session (l'appareil est retiré dès qu'une autre personne s'y connecte) ; la déconnexion pouvait oublier l'appareil (le serveur demande maintenant à chaque nouvelle session) ; après un changement de clé VAPID, l'activation échouait toujours (l'ancien abonnement est retiré d'abord) ; une panne passagère d'un service d'envoi (429, 5xx, délai dépassé) ne compte plus comme un échec ; un appareil repris par une autre personne prend une nouvelle date ; clé de développement toujours valide. Note : la limite d'une notification d'essai par minute vaut par processus tant qu'aucun cache partagé n'est configuré (T38). 500 tests.
 
-#### T20 Modèles de message et composeur
+#### T20 Modèles de message et composeur (fait le 5 nov. 2026)
 - **Maquette** : P2.
-- [ ] Types : visite, maintenance, annonce, vote, message libre
-- [ ] Modèles modifiables avec champs `{prénom}`, `{chambre}`, `{date}`
-- [ ] Ciblage par étage, chambre ou personne, avec le décompte « notification / SMS »
-- [ ] Version SMS courte, alerte quand un caractère fait passer en UCS-2
-- [ ] Bouton « m'envoyer un test »
+- **Docs** : [ModelForm et cases à cocher multiples](https://docs.djangoproject.com/en/6.1/topics/forms/modelforms/), [formaction (MDN)](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button#formaction), norme GSM 03.38 (déjà dans `sms/segments.py`).
+- [x] Types : visite de logement, maintenance, annonce ou événement, vote ou avis, message libre
+- [x] Modèles modifiables par l'équipe (`/equipe/messages/modeles/`), six modèles de départ. Champs `{prénom}`, `{chambre}`, `{date}`, `{début}`, `{fin}` : un champ inconnu est refusé, et le composeur prévient s'il manque une date ou une heure
+- [x] Ciblage par étage, « tout le monde », chambre ou personne ajoutée, et personne retirée. Décompte « notification (gratuit) / SMS / sans moyen de contact », liste des destinataires avec leur canal
+- [x] Version SMS : les caractères français hors de l'alphabet SMS (ê, ç, œ, ’, « ») sont remplacés, ce qui garde 160 caractères par SMS. Alerte quand un caractère (un emoji par exemple) fait encore passer en UCS-2, avec le coût par personne. Longueur du SMS le plus long, et coût total
+- [x] « M'envoyer un test » : notification sur ses appareils, et SMS sur son téléphone si coché (un essai par minute)
+- **Notes** : le composeur enregistre des brouillons ; l'envoi aux résidents, maintenant ou programmé, arrive avec T21. Aperçus calculés pour le premier destinataire.
+- **Revue indépendante (5 nov.)** : rien ne fuit vers les résidents. Corrigé : « Remettre » ne ramenait pas une personne ajoutée par son nom ; quand le formulaire avait une erreur, le bouton pressé ne faisait rien sans le dire (résumé des erreurs en haut) ; « n° », les traits d'union du téléphone et les ligatures restaient hors de l'alphabet SMS, et un caractère pouvait changer de sens ; une personne ajoutée devenue membre de l'équipe restait destinataire ; Entrée dans un champ lançait « Ajouter » ; un brouillon perdait son lien avec le modèle ; les champs du titre n'étaient ni vérifiés ni remplis ; l'aperçu SMS montre maintenant le plus long ; accords (« recevra », « Voir le destinataire ») ; suppression confirmée ; pas d'essai tant qu'une date ou une heure manque ; nombre de requêtes constant quel que soit le nombre de personnes ajoutées. 547 tests.
 
 #### T21 Envoi programmé et relances
 - **Docs** : [framework de tâches de Django](https://docs.djangoproject.com/en/6.0/topics/tasks/), doc du backend choisi.

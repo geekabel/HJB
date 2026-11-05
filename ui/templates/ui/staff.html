@@ -4,7 +4,7 @@
   Section template for the staff area (desktop, folds down on phones).
   Variables: ``active_nav`` (dashboard, messages, reports, appointments, residents, audit,
   notifications).
-  The "#" links will be replaced by the real pages (cards T20, T26, T31, T35).
+  The "#" links will be replaced by the real pages (cards T26, T31, T35).
 {% endcomment %}
 {% block body_class %}staff-page{% endblock %}
 {% block body %}
@@ -15,7 +15,9 @@
   </div>
   <ul>
     <li><a href="#"{% if active_nav == "dashboard" %} aria-current="page"{% endif %}>Tableau de bord</a></li>
-    <li><a href="#"{% if active_nav == "messages" %} aria-current="page"{% endif %}>Messages</a></li>
+    {% if perms.accounts.send_messages %}
+    <li><a href="{% url 'messaging:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>Messages</a></li>
+    {% endif %}
     <li>
       <a href="#"{% if active_nav == "reports" %} aria-current="page"{% endif %}>Signalements
         {% if reports_to_handle %}<span class="counter">{{ reports_to_handle }}<span class="visually-hidden"> à traiter</span></span>{% endif %}
