@@ -20,5 +20,5 @@
   <p class="compose__text">{{ delivery.body }}</p>
 </article>
 
-{% if asks %}{% include "messaging/_answer.html" with action="" %}{% endif %}
+{% if poll %}{% include "polls/_vote.html" with action="" %}{% elif asks %}{% include "messaging/_answer.html" with action="" %}{% endif %}
 {% endblock %}

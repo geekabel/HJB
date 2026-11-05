@@ -74,6 +74,11 @@ def sms_suffix(campaign_id, user_id):
     return f" Présent ou absent ? Répondez : {reply_url(campaign_id, user_id)}"
 
 
+def vote_sms_suffix(campaign_id, user_id):
+    """Added to the SMS of a vote (card T25): the same personal link."""
+    return f" Votez ici : {reply_url(campaign_id, user_id)}"
+
+
 def closes_at(campaign):
     """Answers are taken until the evening of the event (or 7 days without a date)."""
     if campaign.event_date:

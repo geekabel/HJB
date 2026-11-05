@@ -1414,6 +1414,22 @@
     flex: 1 1 16rem;
   }
 
+  /* Vote fields of the composer (card T25): only for a "Vote, avis" message */
+  .compose__poll {
+    display: none;
+  }
+
+  .compose:has(input[name="type"][value="vote"]:checked) .compose__poll {
+    display: flex;
+  }
+
+  /* Results of a vote (card T25) */
+  .poll-result__meter {
+    display: block;
+    width: 100%;
+    height: 0.75rem;
+  }
+
   /* Answer "Présent" / "Absent" (card T22): two big buttons side by side */
   .answer {
     display: grid;

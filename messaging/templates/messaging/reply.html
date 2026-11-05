@@ -10,6 +10,6 @@
   <p class="compose__text">{{ delivery.body }}</p>
 </article>
 
-{% include "messaging/_answer.html" with action="" %}
+{% if poll %}{% include "polls/_vote.html" with action="" %}{% else %}{% include "messaging/_answer.html" with action="" %}{% endif %}
 {% endblock %}
 {% block nav %}{% endblock %}

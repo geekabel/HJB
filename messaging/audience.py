@@ -110,12 +110,14 @@ def rendered(campaign, recipient):
     A message that asks for an answer ends its SMS with the personal reply link
     (card T22): it counts in the length, so it is in the previews and costs too.
     """
-    from .models import ReplyType
-    from .replies import sms_suffix
+    from .models import MessageType, ReplyType
+    from .replies import sms_suffix, vote_sms_suffix
 
     values = values_for(campaign, recipient.user, recipient.room)
     sms = sms_text(fill(campaign.sms_body or campaign.body, values))
-    if campaign.reply_type == ReplyType.ATTENDANCE:
-        user_id = recipient.user.pk if recipient.user else 0
-        sms += sms_suffix(campaign.pk or 0, user_id or 0)
+    user_id = (recipient.user.pk if recipient.user else 0) or 0
+    if campaign.type == MessageType.VOTE:
+        sms += vote_sms_suffix(campaign.pk or 0, user_id)  # card T25
+    elif campaign.reply_type == ReplyType.ATTENDANCE:
+        sms += sms_suffix(campaign.pk or 0, user_id)
     return fill(campaign.body, values), sms

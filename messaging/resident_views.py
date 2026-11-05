@@ -4,6 +4,7 @@
   session: the signed link is the proof. A GET only shows the page (SMS apps
   open links to make a preview); only the buttons (POST) record an answer.
 - message(): one message in the application, with the same buttons.
+- For a vote (card T25), both pages show the choices instead of the buttons.
 - inbox_list(): the inbox, by kind; read_all() marks every message as read.
 """
 
@@ -20,6 +21,8 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 
 from access.session_policy import is_resident
 from accounts.models import User
+from polls import services as polls
+from polls.services import VoteRefused, poll_of
 
 from . import inbox, replies
 from .models import AttendanceReply, Campaign, Delivery
@@ -31,6 +34,7 @@ THANKS = {
 
 
 INVALID = "Choisissez « Présent » ou « Absent »."
+VOTE_THANKS = "Merci, votre vote est enregistré. Il reste anonyme."
 PER_PAGE = 20
 
 
@@ -63,6 +67,9 @@ def reply(request, token):
     delivery = _delivery(campaign, resident) if campaign and resident else None
     if delivery is None:
         raise Http404
+    poll = poll_of(campaign)
+    if poll is not None:
+        return _vote_by_link(request, campaign, delivery, poll, resident)
     is_open = replies.is_open(campaign)
     thanks = error = ""
     status = 200
@@ -97,6 +104,37 @@ def reply(request, token):
     )
 
 
+def _vote_by_link(request, campaign, delivery, poll, resident):
+    thanks = error = ""
+    status = 200
+    if request.method == "POST":
+        try:
+            polls.vote(poll, resident, request.POST.get("option"), request.POST.get("comment"))
+        except VoteRefused as refused:
+            error = str(refused)
+            status = 400 if polls.is_open(poll) else 409
+        else:
+            thanks = VOTE_THANKS
+        if delivery.read_at is None:
+            Delivery.objects.filter(pk=delivery.pk).update(read_at=timezone.now())
+    return _private(
+        render(
+            request,
+            "messaging/reply.html",
+            {
+                "campaign": campaign,
+                "delivery": delivery,
+                "poll": poll,
+                "voted": polls.has_voted(poll, resident),
+                "open": polls.is_open(poll),
+                "thanks": thanks,
+                "error": error,
+            },
+            status=status,
+        )
+    )
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def message(request, pk):
@@ -105,7 +143,14 @@ def message(request, pk):
     delivery = inbox.received(request.user).filter(campaign=campaign).first()
     if delivery is None:
         raise Http404
+    poll = poll_of(campaign)
     is_open = replies.is_open(campaign)
+    if request.method == "POST" and poll is not None:
+        try:
+            polls.vote(poll, request.user, request.POST.get("option"), request.POST.get("comment"))
+        except VoteRefused as refused:
+            messages.warning(request, str(refused))
+        return redirect("inbox:message", pk=campaign.pk)
     if request.method == "POST":
         answer = request.POST.get("answer", "")
         if not is_open:
@@ -131,6 +176,9 @@ def message(request, pk):
             "asks": campaign.reply_type == "attendance",
             "closed": not is_open,
             "closes_at": replies.closes_at(campaign),
+            "poll": poll,
+            "voted": poll is not None and polls.has_voted(poll, request.user),
+            "open": poll is not None and polls.is_open(poll),
         },
     )
     add_never_cache_headers(response)

@@ -41,9 +41,11 @@
       <a class="inbox__title" href="{% url 'inbox:message' item.campaign.pk %}">{% if item.unread %}<span class="visually-hidden">Non lu&nbsp;: </span>{% endif %}{{ item.delivery.title }}</a>
       {% if item.when %}<time class="inbox__when" datetime="{{ item.when|date:'Y-m-d\TH:i:sO' }}"><span aria-hidden="true">{{ item.when|short_when }}</span><span class="visually-hidden">{{ item.when|date:"l j F Y à H:i" }}</span></time>{% endif %}
     </p>
-    <p class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}</p>
+    <p class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}{% if item.poll.closes_at %}{% if item.poll_open %} · clôture le {{ item.poll.closes_at|date:"j F à H:i" }}{% else %} · vote clos{% endif %}{% endif %}</p>
     <p class="inbox__excerpt">{{ item.delivery.body|truncatechars:160 }}</p>
     {% if item.waiting %}<p class="inbox__status">Réponse attendue</p>
+    {% elif item.vote_waiting %}<p class="inbox__status">Vote attendu</p>
+    {% elif item.voted %}<p class="inbox__answer">Vous avez voté</p>
     {% elif item.answer %}<p class="inbox__answer">Votre réponse&nbsp;: {{ item.answer_label }}</p>{% endif %}
   </li>
   {% endfor %}

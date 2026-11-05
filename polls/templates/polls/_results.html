@@ -1,0 +1,40 @@
+{% load icons %}
+{% comment %}
+Results of a vote for the staff (card T25). Variables: poll, results, reached
+(people who got the message).
+{% endcomment %}
+<section class="stack" aria-labelledby="results-title">
+  <h2 id="results-title">Vote</h2>
+  <div class="grid-auto">
+    <div class="card stat"><span class="text-muted text-small">Votants</span><span class="stat__value">{{ results.voters }}</span><span class="text-muted text-small">sur {{ reached }} personne{{ reached|pluralize }} jointe{{ reached|pluralize }}</span></div>
+    <div class="card stat"><span class="text-muted text-small">Clôture</span><span class="stat__value stat__value--text"><time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"j F à H:i" }}</time></span></div>
+  </div>
+  {% if results.shown %}
+  <div class="card stack">
+    <h3>Résultats</h3>
+    <ul class="plain-list stack">
+      {% for label, votes, percent in results.options %}
+      <li class="poll-result">
+        <span class="row row--between"><span>{{ label }}</span><strong>{{ votes }} voix · {{ percent }} %</strong></span>
+        <meter class="poll-result__meter" min="0" max="100" value="{{ percent }}" aria-hidden="true">{{ percent }} %</meter>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% if results.comments %}
+  <div class="card stack">
+    <h3>Commentaires ({{ results.comments|length }})</h3>
+    <p class="text-muted text-small">Sans nom, dans un ordre au hasard.</p>
+    <ul class="bullet-list">
+      {% for comment in results.comments %}<li class="compose__text">{{ comment }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% elif results.voters and poll.closes_at and results.voters < min_voters and closed %}
+  <p class="alert alert--info">{% icon "info" %}<span>Moins de {{ min_voters }} votants : les résultats ne sont pas affichés, ils montreraient le choix de chacun.</span></p>
+  {% elif not closed %}
+  <p class="alert alert--info">{% icon "lock" %}<span>Les résultats et les commentaires s'affichent après la clôture. Avant, voir les voix qui arrivent une à une permettrait de deviner qui a voté quoi.</span></p>
+  {% else %}
+  <p class="alert alert--info">{% icon "info" %}<span>Personne n'a voté.</span></p>
+  {% endif %}
+</section>

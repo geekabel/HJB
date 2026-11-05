@@ -16,6 +16,11 @@ from django.views.decorators.http import require_POST
 
 from accounts.models import User
 from housing.models import Room
+from polls.forms import PollForm
+from polls.models import Poll
+from polls.services import MIN_VOTERS_FOR_RESULTS, poll_of, set_options
+from polls.services import is_closed as poll_closed
+from polls.services import results as poll_results
 from sms.segments import analyze
 from sms.service import MAX_SEGMENTS
 
@@ -89,7 +94,7 @@ def _added(campaign):
     return list(campaign.rooms.all()), list(campaign.people.all()), list(campaign.excluded.all())
 
 
-def _compose_page(request, form, campaign):
+def _compose_page(request, form, campaign, poll_form=None):
     audience_ = audience(campaign) if campaign.pk else None
     sample = sample_recipient(campaign, request.user, audience_) if campaign.pk else None
     context = {
@@ -99,6 +104,7 @@ def _compose_page(request, form, campaign):
         "templates": MessageTemplate.objects.all(),
         "types": MessageType,
         "fields": FIELDS,
+        "poll_form": poll_form or PollForm(poll=poll_of(campaign)),
     }
     if campaign.pk:
         rooms, people, excluded = _added(campaign)
@@ -150,8 +156,12 @@ def compose(request, pk=None):
         return _compose_page(request, CampaignForm(instance=campaign), campaign)
 
     form = CampaignForm(request.POST, instance=campaign)
-    if not form.is_valid():
-        return _compose_page(request, form, campaign)
+    poll_form = PollForm(request.POST)
+    is_vote = request.POST.get("type") == MessageType.VOTE
+    if not form.is_valid() or (is_vote and not poll_form.is_valid()):
+        if not is_vote:
+            poll_form = None
+        return _compose_page(request, form, campaign, poll_form)
     with transaction.atomic():
         # Confirmed in another tab meanwhile: a late save must not turn it back into a draft.
         if (
@@ -165,11 +175,24 @@ def compose(request, pk=None):
             )
             return redirect("messaging:tracking", pk=campaign.pk)
         campaign = form.save()
+        _save_poll(campaign, poll_form if is_vote else None)
     action = request.POST.get("action", "save")
     done = _apply(request, campaign, action, form.cleaned_data.get("add", ""))
     if done is not None:
         return done
     return redirect("messaging:compose", pk=campaign.pk)
+
+
+def _save_poll(campaign, poll_form):
+    """The poll of a vote (card T25); no poll for the other types."""
+    if poll_form is None:
+        Poll.objects.filter(campaign=campaign).delete()
+        return
+    poll, _ = Poll.objects.get_or_create(campaign=campaign)
+    poll.closes_at = poll_form.cleaned_data["closes_at"]
+    poll.allow_comment = poll_form.cleaned_data["allow_comment"]
+    poll.save()
+    set_options(poll, poll_form.cleaned_data["options"])
 
 
 def _apply(request, campaign, action, add):
@@ -252,6 +275,7 @@ def review(request, pk):
             "campaign": campaign,
             "send_at": campaign.send_at,
             "remind_at": sending.reminder_time(campaign),
+            "poll": poll_of(campaign),
             "audience": audience_,
             "sms": sms,
             # Until residents can answer (card T22), the reminder goes to everyone reached.
@@ -271,6 +295,19 @@ def tracking(request, pk):
     deliveries = campaign.deliveries.select_related("recipient").order_by(
         "kind", "room_number", "recipient__last_name"
     )
+    poll = poll_of(campaign)
+    vote = None
+    if poll is not None:
+        vote = {
+            "poll": poll,
+            "results": poll_results(poll),
+            "closed": poll_closed(poll),
+            "min_voters": MIN_VOTERS_FOR_RESULTS,
+            "reached": campaign.deliveries.filter(
+                kind=Delivery.Kind.MESSAGE, status=Delivery.Status.SENT
+            ).count(),
+            "voters": set(poll.participations.values_list("resident_id", flat=True)),
+        }
     return render(
         request,
         "messaging/tracking.html",
@@ -284,6 +321,7 @@ def tracking(request, pk):
             "answers": replies.counts(campaign) if campaign.reply_type == "attendance" else None,
             "receipts": receipts.summary(campaign),
             "to_warn": receipts.to_warn(campaign),
+            "vote": vote,
             "audience": audience(campaign)
             if campaign.status == Campaign.Status.SCHEDULED
             else None,

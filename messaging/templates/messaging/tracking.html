@@ -54,6 +54,7 @@
   </div>
 </section>
 {% endif %}
+{% if vote %}{% include "polls/_results.html" with poll=vote.poll results=vote.results closed=vote.closed min_voters=vote.min_voters reached=vote.reached %}{% endif %}
 {% if answers %}
 <section class="stack" aria-labelledby="answers-title">
   <h2 id="answers-title">Réponses</h2>
@@ -89,6 +90,7 @@
         <th scope="col">Canal</th>
         <th scope="col">État</th>
         {% if answers %}<th scope="col">Réponse</th>{% endif %}
+        {% if vote %}<th scope="col">Vote</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -100,6 +102,7 @@
         <td>{{ delivery.get_channel_display }}</td>
         <td>{% if delivery.status == "sent" and delivery.receipt %}{% include "messaging/_receipt.html" %}{% elif delivery.status == "sent" %}<span class="badge badge--success">Envoyé</span>{% elif delivery.status == "failed" %}<span class="badge badge--error">Échec</span> <span class="text-small">{{ delivery.error }}</span>{% else %}<span class="badge badge--info">{{ delivery.get_status_display }}</span>{% endif %}</td>
         {% if answers %}<td>{% if delivery.kind == "message" %}{% with answer=answers.answers|get_item:delivery.recipient_id %}{% if answer == "present" %}<span class="badge badge--success">Présent</span>{% elif answer == "absent" %}<span class="badge badge--neutral">Absent</span>{% else %}<span class="text-muted">–</span>{% endif %}{% endwith %}{% endif %}</td>{% endif %}
+        {% if vote %}<td>{% if delivery.kind == "message" and delivery.recipient_id in vote.voters %}<span class="badge badge--success">A voté</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>

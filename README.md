@@ -134,6 +134,12 @@ Exemple de lignes cron, avec le fichier d'environnement du service et `flock` po
 Le chemin, le fichier d'environnement et le service du *worker* seront fixés avec le déploiement (T38). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
 
 
+## Votes anonymes
+
+Un message de type « Vote, avis » porte un vote : la question est son titre, avec 2 à 6 choix et une heure de clôture. Les résidents votent dans l'application ou par le lien personnel du SMS. L'équipe voit qui a voté, jamais pour quoi : aucune ligne n'est créée par vote (chaque choix garde un compteur), les commentaires n'ont ni nom, ni date, ni ordre, et la participation ne garde que le jour. Les résultats et les commentaires s'affichent après la clôture, et seulement à partir de 3 votants : avant, voir les voix arriver une à une permettrait de deviner les choix. La relance, si elle est cochée, part 24 h avant la clôture vers ceux qui n'ont pas voté.
+
+Limite connue : une personne qui a accès à la base de données et la copie après chaque vote peut, en comparant les copies, retrouver un choix. Cela demande un accès au serveur.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :
