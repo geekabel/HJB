@@ -84,7 +84,7 @@ class FormulaireResident(forms.ModelForm):
         else:
             self.initial.setdefault("arrivee", timezone.localdate())
         self.fields["chambre"].queryset = Chambre.objects.filter(proposees).select_related("etage")
-        if self.instance.pk and not self.instance.is_active:
+        if self.instance.pk and not self.instance.is_active and not self.sejour:
             # Ancien résident : on garde son identité à jour, sans le reloger ici.
             del self.fields["chambre"]
             del self.fields["arrivee"]
@@ -121,7 +121,17 @@ class FormulaireResident(forms.ModelForm):
             resident.username = nom_utilisateur_libre(resident.first_name, resident.last_name)
             # Les résidents se connectent par clé d'accès, jamais par mot de passe.
             resident.set_unusable_password()
-        resident.save()
+            resident.save()
+        else:
+            # Verrou sur la ligne : un départ enregistré au même moment passe avant
+            # ou après, jamais au milieu. On n'écrit que les champs du formulaire,
+            # pour ne pas rétablir un compte désactivé entre-temps.
+            en_base = User.objects.select_for_update().get(pk=resident.pk)
+            if "chambre" in self.fields and not en_base.is_active:
+                raise ValidationError(
+                    "Le départ de cette personne vient d'être enregistré. Rechargez la fiche."
+                )
+            resident.save(update_fields=list(self._meta.fields))
         chambre, arrivee = self.cleaned_data.get("chambre"), self.cleaned_data.get("arrivee")
         if chambre is None:
             return resident

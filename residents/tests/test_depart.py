@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -13,7 +14,12 @@ from journal.models import Action, EntreeJournal
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
 from outils.capture_html import enregistrer_page
-from residents.depart import depart_enregistre, enregistrer_depart, fermer_sessions
+from residents.depart import (
+    cles_de_session,
+    depart_enregistre,
+    enregistrer_depart,
+    fermer_sessions,
+)
 
 ARRIVEE = date(2026, 9, 1)
 
@@ -78,8 +84,9 @@ class ServiceTests(DepartTestCase):
     def test_les_sessions_des_autres_restent(self):
         Client().force_login(self.accueil)
         Client().force_login(self.awa)
-        self.assertEqual(fermer_sessions(self.awa), 1)
-        self.assertEqual(fermer_sessions(self.accueil), 2)  # celle du setUp et celle-ci
+        self.assertEqual(fermer_sessions(cles_de_session(self.awa)), 1)
+        self.assertEqual(len(cles_de_session(self.awa)), 0)
+        self.assertEqual(len(cles_de_session(self.accueil)), 2)  # celle du setUp et celle-ci
 
     def test_un_receveur_qui_echoue_annule_tout(self):
         def receveur(sender, **kwargs):
@@ -182,3 +189,88 @@ class ListeApresDepartTests(DepartTestCase):
         self.assertFalse(self.awa.is_active)
         self.assertIsNone(sejour_en_cours(self.awa))
         self.assertEqual(User.objects.get(pk=self.awa.pk).sejours.count(), 1)
+
+
+class RevueTests(DepartTestCase):
+    """Cas trouvés par la relecture indépendante (5 nov.)."""
+
+    def test_une_fiche_ouverte_avant_le_depart_ne_le_defait_pas(self):
+        # Le formulaire est préparé (compte actif), puis le départ passe, puis il est envoyé.
+        from residents.forms import FormulaireResident
+
+        c313 = Chambre.objects.create(numero="313", etage=self.c312.etage)
+        formulaire = FormulaireResident(
+            {
+                "first_name": "Awa",
+                "last_name": "Koné",
+                "telephone": "",
+                "email": "",
+                "chambre": c313.pk,
+                "arrivee": timezone.localdate().isoformat(),
+            },
+            instance=User.objects.get(pk=self.awa.pk),
+        )
+        self.assertTrue(formulaire.is_valid(), formulaire.errors)
+        enregistrer_depart(self.awa, timezone.localdate())
+        with self.assertRaisesMessage(ValidationError, "vient d'être enregistré"):
+            formulaire.enregistrer()
+        self.awa.refresh_from_db()
+        self.assertFalse(self.awa.is_active)
+        self.assertFalse(Sejour.objects.filter(chambre=c313).exists())
+
+    def test_modifier_l_identite_ne_rouvre_pas_le_compte(self):
+        from residents.forms import FormulaireResident
+
+        ancienne = User.objects.get(pk=self.awa.pk)
+        enregistrer_depart(self.awa, timezone.localdate())
+        # Fiche d'un ancien résident (sans champs de chambre) : seule l'identité est écrite.
+        formulaire = FormulaireResident(
+            {"first_name": "Awa", "last_name": "Koné", "telephone": "", "email": "a@exemple.fr"},
+            instance=User.objects.get(pk=self.awa.pk),
+        )
+        self.assertTrue(formulaire.is_valid(), formulaire.errors)
+        formulaire.enregistrer()
+        self.awa.refresh_from_db()
+        self.assertFalse(self.awa.is_active)
+        self.assertNotEqual(self.awa.password, ancienne.password)
+
+    def test_compte_desactive_ailleurs_mais_encore_loge(self):
+        User.objects.filter(pk=self.awa.pk).update(is_active=False)
+        # Toujours dans la liste, et son départ peut libérer la chambre.
+        reponse = self.client.get(reverse("residents:liste"))
+        self.assertEqual([r.username for r in reponse.context["page_obj"]], ["awa.kone"])
+        reponse = self.client.get(self.url())
+        self.assertEqual(reponse.status_code, 200)
+        self.client.post(self.url(), {"depart": timezone.localdate().isoformat()})
+        self.assertIn(self.c312, Chambre.objects.libres())
+
+    def test_double_depart(self):
+        copie = User.objects.get(pk=self.awa.pk)
+        enregistrer_depart(self.awa, timezone.localdate())
+        with self.assertRaisesMessage(ValidationError, "déjà enregistré"):
+            enregistrer_depart(copie, timezone.localdate())
+        self.assertEqual(EntreeJournal.objects.count(), 1)
+
+    def test_comptes_d_administration_jamais_residents(self):
+        chef = User.objects.create_superuser("chef", password="x")
+        chef.groups.clear()  # même sans groupe
+        technicien = User.objects.create_user("tech", is_staff=True)
+        residents = set(User.objects.residents().values_list("username", flat=True))
+        self.assertNotIn("chef", residents)
+        self.assertNotIn("tech", residents)
+        self.assertEqual(
+            self.client.get(reverse("residents:depart", args=[chef.pk])).status_code, 404
+        )
+        self.assertEqual(
+            self.client.get(reverse("residents:depart", args=[technicien.pk])).status_code, 404
+        )
+
+    def test_educateurs_ne_voient_pas_les_anciens_residents(self):
+        enregistrer_depart(self.awa, timezone.localdate())
+        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        reponse = self.client.get(reverse("residents:liste"), {"compte": "desactive"})
+        self.assertEqual(list(reponse.context["page_obj"]), [])
+        self.assertNotContains(reponse, "ancien résident")
+        self.assertNotContains(reponse, 'value="desactive"')
+        reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
+        self.assertEqual(reponse.status_code, 404)
