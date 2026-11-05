@@ -99,7 +99,7 @@ class SmsGateTests(SimpleTestCase):
     @mock.patch("sms.providers.smsgate.requests.post")
     def test_read_timeout(self, post):
         post.side_effect = requests.ReadTimeout("slow")
-        with self.assertRaisesMessage(SendError, "did not respond in time") as ctx:
+        with self.assertRaisesMessage(SendError, "n'a pas répondu à temps") as ctx:
             self.provider().send(NUMBER, "Bonjour")
         self.assertTrue(ctx.exception.uncertain)
         self.assertFalse(ctx.exception.temporary)
@@ -111,20 +111,20 @@ class SmsGateTests(SimpleTestCase):
     @mock.patch("sms.providers.smsgate.requests.post")
     def test_phone_unreachable(self, post):
         post.side_effect = requests.ConnectionError("refused")
-        with self.assertRaisesMessage(SendError, "unreachable") as ctx:
+        with self.assertRaisesMessage(SendError, "injoignable") as ctx:
             self.provider().send(NUMBER, "Bonjour")
         self.assertTrue(ctx.exception.temporary)
 
     def test_missing_options(self):
         self.assertEqual(
             SmsGateProvider().missing_options(),
-            ["url", "token (or username and password)"],
+            ["url", "token (ou username et password)"],
         )
         self.assertEqual(self.provider().missing_options(), [])
         self.assertEqual(SmsGateProvider(url="u", token="j").missing_options(), [])
         self.assertEqual(
             SmsGateProvider(url="u", token="j", sim="SIM1").missing_options(),
-            ["sim (1, 2 or 3)"],
+            ["sim (1, 2 ou 3)"],
         )
 
 
@@ -182,7 +182,7 @@ class OvhTests(SimpleTestCase):
     @mock.patch("ovh.Client")
     def test_number_refused(self, client):
         client.return_value.post.return_value = {"ids": [], "invalidReceivers": [NUMBER]}
-        with self.assertRaisesMessage(SendError, "refused this number") as ctx:
+        with self.assertRaisesMessage(SendError, "a refusé ce numéro") as ctx:
             self.provider().send(NUMBER, "Bonjour")
         self.assertFalse(ctx.exception.temporary)
 

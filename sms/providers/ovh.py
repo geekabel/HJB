@@ -32,7 +32,7 @@ class OvhProvider(SmsProvider):
                 timeout=float(self.options.get("timeout", 10)),
             )
         except ovh.exceptions.APIError as error:  # unknown region, inconsistent keys
-            raise ConfigurationError(f"Invalid OVHcloud configuration: {error}") from error
+            raise ConfigurationError(f"Configuration OVHcloud invalide : {error}") from error
 
     def send(self, number, text):
         from ovh import exceptions
@@ -55,23 +55,23 @@ class OvhProvider(SmsProvider):
             # The library wraps the requests error (2nd argument).
             cause = error.args[1] if len(error.args) > 1 else None
             if isinstance(cause, requests.ConnectionError):
-                raise SendError("OVHcloud is unreachable.", temporary=True) from error
+                raise SendError("OVHcloud est injoignable.", temporary=True) from error
             raise SendError(
-                "OVHcloud did not respond in time: the SMS may have been sent.", uncertain=True
+                "OVHcloud n'a pas répondu à temps : le SMS est peut-être parti.", uncertain=True
             ) from error
         except (exceptions.NetworkError, exceptions.InvalidResponse) as error:
             raise SendError(
-                "Unreadable OVHcloud response: the SMS may have been sent.", uncertain=True
+                "Réponse d'OVHcloud illisible : le SMS est peut-être parti.", uncertain=True
             ) from error
         except exceptions.APIError as error:
             status = getattr(getattr(error, "response", None), "status_code", 0) or 0
             raise SendError(
-                f"OVHcloud refused the sending: {error}",
+                f"OVHcloud a refusé l'envoi : {error}",
                 temporary=status == 429 or status >= 500,
             ) from error
 
         if not isinstance(response, dict):
-            raise SendError("Unexpected OVHcloud response.", uncertain=True)
+            raise SendError("Réponse d'OVHcloud inattendue.", uncertain=True)
         if response.get("invalidReceivers") or not response.get("ids"):
-            raise SendError("OVHcloud refused this number.", temporary=False)
+            raise SendError("OVHcloud a refusé ce numéro.", temporary=False)
         return SendResult(self.name, str(response["ids"][0]))

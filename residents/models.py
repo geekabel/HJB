@@ -9,7 +9,7 @@ class ResidentImport(models.Model):
     preview, can only create the residents once.
     """
 
-    token = models.CharField(max_length=43, unique=True, editable=False)
+    token = models.CharField("jeton", max_length=43, unique=True, editable=False)
     imported_at = models.DateTimeField("importé le", auto_now_add=True)
     imported_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

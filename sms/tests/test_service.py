@@ -29,12 +29,12 @@ class ServiceTests(SimpleTestCase):
 
     def test_refused_before_sending(self):
         cases = [
-            ("06 12 34 56 78", "Bonjour", "international format"),
+            ("06 12 34 56 78", "Bonjour", "format international"),
             # Correct E.164 shape, but the number does not exist or is a landline: refused early.
-            ("+999999999", "Bonjour", "mobile number in international format"),
-            ("+33123456789", "Bonjour", "mobile number in international format"),
-            (NUMBER, "   ", "empty"),
-            (NUMBER, "a" * (153 * MAX_SEGMENTS + 1), "too long"),
+            ("+999999999", "Bonjour", "portable au format international"),
+            ("+33123456789", "Bonjour", "portable au format international"),
+            (NUMBER, "   ", "vide"),
+            (NUMBER, "a" * (153 * MAX_SEGMENTS + 1), "trop long"),
         ]
         for number, text, excerpt in cases:
             with self.subTest(excerpt), self.assertRaisesMessage(SmsError, excerpt) as ctx:
@@ -63,7 +63,7 @@ class ServiceTests(SimpleTestCase):
 
     @override_settings(SMS={"BACKEND": "sms.providers.ovh.OvhProvider", "OPTIONS": {}})
     def test_incomplete_provider(self):
-        with self.assertRaisesMessage(ConfigurationError, "missing options"):
+        with self.assertRaisesMessage(ConfigurationError, "options manquantes"):
             send_sms(NUMBER, "Bonjour")
 
     @override_settings(SMS={"BACKEND": "sms.nonexistent.Provider"})

@@ -28,7 +28,7 @@ def active_provider():
     try:
         provider_class = import_string(setting["BACKEND"])
     except (KeyError, ImportError) as error:
-        raise ConfigurationError(f"Invalid SMS setting: {error}") from error
+        raise ConfigurationError(f"Réglage SMS invalide : {error}") from error
     return provider_class(**setting.get("OPTIONS", {}))
 
 
@@ -45,19 +45,19 @@ def send_sms(number, text):
     except ValidationError:
         valid = False
     if not valid:
-        raise SendError("The number is not a mobile number in international format.")
+        raise SendError("Le numéro n'est pas un portable au format international.")
     text = (text or "").strip()
     if not text:
-        raise SendError("The message is empty.")
+        raise SendError("Le message est vide.")
     info = analyze(text)
     if info.segments > MAX_SEGMENTS:
-        raise SendError(f"The message is too long ({info.segments} SMS, {MAX_SEGMENTS} at most).")
+        raise SendError(f"Le message est trop long ({info.segments} SMS, {MAX_SEGMENTS} au plus).")
 
     provider = active_provider()
     missing = provider.missing_options()
     if missing:
         raise ConfigurationError(
-            f"Provider {provider.name}: missing options ({', '.join(missing)})."
+            f"Fournisseur {provider.name} : options manquantes ({', '.join(missing)})."
         )
     # Logs never contain the full number or the text.
     try:

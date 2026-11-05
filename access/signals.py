@@ -11,7 +11,7 @@ from django_otp_webauthn.utils import get_credential_model
 from accounts.sessions import close_all
 
 
-def remove_keys_on_departure(sender, resident, **kwargs):
+def remove_passkeys_on_departure(sender, resident, **kwargs):
     """Called inside the departure transaction. The passkey count goes to the audit log."""
     passkeys = get_credential_model().objects.filter(user=resident)
     count = passkeys.count()

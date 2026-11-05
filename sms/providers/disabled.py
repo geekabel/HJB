@@ -12,4 +12,6 @@ class DisabledProvider(SmsProvider):
     name = "disabled"
 
     def send(self, number, text):
-        raise ConfigurationError("No SMS provider is configured (DJANGO_SMS_PROVIDER variable).")
+        raise ConfigurationError(
+            "Aucun fournisseur de SMS n'est configuré (variable DJANGO_SMS_PROVIDER)."
+        )

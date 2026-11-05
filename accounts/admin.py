@@ -65,7 +65,7 @@ class HJBUserAdmin(UserAdmin):
     form = HJBUserChangeForm
     add_form = HJBUserCreationForm
 
-    list_display = ("username", "first_name", "last_name", "roles_label", "is_active")
+    list_display = ("username", "first_name", "last_name", "roles_column", "is_active")
     list_filter = ("groups", "is_active", "is_staff")
     search_fields = ("username", "first_name", "last_name", "email", "phone")
 
@@ -104,7 +104,7 @@ class HJBUserAdmin(UserAdmin):
                 {
                     **options,
                     "fields": tuple(
-                        "roles_label" if field == "roles" else field for field in options["fields"]
+                        "roles_column" if field == "roles" else field for field in options["fields"]
                     ),
                 },
             )
@@ -114,12 +114,12 @@ class HJBUserAdmin(UserAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if not self.has_manage_roles_permission(request):
-            readonly += ["roles_label", "is_staff"]
+            readonly += ["roles_column", "is_staff"]
         if not request.user.is_superuser:
             readonly.append("is_superuser")
         return readonly
 
-    actions = ("generate_staff_code",)
+    actions = ("issue_staff_code",)
 
     def has_manage_roles_permission(self, request):
         return request.user.has_perm("accounts.manage_roles")
@@ -127,7 +127,7 @@ class HJBUserAdmin(UserAdmin):
     @admin.action(
         description="Générer un code d'activation (personnel)", permissions=["manage_roles"]
     )
-    def generate_staff_code(self, request, queryset):
+    def issue_staff_code(self, request, queryset):
         """First access of a staff member: code, SMS, then passkey (T14).
 
         Residents get their code at the front desk, from their profile page.
@@ -163,7 +163,7 @@ class HJBUserAdmin(UserAdmin):
         return activation_sheet(request, person, code, back_url)
 
     @admin.display(description="rôles")
-    def roles_label(self, obj):
+    def roles_column(self, obj):
         return obj.roles_label
 
     def save_related(self, request, form, formsets, change):

@@ -35,7 +35,7 @@ class AdminActionTests(TestCase):
     def run_action(self, *accounts):
         return self.client.post(
             USER_LIST,
-            {"action": "generate_staff_code", "_selected_action": [a.pk for a in accounts]},
+            {"action": "issue_staff_code", "_selected_action": [a.pk for a in accounts]},
             follow=True,
         )
 
@@ -72,10 +72,10 @@ class AdminActionTests(TestCase):
         client = Client()
         log_in_verified(client, technician)
         self.assertEqual(client.get(USER_LIST).status_code, 200)
-        self.assertNotContains(client.get(USER_LIST), "generate_staff_code")
+        self.assertNotContains(client.get(USER_LIST), "issue_staff_code")
         client.post(
             USER_LIST,
-            {"action": "generate_staff_code", "_selected_action": [self.samia.pk]},
+            {"action": "issue_staff_code", "_selected_action": [self.samia.pk]},
         )
         self.assertFalse(ActivationCode.objects.exists())
 
@@ -141,7 +141,7 @@ class RightsReviewTests(TestCase):
         log_in_verified(self.client, self.ali)
         response = self.client.post(
             USER_LIST,
-            {"action": "generate_staff_code", "_selected_action": [self.marie.pk]},
+            {"action": "issue_staff_code", "_selected_action": [self.marie.pk]},
             follow=True,
         )
         self.assertContains(response, "Seul un super-utilisateur")

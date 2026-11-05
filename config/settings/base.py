@@ -201,7 +201,7 @@ def sms_setting(default):
     choice = os.environ.get("DJANGO_SMS_PROVIDER") or default
     if choice not in SMS_PROVIDERS:
         raise ImproperlyConfigured(
-            f"DJANGO_SMS_PROVIDER={choice!r}: possible values {', '.join(SMS_PROVIDERS)}."
+            f"DJANGO_SMS_PROVIDER={choice!r} : valeurs possibles {', '.join(SMS_PROVIDERS)}."
         )
     backend, variables = SMS_PROVIDERS[choice]
     return {

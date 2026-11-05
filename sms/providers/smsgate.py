@@ -23,9 +23,9 @@ class SmsGateProvider(SmsProvider):
         missing = super().missing_options()
         credentials = self.options.get("username") and self.options.get("password")
         if not (self.options.get("token") or credentials):
-            missing.append("token (or username and password)")
+            missing.append("token (ou username et password)")
         if self.options.get("sim") and str(self.options["sim"]) not in {"1", "2", "3"}:
-            missing.append("sim (1, 2 or 3)")
+            missing.append("sim (1, 2 ou 3)")
         return missing
 
     def send(self, number, text):
@@ -49,22 +49,24 @@ class SmsGateProvider(SmsProvider):
         except requests.ConnectionError as error:
             # Connection failed (including connect timeout): nothing was sent.
             raise SendError(
-                f"SMSGate is unreachable ({type(error).__name__}).", temporary=True
+                f"SMSGate est injoignable ({type(error).__name__}).", temporary=True
             ) from error
         except requests.RequestException as error:
             # Read timeout or cut response: the SMS may have been sent.
             raise SendError(
-                f"SMSGate did not respond in time ({type(error).__name__}).", uncertain=True
+                f"SMSGate n'a pas répondu à temps ({type(error).__name__}).", uncertain=True
             ) from error
 
         data = _json(response)
         if 200 <= response.status_code < 300:
             if data.get("id"):
                 return SendResult(self.name, str(data["id"]))
-            raise SendError("SMSGate accepted the message without giving its id.", uncertain=True)
+            raise SendError(
+                "SMSGate a accepté le message sans donner son identifiant.", uncertain=True
+            )
         detail = data.get("message", "")
         raise SendError(
-            f"SMSGate refused the sending (code {response.status_code}). {detail}".strip(),
+            f"SMSGate a refusé l'envoi (code {response.status_code}). {detail}".strip(),
             temporary=response.status_code in TEMPORARY_CODES,
         )
 

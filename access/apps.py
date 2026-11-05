@@ -13,9 +13,11 @@ class AccessConfig(AppConfig):
         from residents.departure import departure_recorded
 
         from . import checks  # noqa: F401 (registers the checks)
-        from .signals import close_sessions_after_delete, remove_keys_on_departure
+        from .signals import close_sessions_after_delete, remove_passkeys_on_departure
 
-        departure_recorded.connect(remove_keys_on_departure, dispatch_uid="access.remove_keys")
+        departure_recorded.connect(
+            remove_passkeys_on_departure, dispatch_uid="access.remove_passkeys"
+        )
         # A deleted passkey closes the sessions of its account.
         post_delete.connect(
             close_sessions_after_delete,

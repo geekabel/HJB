@@ -165,8 +165,13 @@ class ActivationCode(models.Model):
     (see accounts/activation_codes.py). It works only once and expires after 72 h.
     """
 
-    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="activation_codes")
-    digest = models.CharField(max_length=64, unique=True, editable=False)
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="activation_codes",
+        verbose_name="utilisateur",
+    )
+    digest = models.CharField("empreinte", max_length=64, unique=True, editable=False)
     created_by = models.ForeignKey(
         "User", on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="créé par"
     )
@@ -196,8 +201,8 @@ class ActivationCode(models.Model):
 class ActivationFailure(models.Model):
     """Entry of an unknown activation code: used to limit attempts per address."""
 
-    ip_address = models.GenericIPAddressField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip_address = models.GenericIPAddressField("adresse IP", null=True)
+    created_at = models.DateTimeField("créé le", auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name = "échec d'activation"
@@ -213,12 +218,17 @@ class PhoneVerification(models.Model):
     Only the HMAC digest of the code is kept. Valid for 10 minutes, 5 attempts.
     """
 
-    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="phone_verifications")
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="phone_verifications",
+        verbose_name="utilisateur",
+    )
     phone = models.CharField("numéro", max_length=16)
-    digest = models.CharField(max_length=64, editable=False)
+    digest = models.CharField("empreinte", max_length=64, editable=False)
     created_at = models.DateTimeField("envoyé le", auto_now_add=True, db_index=True)
     expires_at = models.DateTimeField("expire le")
-    attempts = models.PositiveSmallIntegerField(default=0)
+    attempts = models.PositiveSmallIntegerField("tentatives", default=0)
     verified_at = models.DateTimeField("vérifié le", null=True, blank=True)
 
     class Meta:
