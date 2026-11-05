@@ -9,15 +9,30 @@ Elle permet à l'équipe de prévenir les résidents (visites de logement, maint
 
 ## Prérequis
 
-- Python 3.12 ou plus (développé avec 3.13)
+- Python 3.12 ou plus (développé avec 3.13). Django 6.1 refuse les versions plus anciennes.
 - SQLite 3.37 ou plus en local
+
+Vérifier la version de Python :
+
+```sh
+python3 --version
+```
+
+Si elle est plus ancienne que 3.12 (Ubuntu 22.04 fournit 3.10), pip échoue avec `Could not find a version that satisfies the requirement Django==6.1.3`. Il faut alors installer un Python plus récent, sans toucher à celui du système. Deux façons :
+
+- avec [uv](https://docs.astral.sh/uv/guides/install-python/) : `uv python install 3.13`, puis remplacer `python3.13 -m venv .venv` ci-dessous par `uv venv --python 3.13 .venv` ;
+- sur Ubuntu, avec le dépôt [deadsnakes](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) : `sudo add-apt-repository ppa:deadsnakes/ppa`, puis `sudo apt install python3.13 python3.13-venv`.
+
+Le fichier `.python-version` indique la version du projet aux outils qui le lisent (uv, pyenv).
 
 ## Installation en local
 
+Le travail est sur la branche `develop` (la branche `main` recevra les versions publiées) :
+
 ```sh
-git clone https://github.com/geekabel/HJB.git
+git clone -b develop https://github.com/geekabel/HJB.git
 cd HJB
-python3 -m venv .venv
+python3.13 -m venv .venv          # ou python3.12 ; vérifier ensuite : .venv/bin/python --version
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 python manage.py migrate
@@ -25,6 +40,8 @@ python manage.py createsuperuser --noinput --username marie --email ""
 python manage.py activation_code marie --phone "06 12 34 56 78"
 python manage.py runserver
 ```
+
+Si le dossier `.venv` a été créé avec un Python trop ancien, le supprimer (`rm -rf .venv`) avant de le recréer.
 
 Il n'y a aucun mot de passe : le premier administrateur active son compte comme tout le monde. Ouvrez http://localhost:8000/activer/, saisissez le code affiché, puis le code SMS (en développement, il s'affiche dans la console du serveur), et créez votre clé d'accès.
 
