@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
 | T20 | Modèles de message et composeur | E4 Messages | T06, T10 |
 | T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
 | T22 | Réponse Présent ou Absent | E4 Messages | T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T16 | Écran « Mon wifi » du résident | 5 nov. 2026 |
 | T18 | Application installable (PWA) | 5 nov. 2026 |
 | T19 | Notifications Web Push | 5 nov. 2026 |
+| T17 | Rappels d'expiration du wifi | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -336,9 +336,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : une page web ne peut pas lire le nom du réseau du téléphone : l'API NetworkInformation ne donne que le type de connexion et la vitesse, et seulement dans Chrome. Le serveur ne le voit pas non plus. Il pourrait venir du portail captif lui-même, si son logiciel a une API : à voir avec la marque du portail. « Me prévenir avant l'expiration » arrive avec T17, et « prévenir l'accueil » avec les signalements (T30). Copie vérifiée dans Chromium. Captures vérifiées (mobile et ordinateur, clair et sombre).
 - **Revue indépendante (5 nov.)** : aucun moyen de voir l'accès d'une autre chambre (changement de chambre, départ, compte du personnel sans chambre : testés). Corrigé : le mot de passe s'affichait sur une simple visite de l'adresse, donc aussi au retour arrière, au rechargement ou au préchargement du navigateur, avec une entrée de journal à chaque fois (il s'affiche maintenant seulement par le bouton « Afficher ») ; le message « copié » pouvait rester muet pour un lecteur d'écran ; la barre de validité utilisait un style en ligne, qu'une future politique de sécurité du contenu (T37) bloquerait (dessin SVG) ; textes précisés (« A expiré le », bouton « Afficher le mot de passe » pour les lecteurs d'écran, message en cas de mot de passe illisible). 453 tests.
 
-#### T17 Rappels d'expiration du wifi
-- [ ] Notification au résident 15 jours avant
-- [ ] Liste des renouvellements à faire pour l'équipe
+#### T17 Rappels d'expiration du wifi (fait le 5 nov. 2026)
+- **Maquette** : R6 (« Me prévenir avant l'expiration »), S-Residents.
+- [x] Notification au résident 15 jours avant la fin de l'accès de sa chambre, par la commande quotidienne `send_wifi_reminders` (à planifier sur le serveur, voir le README). Un seul rappel par accès ; si aucun appareil n'a été atteint, nouvel essai les jours suivants, jusqu'à la fin. Un accès renouvelé repart avec un nouveau rappel
+- [x] Le résident peut désactiver le rappel sur sa page wifi. Sans appareil abonné, la page l'invite à activer les notifications
+- [x] Page « Accès wifi à renouveler » pour l'équipe (`/equipe/residents/wifi/renouvellements/`) : accès qui se terminent dans les 30 jours ou déjà terminés, du plus urgent au moins urgent, avec l'état du rappel et le lien « Renouveler ». Lien avec le nombre en haut de la liste des résidents
+- **Notes** : la liste ne montre ni l'identifiant ni le mot de passe. Le rappel passe seulement par les notifications (pas de SMS, pour ne pas en payer un par résident chaque année).
 
 ### E4 Messages
 

@@ -97,6 +97,17 @@ Le site s'installe sur l'écran d'accueil (manifeste et service worker, voir `ui
 
 Les notifications Web Push sont signées avec une clé VAPID. En production, `DJANGO_VAPID_PRIVATE_KEY` et `DJANGO_VAPID_CONTACT` sont obligatoires : créez la clé avec `python manage.py vapid_key` et gardez-la secrète. En changer oblige chaque appareil à réactiver les notifications. Sur iPhone, les notifications demandent l'application installée sur l'écran d'accueil. `python manage.py prune_push_subscriptions` retire les appareils des comptes désactivés.
 
+## Tâches quotidiennes
+
+À planifier sur le serveur (cron ou minuterie systemd), une fois par jour :
+
+```sh
+python manage.py send_wifi_reminders        # rappel 15 jours avant la fin d'un accès wifi
+python manage.py prune_push_subscriptions   # appareils des comptes désactivés
+```
+
+Les deux commandes peuvent être relancées sans risque : un rappel déjà envoyé ne repart pas.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :
