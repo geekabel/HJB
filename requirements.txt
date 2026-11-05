@@ -1,3 +1,7 @@
 # Dépendances de l'application (épinglées).
 Django==6.1.3
 phonenumbers==9.0.41
+# Import Excel des résidents (carte T08). defusedxml protège openpyxl
+# contre les attaques XML (doc openpyxl).
+openpyxl==3.1.5
+defusedxml==0.7.1
