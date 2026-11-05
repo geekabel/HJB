@@ -3,16 +3,18 @@ from django.template import Context, Template
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from comptes.models import User
 from comptes.roles import Role
+from comptes.tests.outils import creer_utilisateur
 from outils.capture_html import enregistrer_page
 
 
 class GuideDeStyleTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.equipe = User.objects.create_user(username="equipe", role=Role.ACCUEIL)
-        cls.resident = User.objects.create_user(username="resident")
+        cls.equipe = creer_utilisateur("equipe", Role.ACCUEIL)
+        cls.resident = creer_utilisateur("resident")
+        # Un résident modérateur n'a pas accès à l'espace équipe.
+        cls.moderateur = creer_utilisateur("moderateur", Role.MODERATEUR)
 
     def test_reserve_a_l_equipe(self):
         url = reverse("interface:guide")
@@ -20,9 +22,11 @@ class GuideDeStyleTests(TestCase):
         reponse = self.client.get(url)
         self.assertEqual(reponse.status_code, 302)
         self.assertIn(reverse("admin:login"), reponse["Location"])
-        # Résident connecté : accès refusé, sans boucle de connexion.
-        self.client.force_login(self.resident)
-        self.assertEqual(self.client.get(url).status_code, 403)
+        # Résident connecté, modérateur ou non : accès refusé, sans boucle de connexion.
+        for compte in (self.resident, self.moderateur):
+            with self.subTest(compte=compte.username):
+                self.client.force_login(compte)
+                self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_guide_de_style(self):
         self.client.force_login(self.equipe)
