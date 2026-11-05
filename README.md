@@ -93,6 +93,10 @@ Le format des identifiants et mots de passe générés (6 et 6 caractères par d
 
 Le site s'installe sur l'écran d'accueil (manifeste et service worker, voir `ui/pwa.py`). Le service worker ne garde que des fichiers publics. Après un changement du logo, redessinez les icônes avec `python -m tools.make_icons`.
 
+## Notifications
+
+Les notifications Web Push sont signées avec une clé VAPID. En production, `DJANGO_VAPID_PRIVATE_KEY` et `DJANGO_VAPID_CONTACT` sont obligatoires : créez la clé avec `python manage.py vapid_key` et gardez-la secrète. En changer oblige chaque appareil à réactiver les notifications. Sur iPhone, les notifications demandent l'application installée sur l'écran d'accueil. `python manage.py prune_push_subscriptions` retire les appareils des comptes désactivés.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :
