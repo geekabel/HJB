@@ -1,0 +1,45 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Messages</h1>
+    <p class="text-muted">Prévenir les résidents par notification, ou par SMS pour ceux qui n'ont pas l'application.</p>
+  </div>
+  <div class="row">
+    <a class="button button--quiet" href="{% url 'messaging:templates' %}">Modèles</a>
+    <a class="button" href="{% url 'messaging:new' %}">{% icon "plus" %}Nouveau message</a>
+  </div>
+</header>
+
+<section class="stack" aria-labelledby="drafts-title">
+  <h2 id="drafts-title">Brouillons</h2>
+  {% if campaigns %}
+  <div class="table-scroll" role="region" aria-labelledby="drafts-title" tabindex="0">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Titre</th>
+          <th scope="col">Type</th>
+          <th scope="col">Rédigé par</th>
+          <th scope="col">Modifié</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for campaign in campaigns %}
+        <tr>
+          <th scope="row" class="table__row-header"><a href="{% url 'messaging:compose' campaign.pk %}">{{ campaign.title }}</a></th>
+          <td>{{ campaign.get_type_display }}</td>
+          <td>{{ campaign.author.get_full_name|default:campaign.author|default:"–" }}</td>
+          <td class="table__number"><time datetime="{{ campaign.updated_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.updated_at|date:"j F à H:i" }}</time></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">Aucun brouillon.</p>
+  {% endif %}
+</section>
+{% endblock %}

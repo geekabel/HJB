@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "activation",
     "access",
     "push",
+    "messaging",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
     # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
     "django_otp",

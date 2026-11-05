@@ -44,4 +44,5 @@ urlpatterns = [
     # Staff area.
     path("equipe/journal/", include("audit.urls")),
     path("equipe/residents/", include("residents.urls")),
+    path("equipe/messages/", include("messaging.urls")),
 ]
