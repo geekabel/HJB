@@ -23,7 +23,8 @@ from comptes.roles import Role
 from logement.models import Etage, Sejour
 from logement.services import sejour_en_cours
 
-from .forms import FormulaireImport, FormulaireResident
+from .depart import enregistrer_depart
+from .forms import FormulaireDepart, FormulaireImport, FormulaireResident
 from .importation import (
     EN_TETES,
     ErreurFichier,
@@ -88,7 +89,11 @@ def liste(request):
         total=Count("pk"),
         **{etat: Count("pk", filter=q) for etat, q in FILTRE_ETAT_COMPTE.items()},
     )
+    compteurs["actuels"] = compteurs["total"] - compteurs[EtatCompte.DESACTIVE]
     residents = _filtrer(_residents(), recherche, etage, compte)
+    if compte != EtatCompte.DESACTIVE:
+        # Les anciens résidents (compte désactivé) n'apparaissent qu'avec ce filtre.
+        residents = residents.filter(is_active=True)
     page = Paginator(residents, RESIDENTS_PAR_PAGE).get_page(request.GET.get("page"))
     for resident in page:
         resident.sejour = resident.sejours_en_cours[0] if resident.sejours_en_cours else None
@@ -168,7 +173,39 @@ def fiche(request, pk):
             "resident": resident,
             "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
+            "dernier_depart": resident.sejours.filter(depart__isnull=False)
+            .order_by("-depart")
+            .values_list("depart", flat=True)
+            .first(),
         },
+    )
+
+
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def depart(request, pk):
+    """Départ (carte T09) : page de confirmation, car l'action ferme le compte."""
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if not resident.is_active:
+        messages.info(request, "Le départ de cette personne est déjà enregistré.")
+        return redirect("residents:fiche", pk=resident.pk)
+    sejour = sejour_en_cours(resident)
+    formulaire = FormulaireDepart(request.POST or None, sejour=sejour)
+    if request.method == "POST" and formulaire.is_valid():
+        try:
+            enregistrer_depart(resident, formulaire.cleaned_data["depart"], requete=request)
+        except ValidationError as erreur:
+            formulaire.add_error("depart", erreur.messages)
+        else:
+            nom = resident.get_full_name() or resident.get_username()
+            messages.success(
+                request, f"Le départ de {nom} est enregistré. Son compte est désactivé."
+            )
+            return redirect("residents:fiche", pk=resident.pk)
+    return render(
+        request,
+        "residents/depart.html",
+        {"actif": "residents", "resident": resident, "sejour": sejour, "formulaire": formulaire},
     )
 
 

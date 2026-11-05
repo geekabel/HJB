@@ -117,7 +117,7 @@ class ListeTests(ResidentsTestCase):
         self.assertEqual(self.noms(reponse), ["awa.kone", "lucas.p", "yanis.t"])
         self.assertEqual(
             reponse.context["compteurs"],
-            {"total": 3, "active": 2, "en_attente": 1, "desactive": 0},
+            {"total": 3, "actuels": 3, "active": 2, "en_attente": 1, "desactive": 0},
         )
         self.assertContains(reponse, "3 résidents · 2 comptes activés · 1 pas encore activé")
         self.assertContains(reponse, '<span class="badge badge--neutre">Modérateur</span>')

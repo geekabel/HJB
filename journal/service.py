@@ -23,6 +23,12 @@ def adresse_ip(requete):
     return requete.META.get("REMOTE_ADDR") or None
 
 
+def _libelle(cible):
+    """« Awa Koné (awa.kone) » pour un compte qui a un nom, sinon str(cible)."""
+    nom = cible.get_full_name() if hasattr(cible, "get_full_name") else ""
+    return f"{nom} ({cible.get_username()})" if nom else str(cible)
+
+
 def journaliser(action, *, acteur=None, cible=None, details=None, requete=None):
     """Ajoute une entrée au journal et la renvoie.
 
@@ -40,6 +46,6 @@ def journaliser(action, *, acteur=None, cible=None, details=None, requete=None):
     if cible is not None:
         entree.cible_type = ContentType.objects.get_for_model(cible)
         entree.cible_id = str(cible.pk)
-        entree.cible_libelle = str(cible)[:200]
+        entree.cible_libelle = _libelle(cible)[:200]
     entree.save()
     return entree

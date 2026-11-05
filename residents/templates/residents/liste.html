@@ -5,7 +5,7 @@
 <header class="entete-page">
   <div class="pile pile--serree">
     <h1>Résidents</h1>
-    <p class="texte-doux">{{ compteurs.total }} résident{{ compteurs.total|pluralize }} · {{ compteurs.active }} compte{{ compteurs.active|pluralize }} activé{{ compteurs.active|pluralize }} · {{ compteurs.en_attente }} pas encore activé{{ compteurs.en_attente|pluralize }}</p>
+    <p class="texte-doux">{{ compteurs.actuels }} résident{{ compteurs.actuels|pluralize }} · {{ compteurs.active }} compte{{ compteurs.active|pluralize }} activé{{ compteurs.active|pluralize }} · {{ compteurs.en_attente }} pas encore activé{{ compteurs.en_attente|pluralize }}{% if compteurs.desactive and compte != "desactive" %} · <a href="?compte=desactive">{{ compteurs.desactive }} ancien{{ compteurs.desactive|pluralize }} résident{{ compteurs.desactive|pluralize }}</a>{% endif %}</p>
   </div>
   {% if perms.comptes.gerer_residents %}
   <div class="rangee">

@@ -42,10 +42,14 @@
 
     <section class="pile" aria-labelledby="titre-logement">
       <h2 id="titre-logement">Logement</h2>
+      {% if formulaire.fields.chambre %}
       <div class="grille-auto">
         {{ formulaire.chambre.as_field_group }}
         {{ formulaire.arrivee.as_field_group }}
       </div>
+      {% else %}
+      <p class="texte-doux">Cette personne a quitté la résidence{% if dernier_depart %} le <time datetime="{{ dernier_depart|date:'Y-m-d' }}">{{ dernier_depart|date:"j F Y" }}</time>{% endif %}. Son compte est désactivé.</p>
+      {% endif %}
     </section>
 
     <div class="rangee">
@@ -89,6 +93,14 @@
         <dd>{{ resident.get_username }}</dd>
       </dl>
     </section>
+
+    {% if formulaire and resident.is_active %}
+    <section class="carte pile" aria-labelledby="titre-depart">
+      <h2 id="titre-depart">Départ</h2>
+      <p class="texte-doux">Quand la personne quitte la résidence : fin du séjour et compte désactivé.</p>
+      <a class="bouton bouton--discret" href="{% url 'residents:depart' resident.pk %}">Enregistrer le départ</a>
+    </section>
+    {% endif %}
 
     <section class="carte pile" aria-labelledby="titre-sejours">
       <h2 id="titre-sejours">Séjours</h2>

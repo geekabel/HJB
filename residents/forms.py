@@ -84,6 +84,10 @@ class FormulaireResident(forms.ModelForm):
         else:
             self.initial.setdefault("arrivee", timezone.localdate())
         self.fields["chambre"].queryset = Chambre.objects.filter(proposees).select_related("etage")
+        if self.instance.pk and not self.instance.is_active:
+            # Ancien résident : on garde son identité à jour, sans le reloger ici.
+            del self.fields["chambre"]
+            del self.fields["arrivee"]
 
     def clean(self):
         donnees = super().clean()
@@ -141,3 +145,26 @@ class FormulaireImport(forms.Form):
         help_text="Format .csv ou .xlsx, 2 Mo au plus, 500 résidents au plus.",
         widget=forms.FileInput(attrs={"accept": ".csv,.xlsx"}),
     )
+
+
+class FormulaireDepart(forms.Form):
+    depart = forms.DateField(
+        label="Date du départ",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, sejour=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sejour = sejour
+        aujourd_hui = timezone.localdate()
+        self.fields["depart"].initial = aujourd_hui
+        self.fields["depart"].widget.attrs["max"] = aujourd_hui.isoformat()
+        if sejour:
+            self.fields["depart"].widget.attrs["min"] = sejour.arrivee.isoformat()
+
+    def clean_depart(self):
+        from .depart import verifier_date
+
+        le = self.cleaned_data["depart"]
+        verifier_date(le, self.sejour)
+        return le

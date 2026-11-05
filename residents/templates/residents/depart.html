@@ -1,0 +1,30 @@
+{% extends "interface/equipe.html" %}
+{% load icones %}
+{% block titre %}Départ de {{ resident.get_full_name|default:resident.get_username }}{% endblock %}
+{% block contenu %}
+<a class="lien-retour" href="{% url 'residents:fiche' resident.pk %}">{% icone "retour" %}Retour à la fiche</a>
+
+<header class="pile pile--serree">
+  <h1>Départ de {{ resident.get_full_name|default:resident.get_username }}</h1>
+  <p class="texte-doux">{% if sejour %}{{ sejour.chambre }} · {{ sejour.chambre.etage }}, depuis le <time datetime="{{ sejour.arrivee|date:'Y-m-d' }}">{{ sejour.arrivee|date:"j F Y" }}</time>{% else %}Sans chambre{% endif %}</p>
+</header>
+
+<form class="carte pile" method="post" novalidate>
+  {% csrf_token %}
+  {% if formulaire.errors %}
+  <div class="alerte alerte--attention" role="alert">{% icone "alerte" %}<p><strong>Le départ n'est pas enregistré.</strong> Corrigez la date.</p></div>
+  {% endif %}
+  <h2>Ce qui va se passer</h2>
+  <ul class="liste-puces">
+    {% if sejour %}<li>Le séjour en {{ sejour.chambre|lower }} se termine à la date choisie. La chambre redevient libre.</li>{% endif %}
+    <li>Le compte est désactivé : la personne ne peut plus se connecter, sur aucun appareil. Les connexions en cours sont fermées.</li>
+    <li>La fiche et l'historique des séjours sont gardés.</li>
+    <li>Le départ est noté dans le journal d'audit.</li>
+  </ul>
+  {{ formulaire.depart.as_field_group }}
+  <div class="rangee">
+    <button class="bouton bouton--danger" type="submit">Enregistrer le départ</button>
+    <a class="bouton bouton--discret" href="{% url 'residents:fiche' resident.pk %}">Annuler</a>
+  </div>
+</form>
+{% endblock %}

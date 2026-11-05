@@ -125,6 +125,7 @@
     --succes: #33691e;
     --succes-doux: #eef6e4;
     --erreur: #b3261e;
+    --sur-erreur: #ffffff; /* 7,5:1 sur --erreur */
     --erreur-doux: #fde8e6;
 
     /* Menu de l'équipe */
@@ -185,6 +186,7 @@
       --succes: #9ccc65;
       --succes-doux: #1e3311;
       --erreur: #ffb4ab;
+      --sur-erreur: #06202f;
       --erreur-doux: #3d1512;
 
       --menu-fond: #04121b;
@@ -461,6 +463,17 @@
     color: var(--encre);
     filter: none;
     background: var(--surface-2);
+  }
+
+  /* Action qui ferme quelque chose (départ d'un résident) */
+  .bouton--danger {
+    border-color: var(--erreur);
+    background: var(--erreur);
+    color: var(--sur-erreur);
+  }
+
+  .bouton--danger:hover {
+    color: var(--sur-erreur);
   }
 
   .bouton--bloc {
@@ -1093,6 +1106,15 @@
   /* Carte mise en avant par un cadre (aperçu d'import en attente de confirmation) */
   .carte--cadre {
     border: 2px solid var(--action);
+  }
+
+  .liste-puces {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+    margin: 0;
+    padding-inline-start: var(--e-5);
+    list-style: disc;
   }
 
   .liste-simple {

@@ -78,4 +78,20 @@ class EntreeJournal(models.Model):
                 f"Avant : {libelles(self.details.get('avant', []))}. "
                 f"Après : {libelles(self.details.get('apres', []))}."
             )
+        if self.action == Action.DEPART_RESIDENT:
+            from datetime import date
+
+            morceaux = []
+            if self.details.get("chambre"):
+                morceaux.append(f"Chambre {self.details['chambre']}")
+            if self.details.get("depart"):
+                jour = date.fromisoformat(self.details["depart"])
+                morceaux.append(f"départ le {jour:%d/%m/%Y}")
+            sessions = self.details.get("sessions_fermees", 0)
+            texte = ", ".join(morceaux)
+            texte = texte[:1].upper() + texte[1:] + "."
+            if sessions:
+                s = "s" if sessions > 1 else ""
+                texte += f" {sessions} session{s} fermée{s}."
+            return texte
         return " · ".join(f"{cle} : {valeur}" for cle, valeur in self.details.items())
