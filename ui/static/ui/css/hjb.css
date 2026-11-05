@@ -1324,6 +1324,13 @@
   }
 
   /* No :empty rule: the live region must stay in the accessibility tree */
+  /* Notification settings (card T19) */
+  .push-error {
+    margin: 0;
+    color: var(--error);
+    font-weight: 700;
+  }
+
   .validity {
     display: block;
     width: 100%;

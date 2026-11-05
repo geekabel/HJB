@@ -1,0 +1,72 @@
+{% extends layout %}
+{% load icons static %}
+{% block title %}Notifications{% endblock %}
+{% block head %}<script src="{% static 'ui/js/push.js' %}" defer></script>{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'home' %}">{% icon "back" %}<span class="visually-hidden">Retour à l'accueil</span></a>
+  <h1>Notifications</h1>
+</div>
+
+{% if messages and layout == "ui/resident.html" %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card stack" data-push data-public-key="{{ public_key }}" data-subscribe-url="{% url 'push:subscribe' %}" data-unsubscribe-url="{% url 'push:unsubscribe' %}">
+  <div class="row">
+    <span class="icon-tile">{% icon "bell" %}</span>
+    <h2>Sur cet appareil</h2>
+  </div>
+  <p>Recevez les messages de la résidence, même quand l'application est fermée : visites de logement, coupures, rappels de rendez-vous, fin de votre accès wifi.</p>
+
+  <p data-push-state="loading">Vérification…</p>
+  <noscript><p>Les notifications demandent JavaScript. Activez-le dans les réglages du navigateur.</p></noscript>
+  <p data-push-state="unsupported" hidden>Ce navigateur ne peut pas recevoir de notifications. Essayez avec Chrome, Firefox, Edge ou Safari à jour.</p>
+  <div class="stack" data-push-state="install" hidden>
+    <p>Sur iPhone et iPad, les notifications arrivent seulement dans l'application installée sur l'écran d'accueil.</p>
+    <p><a class="button" href="{% url 'install' %}">{% icon "plus" %}Installer l'application</a></p>
+  </div>
+  <p data-push-state="unconfigured" hidden>Les notifications ne sont pas encore configurées sur le serveur. Prévenez l'accueil.</p>
+  <div class="stack" data-push-state="denied" hidden>
+    <p><strong>Les notifications sont bloquées pour ce site.</strong> Autorisez-les dans les réglages du navigateur ou du téléphone, puis revenez ici.</p>
+  </div>
+  <div class="stack" data-push-state="off" hidden>
+    <p>Les notifications sont désactivées sur cet appareil.</p>
+    <p><button class="button" type="button" data-push-enable>{% icon "bell" %}Activer les notifications</button></p>
+    <p class="text-muted text-small">Votre appareil vous demandera votre accord.</p>
+  </div>
+  <div class="stack" data-push-state="on" hidden>
+    <p class="icon-text">{% icon "check" %}<span><strong>Les notifications sont activées sur cet appareil.</strong></span></p>
+    <p><button class="button button--quiet" type="button" data-push-disable>Désactiver sur cet appareil</button></p>
+  </div>
+  <p class="push-error" role="alert" data-push-error></p>
+  {% csrf_token %}
+</div>
+
+<div class="card stack">
+  <h2>Mes appareils</h2>
+  {% if devices %}
+  <ul class="plain-list">
+    {% for device in devices %}
+    <li class="row row--between">
+      <span>{{ device.device|default:"Appareil" }} <span class="text-muted text-small">· depuis le <time datetime="{{ device.created_at|date:'Y-m-d' }}">{{ device.created_at|date:"j F Y" }}</time></span></span>
+      <form method="post" action="{% url 'push:remove_device' device.pk %}">
+        {% csrf_token %}
+        <button class="button button--quiet" type="submit">Arrêter<span class="visually-hidden"> les notifications sur {{ device.device|default:"cet appareil" }}</span></button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{% url 'push:test' %}">
+    {% csrf_token %}
+    <button class="button button--secondary" type="submit">{% icon "send" %}Envoyer un essai</button>
+  </form>
+  {% else %}
+  <p class="text-muted">Aucun appareil ne reçoit vos notifications pour le moment.</p>
+  {% endif %}
+</div>
+{% endblock %}

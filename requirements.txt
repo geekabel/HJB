@@ -18,3 +18,5 @@ django-otp-webauthn==0.10.3
 # Wifi passwords (card T15): Fernet encryption. Already required by
 # django-otp-webauthn; pinned here because the project uses it directly.
 cryptography==50.0.2
+# Web Push notifications (card T19): encryption (RFC 8291) and VAPID signature.
+pywebpush==2.5.0

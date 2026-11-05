@@ -97,6 +97,7 @@ def service_worker(request):
             "version": _cache_version(),
             # JSON of fixed paths of this app: valid JavaScript literals.
             "offline_url_json": json.dumps(OFFLINE_PATH),
+            "icon_json": json.dumps(static("ui/icons/icon-192.png")),
             "precache_json": json.dumps(
                 [OFFLINE_PATH] + [static(name) for name in PRECACHED_STATIC]
             ),

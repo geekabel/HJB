@@ -37,6 +37,8 @@ urlpatterns = [
     path("activer/", include("activation.urls")),
     # Resident area: wifi access of the room (card T16).
     path("wifi/", include("housing.urls")),
+    # Notification settings and Web Push subscriptions (card T19).
+    path("notifications/", include("push.urls")),
     # Style guide, for staff only.
     path("guide/", include("ui.urls")),
     # Staff area.

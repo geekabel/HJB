@@ -69,10 +69,18 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DJANGO_WIFI_KEYS", result.stderr)
 
+    def test_refuses_to_start_without_vapid_key(self):
+        # Card T19: without the key, no notification could leave.
+        result = self._import_prod(DJANGO_SECRET_KEY="test-key", DJANGO_WIFI_KEYS="test-wifi-key")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DJANGO_VAPID_PRIVATE_KEY", result.stderr)
+
     def test_reads_key_and_hosts_from_environment(self):
         result = self._import_prod(
             DJANGO_SECRET_KEY="test-key",
             DJANGO_WIFI_KEYS="test-wifi-key",
+            DJANGO_VAPID_PRIVATE_KEY="test-vapid-key",
+            DJANGO_VAPID_CONTACT="mailto:test@example.org",
             DJANGO_ALLOWED_HOSTS="residence.example, www.residence.example",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
