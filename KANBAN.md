@@ -221,7 +221,8 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Liste : les anciens résidents sont à part, derrière le lien « N anciens résidents »
 - [x] Fiche d'un ancien résident : identité modifiable, pas de relogement depuis la fiche
 - [ ] Accès wifi désactivé : à faire en T15, branché sur le signal `depart_enregistre`
-- **Notes** : le signal `depart_enregistre` est envoyé dans la transaction du départ : si la coupure du wifi (T15) ou des clés d'accès (T13) échoue, rien n'est enregistré (testé). Le mot de passe inutilisable est renouvelé, ce qui invalide aussi toute session restante. Le départ prévu à l'avance (« Départ le 30 nov. » de la maquette) demande une tâche quotidienne : ajouté à T21. Le retour d'un ancien résident : ajouté à T11. 12 tests.
+- **Notes** : le signal `depart_enregistre` est envoyé dans la transaction du départ : si la coupure du wifi (T15) ou des clés d'accès (T13) échoue, rien n'est enregistré (testé). Le mot de passe inutilisable est renouvelé, ce qui invalide aussi toute session restante. Le départ prévu à l'avance (« Départ le 30 nov. » de la maquette) demande une tâche quotidienne : ajouté à T21. Le retour d'un ancien résident : ajouté à T11.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Verrou sur la ligne du compte : une fiche ouverte avant le départ ne peut plus le défaire, et deux départs ne se croisent pas. Un compte désactivé dans l'administration mais encore logé reste dans la liste et peut recevoir son départ. Un compte d'administration (is_staff, super-utilisateur) n'est jamais traité comme résident. Les éducateurs ne voient que les résidents actuels (minimisation des données). Les sessions sont lues avant la transaction, puis supprimées avec le moteur de sessions configuré. 18 tests.
 
 ### E2 Connexion
 
