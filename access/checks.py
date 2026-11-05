@@ -8,7 +8,7 @@ from django.core.checks import Error, Tags, Warning, register
 
 # First path segments already used by the app: the admin site must not hide
 # them (and the staff area middleware would loop on /connexion/).
-RESERVED_SEGMENTS = {"", "connexion", "activer", "equipe", "guide", "static", "media"}
+RESERVED_SEGMENTS = {"", "connexion", "activer", "equipe", "guide", "wifi", "static", "media"}
 
 
 @register(Tags.security, Tags.urls)
