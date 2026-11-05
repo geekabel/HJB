@@ -672,6 +672,15 @@
     color: var(--ink);
   }
 
+  .alert--error {
+    background: var(--error-soft);
+    color: var(--ink);
+  }
+
+  .alert--error svg {
+    color: var(--error);
+  }
+
   /* Form fields */
   .field {
     display: flex;

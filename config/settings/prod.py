@@ -106,6 +106,13 @@ VAPID_PRIVATE_KEY = os.environ["DJANGO_VAPID_PRIVATE_KEY"]
 VAPID_CONTACT = os.environ["DJANGO_VAPID_CONTACT"]
 
 
+# Background tasks (T21): a durable queue in the database, run by
+# "python manage.py db_worker" (a service of its own, see the README).
+TASKS = {
+    "default": {"BACKEND": "django_tasks_db.DatabaseBackend", "QUEUES": ["default"]},
+}
+
+
 # HTTPS
 # https://docs.djangoproject.com/en/6.1/topics/security/#ssl-https
 

@@ -9,6 +9,11 @@ urlpatterns = [
     path("nouveau/", views.create, name="create"),
     path("<int:pk>/", views.detail, name="detail"),
     path("<int:pk>/depart/", views.departure, name="departure"),
+    path(
+        "<int:pk>/depart-prevu/annuler/",
+        views.cancel_planned_departure_view,
+        name="cancel_planned_departure",
+    ),
     path("<int:pk>/retour/", views.return_view, name="return"),
     path("<int:pk>/code-activation/", views.activation_code, name="activation_code"),
     path("<int:pk>/couper-acces/", views.cut_access, name="cut_access"),

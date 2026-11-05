@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "access",
     "push",
     "messaging",
+    # Queue of background tasks in the database, and its worker (card T21).
+    "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
     # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
     "django_otp",
@@ -248,3 +250,11 @@ WIFI_ENCRYPTION_KEYS = []
 
 VAPID_PRIVATE_KEY = ""
 VAPID_CONTACT = ""
+
+
+# Background tasks, card T21 (https://docs.djangoproject.com/en/6.1/topics/tasks/)
+# Development and tests: tasks run at once, in the request. Production
+# (prod.py): django-tasks-db keeps them in the database, and its worker
+# ("manage.py db_worker") runs them.
+
+TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}

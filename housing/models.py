@@ -104,6 +104,9 @@ class Stay(models.Model):
     departure = models.DateField(
         "départ", null=True, blank=True, help_text="Vide si le séjour est en cours."
     )
+    # Departure typed in advance (card T21): recorded on that day by the command
+    # run_scheduled, like a departure typed on the day.
+    planned_departure = models.DateField("départ prévu", null=True, blank=True)
 
     objects = StayQuerySet.as_manager()
 

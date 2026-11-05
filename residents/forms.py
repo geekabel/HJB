@@ -170,7 +170,11 @@ class DepartureForm(forms.Form):
         self.stay = stay
         today = timezone.localdate()
         self.fields["departure"].initial = today
-        self.fields["departure"].widget.attrs["max"] = today.isoformat()
+        self.fields["departure"].help_text = (
+            "Aujourd'hui ou avant : enregistré tout de suite. Plus tard : départ prévu, "
+            "enregistré automatiquement ce jour-là à midi."
+        )
+        self.fields["departure"].widget.attrs["max"] = (today + timedelta(days=365)).isoformat()
         if stay:
             self.fields["departure"].widget.attrs["min"] = stay.arrival.isoformat()
 
@@ -178,6 +182,14 @@ class DepartureForm(forms.Form):
         from .departure import check_date
 
         on = self.cleaned_data["departure"]
+        if on > timezone.localdate():
+            if self.stay is None:
+                raise ValidationError(
+                    "Sans chambre, le départ s'enregistre le jour même.", code="no_stay"
+                )
+            if on > timezone.localdate() + timedelta(days=365):
+                raise ValidationError("La date est à plus d'un an.", code="too_far")
+            return on  # planned departure (card T21)
         check_date(on, self.stay)
         return on
 

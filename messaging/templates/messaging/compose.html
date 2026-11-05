@@ -93,6 +93,15 @@
       {{ form.ask_reply.as_field_group }}
       {{ form.sms_body.as_field_group }}
     </fieldset>
+
+    <fieldset class="card stack">
+      <legend class="compose__step">4. Quand ?</legend>
+      <div class="row">
+        {% for choice in form.when %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
+      </div>
+      {{ form.send_at.as_field_group }}
+      {{ form.remind.as_field_group }}
+    </fieldset>
   </div>
 
   <aside class="compose__aside stack" aria-label="Aperçu et envoi">
@@ -122,14 +131,15 @@
     <section class="card stack" aria-labelledby="summary-title">
       <h2 id="summary-title" class="card__title">Récapitulatif</h2>
       <dl class="details">
+        <dt>Envoi</dt><dd>{% if campaign.send_at %}<time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"D j M H:i" }}</time>{% else %}maintenant{% endif %}</dd>
         <dt>Notifications</dt><dd>{% if audience.push %}{{ audience.push }} · gratuit{% else %}aucune{% endif %}</dd>
         <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
         {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }}</dd>{% endif %}
       </dl>
-      <p class="text-muted text-small">L'envoi aux résidents arrive bientôt. Pour l'instant : brouillon et essai.</p>
-      <button class="button" type="submit" name="action" value="save">Enregistrer le brouillon</button>
+      <button class="button" type="submit" name="action" value="review">{% icon "send" %}{% if campaign.send_at %}Programmer l'envoi{% else %}Envoyer{% endif %}…</button>
+      <button class="button button--secondary" type="submit" name="action" value="save">Enregistrer le brouillon</button>
       <label class="choices"><input type="checkbox" name="test_sms" value="yes">Aussi par SMS sur mon téléphone</label>
-      <button class="button button--secondary" type="submit" name="action" value="test">{% icon "send" %}M'envoyer un test</button>
+      <button class="button button--quiet" type="submit" name="action" value="test">M'envoyer un test</button>
       <details class="stack">
         <summary>Supprimer le brouillon</summary>
         <button class="button button--danger" type="submit" formaction="{% url 'messaging:delete' campaign.pk %}" formnovalidate>Oui, supprimer ce brouillon</button>

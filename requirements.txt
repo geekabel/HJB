@@ -20,3 +20,5 @@ django-otp-webauthn==0.10.3
 cryptography==50.0.2
 # Web Push notifications (card T19): encryption (RFC 8291) and VAPID signature.
 pywebpush==2.5.0
+# Background tasks in the database, and their worker (card T21).
+django-tasks-db==0.13.0

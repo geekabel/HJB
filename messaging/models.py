@@ -119,6 +119,12 @@ class Campaign(models.Model):
 
     status = models.CharField("état", max_length=20, choices=Status.choices, default=Status.DRAFT)
     send_at = models.DateTimeField("envoi prévu le", null=True, blank=True)
+    # Reminder of the people who did not answer (card T21): day of the event at 8:00.
+    remind = models.BooleanField("relancer ceux qui n'ont pas répondu", default=False)
+    remind_at = models.DateTimeField("relance prévue le", null=True, blank=True)
+    reminder_started_at = models.DateTimeField("relance partie le", null=True, blank=True)
+    started_at = models.DateTimeField("envoi commencé le", null=True, blank=True)
+    sent_at = models.DateTimeField("envoi terminé le", null=True, blank=True)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -148,3 +154,102 @@ class Campaign(models.Model):
 
     def clean(self):
         _check_texts(self)
+
+
+class Delivery(models.Model):
+    """One message to one person (card T21): the first sending, or the reminder.
+
+    The unique constraint makes a second sending to the same person impossible,
+    even if two workers run the same campaign.
+    """
+
+    class Kind(models.TextChoices):
+        MESSAGE = "message", "Message"
+        REMINDER = "reminder", "Relance"
+
+    class Channel(models.TextChoices):
+        PUSH = "push", "Notification"
+        SMS = "sms", "SMS"
+        NONE = "none", "Aucun moyen de contact"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "En attente"
+        SENDING = "sending", "En cours"
+        SENT = "sent", "Envoyé"
+        FAILED = "failed", "Échec"
+
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.CASCADE, related_name="deliveries", verbose_name="message"
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+        verbose_name="destinataire",
+    )
+    kind = models.CharField("sorte", max_length=10, choices=Kind.choices, default=Kind.MESSAGE)
+    channel = models.CharField("canal", max_length=10, choices=Channel.choices)
+    status = models.CharField("état", max_length=10, choices=Status.choices, default=Status.PENDING)
+    room_number = models.CharField("chambre", max_length=10, blank=True)
+    # The texts as sent, with the fields filled (inbox of card T23).
+    title = models.CharField("titre", max_length=80)
+    body = models.TextField("texte")
+    sms_text = models.TextField("texte du SMS", blank=True)
+    segments = models.PositiveSmallIntegerField("SMS facturés", default=0)
+    provider_message_id = models.CharField(
+        "identifiant chez le fournisseur", max_length=64, blank=True
+    )
+    error = models.CharField("erreur", max_length=200, blank=True)
+    attempts = models.PositiveSmallIntegerField("tentatives", default=0)
+    next_attempt_at = models.DateTimeField("prochaine tentative", null=True, blank=True)
+    claimed_at = models.DateTimeField("pris en charge le", null=True, blank=True)
+    sent_at = models.DateTimeField("envoyé le", null=True, blank=True)
+    read_at = models.DateTimeField("lu le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "envoi"
+        verbose_name_plural = "envois"
+        ordering = ["room_number", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["campaign", "recipient", "kind"], name="one_delivery_per_person"
+            )
+        ]
+        indexes = [models.Index(fields=["campaign", "status"])]
+
+    def __str__(self):
+        return f"{self.campaign} · {self.recipient}"
+
+
+class AttendanceReply(models.Model):
+    """The answer "Présent" or "Absent" of a resident (cards T21 and T22).
+
+    T21 uses it to remind only the people who did not answer; T22 adds the
+    buttons to answer.
+    """
+
+    class Answer(models.TextChoices):
+        PRESENT = "present", "Présent"
+        ABSENT = "absent", "Absent"
+
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.CASCADE, related_name="replies", verbose_name="message"
+    )
+    resident = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attendance_replies",
+        verbose_name="résident",
+    )
+    answer = models.CharField("réponse", max_length=10, choices=Answer.choices)
+    answered_at = models.DateTimeField("répondu le", auto_now=True)
+
+    class Meta:
+        verbose_name = "réponse présent ou absent"
+        verbose_name_plural = "réponses présent ou absent"
+        constraints = [
+            models.UniqueConstraint(fields=["campaign", "resident"], name="one_reply_per_resident")
+        ]
+
+    def __str__(self):
+        return f"{self.resident} · {self.get_answer_display()}"

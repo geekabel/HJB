@@ -22,6 +22,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.utils.formats import date_format
 from django.utils.safestring import mark_safe
 from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_GET, require_POST
@@ -58,7 +59,13 @@ from .bulk_import import (
     run_import,
     to_session,
 )
-from .departure import has_left, record_departure, record_return
+from .departure import (
+    cancel_planned_departure,
+    has_left,
+    plan_departure,
+    record_departure,
+    record_return,
+)
 from .forms import DepartureForm, ImportForm, ResidentForm, ReturnForm, WifiAccessForm
 from .models import ResidentImport
 
@@ -310,7 +317,26 @@ def departure(request, pk):
         return redirect("residents:detail", pk=resident.pk)
     stay = current_stay(resident)
     form = DepartureForm(request.POST or None, stay=stay)
-    if request.method == "POST" and form.is_valid():
+    if (
+        request.method == "POST"
+        and form.is_valid()
+        and (form.cleaned_data["departure"] > timezone.localdate())
+    ):
+        on = form.cleaned_data["departure"]
+        try:
+            plan_departure(resident, on, by=request.user, request=request)
+        except ValidationError as error:
+            form.add_error("departure", error.messages)
+        else:
+            name = resident.get_full_name() or resident.get_username()
+            when = date_format(on, "l j F Y")
+            messages.success(
+                request,
+                f"Départ de {name} prévu le {when}. Il sera enregistré automatiquement "
+                "ce jour-là à midi : compte désactivé, accès wifi coupé.",
+            )
+            return redirect("residents:detail", pk=resident.pk)
+    elif request.method == "POST" and form.is_valid():
         try:
             had_wifi = stay is not None and wifi.current_access(stay.room) is not None
             ended = record_departure(resident, form.cleaned_data["departure"], request=request)
@@ -334,6 +360,16 @@ def departure(request, pk):
         "residents/departure.html",
         {"active_nav": "residents", "resident": resident, "stay": stay, "form": form},
     )
+
+
+@require_POST
+@login_required
+@permission_required("accounts.manage_residents", raise_exception=True)
+def cancel_planned_departure_view(request, pk):
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if cancel_planned_departure(resident, by=request.user, request=request):
+        messages.success(request, "Départ prévu annulé.")
+    return redirect("residents:detail", pk=resident.pk)
 
 
 @login_required

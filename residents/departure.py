@@ -7,6 +7,8 @@ Django docs:
   https://docs.djangoproject.com/en/6.1/ref/contrib/auth/#django.contrib.auth.backends.ModelBackend
 """
 
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.dispatch import Signal
@@ -129,3 +131,46 @@ def record_return(resident, room, on, *, request=None):
             request=request,
         )
     return stay
+
+
+PLANNED_LIMIT_DAYS = 365
+
+
+def plan_departure(resident, on, *, by, request=None):
+    """Departure typed in advance (card T21): recorded on that day at noon by run_scheduled."""
+    with transaction.atomic():
+        resident = type(resident).objects.select_for_update().get(pk=resident.pk)
+        stay = current_stay(resident)
+        if stay is None:
+            raise ValidationError(
+                "Sans chambre, le départ s'enregistre le jour même.", code="no_stay"
+            )
+        if on > timezone.localdate() + timedelta(days=PLANNED_LIMIT_DAYS):
+            raise ValidationError("La date est à plus d'un an.", code="too_far")
+        stay.planned_departure = on
+        stay.save(update_fields=["planned_departure"])
+        log_action(
+            Action.DEPARTURE_PLANNED,
+            actor=by,
+            target=resident,
+            details={"room": stay.room.number, "planned_departure": on.isoformat()},
+            request=request,
+        )
+    return stay
+
+
+def cancel_planned_departure(resident, *, by, request=None):
+    with transaction.atomic():
+        stay = current_stay(resident)
+        if stay is None or stay.planned_departure is None:
+            return False
+        stay.planned_departure = None
+        stay.save(update_fields=["planned_departure"])
+        log_action(
+            Action.DEPARTURE_PLANNED,
+            actor=by,
+            target=resident,
+            details={"room": stay.room.number, "planned_departure": None},
+            request=request,
+        )
+    return True
