@@ -1,0 +1,92 @@
+{% extends "interface/equipe.html" %}
+{% load icones %}
+{% block titre %}Résidents{% endblock %}
+{% block contenu %}
+<header class="entete-page">
+  <div class="pile pile--serree">
+    <h1>Résidents</h1>
+    <p class="texte-doux">{{ compteurs.total }} résident{{ compteurs.total|pluralize }} · {{ compteurs.active }} compte{{ compteurs.active|pluralize }} activé{{ compteurs.active|pluralize }} · {{ compteurs.en_attente }} pas encore activé{{ compteurs.en_attente|pluralize }}</p>
+  </div>
+  <div class="rangee">
+    <a class="bouton" href="{% url 'residents:creer' %}">{% icone "plus" %}Nouveau résident</a>
+  </div>
+</header>
+
+<form class="rangee filtres" method="get" role="search" aria-label="Rechercher et filtrer les résidents">
+  <div class="champ filtres__recherche">
+    <label for="filtre-q">Rechercher</label>
+    <input id="filtre-q" name="q" type="search" value="{{ recherche }}" placeholder="Nom ou numéro de chambre" autocomplete="off">
+  </div>
+  <div class="champ">
+    <label for="filtre-etage">Étage</label>
+    <select id="filtre-etage" name="etage">
+      <option value="">Tous les étages</option>
+      {% for e in etages %}
+      <option value="{{ e.pk }}"{% if etage == e.pk|stringformat:"d" %} selected{% endif %}>{{ e }}</option>
+      {% endfor %}
+      <option value="sans"{% if etage == "sans" %} selected{% endif %}>Sans chambre</option>
+    </select>
+  </div>
+  <div class="champ">
+    <label for="filtre-compte">Compte</label>
+    <select id="filtre-compte" name="compte">
+      <option value="">Tous les comptes</option>
+      {% for valeur, libelle in etats %}
+      <option value="{{ valeur }}"{% if compte == valeur %} selected{% endif %}>{{ libelle }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="bouton bouton--discret" type="submit">Filtrer</button>
+  {% if filtre_actif %}<a class="bouton bouton--discret" href="{% url 'residents:liste' %}">Effacer les filtres</a>{% endif %}
+</form>
+
+{% if page_obj.object_list %}
+<p class="texte-doux texte-petit" aria-live="polite">{{ page_obj.paginator.count }} résultat{{ page_obj.paginator.count|pluralize }}</p>
+<div class="tableau-defilant" role="region" aria-labelledby="legende-residents" tabindex="0">
+  <table class="tableau">
+    <caption id="legende-residents" class="visuellement-cache">Résidents, par ordre alphabétique</caption>
+    <thead>
+      <tr>
+        <th scope="col">Résident</th>
+        <th scope="col">Chambre</th>
+        <th scope="col">Téléphone</th>
+        <th scope="col">Compte</th>
+        <th scope="col">Arrivée</th>
+        <th scope="col"><span class="visuellement-cache">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in page_obj %}
+      <tr>
+        <th scope="row" class="tableau__entete-ligne">{{ r.get_full_name|default:r.get_username }}{% if r.est_moderateur %} <span class="badge badge--neutre">Modérateur</span>{% endif %}</th>
+        <td class="tableau__nombre">{% if r.sejour %}{{ r.sejour.chambre.numero }} · {{ r.sejour.chambre.etage.libelle_court }}{% else %}<span class="texte-doux">Sans chambre</span>{% endif %}</td>
+        <td class="tableau__nombre">{% if r.telephone %}<span class="telephone-masque" aria-hidden="true">{{ r.telephone_masque }}</span><span class="visuellement-cache">numéro finissant par {{ r.telephone|slice:"-2:" }}</span>{% else %}<span class="texte-doux">Aucun</span>{% endif %}</td>
+        <td>{% with etat=r.etat_compte %}<span class="badge {% if etat == 'active' %}badge--info{% elif etat == 'en_attente' %}badge--attention{% else %}badge--neutre{% endif %}">{{ etat.label }}</span>{% endwith %}</td>
+        <td class="tableau__nombre">{% if r.sejour %}<time datetime="{{ r.sejour.arrivee|date:'Y-m-d' }}">{{ r.sejour.arrivee|date:"j F Y" }}</time>{% else %}<span class="texte-doux">–</span>{% endif %}</td>
+        <td class="tableau__action"><a href="{% url 'residents:fiche' r.pk %}">Gérer<span class="visuellement-cache"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Pages de la liste">
+  {% if page_obj.has_previous %}
+  <a class="bouton bouton--discret" href="?{% if parametres %}{{ parametres }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Page précédente</a>
+  {% endif %}
+  <span class="texte-doux">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a class="bouton bouton--discret" href="?{% if parametres %}{{ parametres }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Page suivante</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% elif filtre_actif %}
+<p class="carte texte-doux">Aucun résident ne correspond à ces critères.</p>
+{% else %}
+<div class="carte pile">
+  <p>Aucun résident pour l'instant.</p>
+  <p class="texte-doux">Créez une fiche avec « Nouveau résident ».</p>
+</div>
+{% endif %}
+{% endblock %}

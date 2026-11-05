@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T07 | Liste et fiche des résidents (équipe) | E1 Résidents | T03, T06 |
 | T08 | Import CSV et Excel des résidents | E1 Résidents | T07 |
 | T09 | Départ d'un résident | E1 Résidents | T06, T15 |
 | T10 | Couche fournisseur SMS | E4 Messages | T01 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T04 | Rôles et permissions | 5 nov. 2026 |
 | T05 | Journal d'audit | 5 nov. 2026 |
 | T06 | Étages, chambres et séjours | 5 nov. 2026 |
+| T07 | Liste et fiche des résidents (équipe) | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -187,12 +187,17 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Tests des contraintes en base et des messages de validation (21 tests)
 - **Notes** : un compte qui a des séjours ne peut pas être supprimé (`PROTECT`) : l'historique reste. Le départ d'un résident sera fait en T09.
 
-#### T07 Liste et fiche des résidents (équipe)
+#### T07 Liste et fiche des résidents (équipe) (fait le 5 nov. 2026)
 - **Maquette** : P5.
-- [ ] Liste avec recherche, filtres par étage et par état du compte
-- [ ] Numéros de téléphone masqués dans la liste
-- [ ] Création et modification d'une fiche
-- [ ] Gabarit validé W3C
+- **Docs** : [gabarits de groupe de champ](https://docs.djangoproject.com/en/6.1/topics/forms/#reusable-field-group-templates), [moteurs de rendu des formulaires](https://docs.djangoproject.com/en/6.1/ref/forms/renderers/), [aria-describedby des erreurs (5.2)](https://docs.djangoproject.com/en/6.1/releases/5.2/), [messages](https://docs.djangoproject.com/en/6.1/ref/contrib/messages/#message-tags), [Prefetch](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#prefetch-objects).
+- [x] Liste `/equipe/residents/` : recherche par nom ou numéro de chambre, filtres par étage (ou « sans chambre ») et par état du compte, 50 par page, filtres gardés d'une page à l'autre
+- [x] Compteurs en tête de liste : résidents, comptes activés, pas encore activés
+- [x] Numéros masqués dans la liste (« 06 •• •• •• 47 »), avec un texte lisible par les lecteurs d'écran ; complets sur la fiche
+- [x] Création et modification d'une fiche, avec chambre et date d'arrivée. Un déménagement interne ferme l'ancien séjour et en ouvre un nouveau
+- [x] Réservé à la permission `gerer_residents` (Accueil, Administration) ; lien dans le menu
+- [x] Gabarit de champ commun à tous les formulaires (`interface/formulaires`) : libellé, aide, erreurs reliées au champ, mention « facultatif »
+- [x] Gabarits validés W3C ; rendu vérifié dans Chrome (mobile et ordinateur, clair et sombre), y compris les erreurs de saisie
+- **Notes** : l'état du compte vient pour l'instant de la première connexion (« Activé » ou « Pas encore activé ») ; T11 ajoutera l'invitation et son expiration. La colonne wifi de la maquette arrivera avec T15. Le compte d'un résident n'a pas de mot de passe utilisable : il se connectera par clé d'accès (T13). Correctif général : dans un tableau qui défile, les textes « visuellement cachés » élargissaient la page sur mobile ; le cadre du tableau les contient maintenant. Nombre de requêtes de la liste constant, quel que soit le nombre de résidents (testé).
 
 #### T08 Import CSV et Excel des résidents
 - **Docs** : module `csv` de Python, openpyxl, phonenumbers.

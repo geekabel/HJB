@@ -3,7 +3,7 @@ from django.db import IntegrityError
 from django.test import SimpleTestCase, TestCase
 
 from comptes.models import User
-from comptes.telephone import normaliser_telephone
+from comptes.telephone import afficher_telephone, masquer_telephone, normaliser_telephone
 
 # Numéros d'exemple inventés, dans des plages valides.
 
@@ -55,3 +55,16 @@ class TelephoneUtilisateurTests(TestCase):
         User.objects.create_user(username="a")
         User.objects.create_user(username="b")
         self.assertEqual(User.objects.filter(telephone="").count(), 2)
+
+
+class AffichageTests(SimpleTestCase):
+    def test_afficher_et_masquer(self):
+        cas = {
+            "+33612345647": ("06 12 34 56 47", "06 •• •• •• 47"),
+            "+41791234567": ("+41 79 123 45 67", "+41 •• ••• •• 67"),
+            "": ("", ""),
+        }
+        for e164, (affiche, masque) in cas.items():
+            with self.subTest(e164=e164):
+                self.assertEqual(afficher_telephone(e164), affiche)
+                self.assertEqual(masquer_telephone(e164), masque)

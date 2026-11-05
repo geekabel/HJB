@@ -695,6 +695,12 @@
     font-weight: 700;
   }
 
+  .champ__erreurs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-1);
+  }
+
   .champ__erreur svg {
     width: 1rem;
     height: 1rem;
@@ -876,6 +882,9 @@
 
   /* Tableaux : défilement horizontal dans leur cadre, jamais la page entière */
   .tableau-defilant {
+    /* position: relative garde dans le cadre les textes « visuellement cachés »
+       (positionnés en absolu) : sinon ils élargissent la page sur mobile. */
+    position: relative;
     overflow-x: auto;
     border: 1px solid var(--ligne);
     border-radius: var(--r-grand);
@@ -903,7 +912,7 @@
     font-weight: 700;
   }
 
-  .tableau tbody tr:last-child td {
+  .tableau tbody tr:last-child > * {
     border-block-end: 0;
   }
 
@@ -993,6 +1002,96 @@
 
   .echantillon__couleur--toit-jaune {
     background: var(--toit-jaune);
+  }
+
+  /* En-tête de page : titre à gauche, actions à droite (passent dessous sur mobile) */
+  .entete-page {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--e-4);
+  }
+
+  .pile--serree {
+    gap: var(--e-1);
+  }
+
+  .pile--aeree {
+    gap: var(--e-8);
+  }
+
+  .lien-retour {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    min-height: var(--cible);
+    font-weight: 700;
+  }
+
+  .lien-retour svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Barre de recherche et de filtres au-dessus d'une liste */
+  .filtres__recherche {
+    flex: 1 1 16rem;
+  }
+
+  /* Première cellule d'une ligne : un nom, lu comme en-tête de ligne */
+  .tableau .tableau__entete-ligne {
+    color: var(--encre);
+    font-size: inherit;
+  }
+
+  .tableau__action {
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .telephone-masque {
+    font-family: var(--police-code);
+    font-size: var(--t-petit);
+  }
+
+  /* Fiche : formulaire et colonne d'informations côte à côte sur grand écran */
+  .fiche {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--e-6);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .fiche {
+      grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+    }
+  }
+
+  .details {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--e-2) var(--e-4);
+    margin: 0;
+  }
+
+  .details dt {
+    color: var(--texte-doux);
+  }
+
+  .details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .liste-simple {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   @media (forced-colors: active) {

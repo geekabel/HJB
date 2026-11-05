@@ -15,6 +15,8 @@ select = ["E", "W", "F", "I", "B", "UP", "DJ", "RUF"]
 "*/migrations/*" = ["E501", "I001", "RUF012"]
 # Les options Meta des modèles sont des listes, comme dans la doc de Django.
 "*/models.py" = ["RUF012"]
+# Idem pour les options Meta des formulaires.
+"*/forms.py" = ["RUF012"]
 # Tracés SVG : des données, plus lisibles sur une seule ligne.
 "interface/templatetags/icones.py" = ["E501"]
 

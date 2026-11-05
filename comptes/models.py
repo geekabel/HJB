@@ -4,10 +4,29 @@ from django.db import models
 from django.db.models import Q
 
 from .roles import GROUPE_PAR_ROLE, PERMISSIONS, ROLES_EQUIPE, Role, definir_roles, roles_de
-from .telephone import normaliser_telephone, valider_e164
+from .telephone import afficher_telephone, masquer_telephone, normaliser_telephone, valider_e164
+
+
+class EtatCompte(models.TextChoices):
+    """État du compte vu par l'équipe. La carte T11 ajoutera l'invitation et son expiration."""
+
+    ACTIVE = "active", "Activé"
+    EN_ATTENTE = "en_attente", "Pas encore activé"
+    DESACTIVE = "desactive", "Désactivé"
+
+
+FILTRE_ETAT_COMPTE = {
+    EtatCompte.ACTIVE: Q(is_active=True, last_login__isnull=False),
+    EtatCompte.EN_ATTENTE: Q(is_active=True, last_login__isnull=True),
+    EtatCompte.DESACTIVE: Q(is_active=False),
+}
 
 
 class GestionnaireUtilisateurs(UserManager):
+    def residents(self):
+        """Comptes sans rôle du personnel (un résident modérateur en fait partie)."""
+        return self.exclude(groups__name__in=[GROUPE_PAR_ROLE[r] for r in ROLES_EQUIPE])
+
     def avec_role(self, role):
         """Les comptes qui ont ce rôle (parmi d'autres, éventuellement)."""
         return self.filter(groups__name=GROUPE_PAR_ROLE[Role(role)])
@@ -85,6 +104,21 @@ class User(AbstractUser):
     def libelle_roles(self):
         """Les rôles en clair, par exemple « Accueil, Maintenance »."""
         return ", ".join(sorted(r.label for r in self.roles)) or "Résident"
+
+    @property
+    def etat_compte(self):
+        # Un compte est activé dès la première connexion (login() remplit last_login).
+        if not self.is_active:
+            return EtatCompte.DESACTIVE
+        return EtatCompte.ACTIVE if self.last_login else EtatCompte.EN_ATTENTE
+
+    @property
+    def telephone_affiche(self):
+        return afficher_telephone(self.telephone)
+
+    @property
+    def telephone_masque(self):
+        return masquer_telephone(self.telephone)
 
     @property
     def est_equipe(self):
