@@ -86,6 +86,11 @@ class DroitsParRoleTests(TestCase):
         # Un résident modérateur n'est pas un membre du personnel.
         self.assertFalse(creer_utilisateur("yanis", Role.MODERATEUR).est_equipe)
 
+    def test_libelle_roles(self):
+        marie = creer_utilisateur("marie", Role.MAINTENANCE, Role.ACCUEIL)
+        self.assertEqual(marie.libelle_roles, "Accueil, Maintenance")
+        self.assertEqual(creer_utilisateur("lina").libelle_roles, "Résident")
+
     def test_moderateur_designe_parmi_les_residents(self):
         yanis = creer_utilisateur("yanis", Role.MODERATEUR)
         self.assertEqual(droits(yanis), {"moderer_discussion"})

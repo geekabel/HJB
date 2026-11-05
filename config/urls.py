@@ -22,4 +22,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Guide de style, réservé à l'équipe.
     path("guide/", include("interface.urls")),
+    # Espace équipe.
+    path("equipe/journal/", include("journal.urls")),
 ]

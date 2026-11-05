@@ -874,6 +874,57 @@
     font-size: 0.75rem;
   }
 
+  /* Tableaux : défilement horizontal dans leur cadre, jamais la page entière */
+  .tableau-defilant {
+    overflow-x: auto;
+    border: 1px solid var(--ligne);
+    border-radius: var(--r-grand);
+    background: var(--surface);
+  }
+
+  .tableau {
+    width: 100%;
+    min-width: 48rem;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .tableau th,
+  .tableau td {
+    padding: var(--e-3) var(--e-4);
+    border-block-end: 1px solid var(--ligne);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .tableau th {
+    color: var(--texte-doux);
+    font-size: var(--t-petit);
+    font-weight: 700;
+  }
+
+  .tableau tbody tr:last-child td {
+    border-block-end: 0;
+  }
+
+  .tableau__nombre {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Pagination : précédent, position, suivant */
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-3);
+  }
+
+  /* Bouton aligné sur le bas d'un champ voisin, dans une rangée de formulaire */
+  .rangee:has(> .champ) {
+    align-items: flex-end;
+  }
+
   /* Indicateur chiffré du tableau de bord */
   .indicateur {
     display: flex;

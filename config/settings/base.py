@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     # Applications du projet
     "comptes",
     "interface",
+    "journal",
 ]
 
 MIDDLEWARE = [
