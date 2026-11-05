@@ -227,6 +227,10 @@ erDiagram
         datetime sent_at
         datetime read_at "ouverture dans l'appli ou réponse (T23)"
         bool personal "par son nom ou sa chambre (Pour moi)"
+        string sms_provider "ovh, smsgate (T24)"
+        string receipt "pending, delivered, undelivered, unknown"
+        string receipt_detail
+        datetime receipt_at
     }
     ATTENDANCE_REPLY {
         int id PK

@@ -26,6 +26,7 @@ class ServiceTests(SimpleTestCase):
         (sms,) = memory.outbox
         self.assertEqual((sms.number, sms.text), (NUMBER, "Bonjour"))
         self.assertEqual(result.message_id, sms.message_id)
+        self.assertFalse(result.tracked)  # the memory box gives no receipt
 
     def test_refused_before_sending(self):
         cases = [
@@ -130,6 +131,25 @@ class ChecksTests(SimpleTestCase):
             ):
                 self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W001"])
                 self.assertEqual(self.ids(), [])
+
+    def test_receipt_secret(self):
+        ovh = {
+            "BACKEND": "sms.providers.ovh.OvhProvider",
+            "OPTIONS": dict.fromkeys(
+                ("service", "application_key", "application_secret", "consumer_key", "user"), "x"
+            ),
+        }
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET=""):
+            self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W002"])
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="short"):
+            self.assertEqual(self.ids(), ["sms.E003"])
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="s/" * 20):  # "/" breaks the address
+            self.assertEqual(self.ids(), ["sms.E003"])
+        with override_settings(SMS=ovh, SMS_RECEIPT_SECRET="s-_9" * 8):
+            self.assertEqual(self.ids(include_deployment_checks=True), [])
+        no_user = {**ovh, "OPTIONS": {**ovh["OPTIONS"], "user": ""}}
+        with override_settings(SMS=no_user, SMS_RECEIPT_SECRET="s" * 32):
+            self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W002"])
 
 
 class SendTestSmsCommandTests(SimpleTestCase):

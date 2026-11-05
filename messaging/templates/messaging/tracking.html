@@ -32,6 +32,28 @@
   <div class="card stat"><span class="text-muted text-small">SMS envoyés</span><span class="stat__value">{{ stats.sms }}</span><span class="text-muted text-small">{{ stats.segments }} SMS facturé{{ stats.segments|pluralize }}</span></div>
   <div class="card stat"><span class="text-muted text-small">Échecs</span><span class="stat__value">{{ stats.failed }}</span></div>
 </div>
+{% if to_warn %}
+<section class="card card--framed stack" aria-labelledby="warn-title">
+  <h2 id="warn-title" class="icon-text">{% icon "alert" %}<span>{{ to_warn|length }} personne{{ to_warn|length|pluralize }} à prévenir autrement</span></h2>
+  <p>Le message n'est peut-être pas arrivé. Prévenez-les par un appel, une affiche ou un passage en chambre.</p>
+  <ul class="plain-list stack stack--tight">
+    {% for row in to_warn %}
+    <li><strong>{{ row.recipient.get_full_name|default:row.recipient.get_username }}</strong>{% if row.room_number %}, chambre {{ row.room_number }}{% endif %} : {{ row.reason }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% if receipts.total %}
+<section class="stack" aria-labelledby="receipts-title">
+  <h2 id="receipts-title">Accusés de réception des SMS du message</h2>
+  <div class="grid-auto">
+    <div class="card stat"><span class="text-muted text-small">Reçus</span><span class="stat__value">{{ receipts.delivered }}</span></div>
+    <div class="card stat"><span class="text-muted text-small">En route</span><span class="stat__value">{{ receipts.pending }}</span>{% if receipts.pending %}<span class="text-muted text-small">mis à jour automatiquement</span>{% endif %}</div>
+    <div class="card stat"><span class="text-muted text-small">Non reçus</span><span class="stat__value">{{ receipts.undelivered }}</span></div>
+    <div class="card stat"><span class="text-muted text-small">Inconnus</span><span class="stat__value">{{ receipts.unknown }}</span><span class="text-muted text-small">pas de nouvelle</span></div>
+  </div>
+</section>
+{% endif %}
 {% if answers %}
 <section class="stack" aria-labelledby="answers-title">
   <h2 id="answers-title">Réponses</h2>
@@ -76,7 +98,7 @@
         <td class="table__number">{{ delivery.room_number|default:"–" }}</td>
         <td>{{ delivery.get_kind_display }}</td>
         <td>{{ delivery.get_channel_display }}</td>
-        <td>{% if delivery.status == "sent" %}<span class="badge badge--success">Envoyé</span>{% elif delivery.status == "failed" %}<span class="badge badge--error">Échec</span> <span class="text-small">{{ delivery.error }}</span>{% else %}<span class="badge badge--info">{{ delivery.get_status_display }}</span>{% endif %}</td>
+        <td>{% if delivery.status == "sent" and delivery.receipt %}{% include "messaging/_receipt.html" %}{% elif delivery.status == "sent" %}<span class="badge badge--success">Envoyé</span>{% elif delivery.status == "failed" %}<span class="badge badge--error">Échec</span> <span class="text-small">{{ delivery.error }}</span>{% else %}<span class="badge badge--info">{{ delivery.get_status_display }}</span>{% endif %}</td>
         {% if answers %}<td>{% if delivery.kind == "message" %}{% with answer=answers.answers|get_item:delivery.recipient_id %}{% if answer == "present" %}<span class="badge badge--success">Présent</span>{% elif answer == "absent" %}<span class="badge badge--neutral">Absent</span>{% else %}<span class="text-muted">–</span>{% endif %}{% endwith %}{% endif %}</td>{% endif %}
       </tr>
       {% endfor %}
