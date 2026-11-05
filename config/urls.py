@@ -20,9 +20,16 @@ from django.contrib import admin
 from django.urls import include, path
 
 from access import views as access_views
+from ui import pwa
 
 urlpatterns = [
     path("", access_views.home, name="home"),
+    # Installable application (card T18): at the root, for the scope of the worker.
+    path("manifest.webmanifest", pwa.manifest, name="manifest"),
+    path("sw.js", pwa.service_worker, name="service_worker"),
+    path("favicon.ico", pwa.favicon),
+    path("hors-ligne/", pwa.offline, name="offline"),
+    path("installer/", pwa.install, name="install"),
     path(settings.ADMIN_URL, admin.site.urls),
     # Login by passkey (card T13).
     path("connexion/", include("access.urls")),

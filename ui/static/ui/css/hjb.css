@@ -1357,6 +1357,15 @@
     list-style: disc;
   }
 
+  .numbered-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding-inline-start: var(--s-6);
+    list-style: decimal;
+  }
+
   .plain-list {
     display: flex;
     flex-direction: column;
