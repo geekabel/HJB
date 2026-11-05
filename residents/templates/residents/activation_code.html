@@ -1,0 +1,32 @@
+{% extends "ui/staff.html" %}
+{% load icons static %}
+{% comment %}
+  Activation code sheet. Variables: resident, code, address, expires_at,
+  qr, back_url (address of the profile: resident, or account in the admin site).
+{% endcomment %}
+{% block title %}Code d'activation de {{ resident.get_full_name|default:resident.get_username }}{% endblock %}
+{% block head %}<script src="{% static 'ui/js/print.js' %}" defer></script>{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ back_url }}">{% icon "back" %}Retour à la fiche</a>
+
+<div class="alert alert--warning no-print" role="status">{% icon "alert" %}<p><strong>Ce code ne s'affichera qu'une fois.</strong> Remettez-le maintenant à {{ resident.first_name|default:"la personne" }}, en main propre, après avoir vérifié son identité.</p></div>
+
+<section class="card stack code-sheet" aria-labelledby="code-title">
+  <div class="row"><span class="logo-tile">{% roofs %}</span><strong>Habitat Jeunes Belfort</strong></div>
+  <h1 id="code-title">Activer votre compte</h1>
+  <p>Bonjour {{ resident.get_full_name|default:resident.get_username }},</p>
+  <p>Ouvrez <strong>{{ address }}</strong> sur votre téléphone, ou scannez ce code QR :</p>
+  <figure class="stack">
+    {{ qr }}
+    <figcaption class="text-muted text-small">Le code QR ouvre la page et remplit le code pour vous.</figcaption>
+  </figure>
+  <p>Puis saisissez ce code :</p>
+  <p class="code-sheet__code">{{ code }}</p>
+  <p class="text-muted">Valable jusqu'au <time datetime="{{ expires_at|date:'Y-m-d\TH:i:sO' }}">{{ expires_at|date:"j F Y à H:i" }}</time>, une seule fois. Ne le donnez à personne : l'équipe ne vous le demandera jamais.</p>
+</section>
+
+<div class="row no-print">
+  <button class="button" type="button" data-print>Imprimer</button>
+  <a class="button button--quiet" href="{{ back_url }}">C'est fait, retour à la fiche</a>
+</div>
+{% endblock %}

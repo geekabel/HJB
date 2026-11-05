@@ -1,4 +1,4 @@
-"""Import CSV et Excel. Toutes les données sont inventées."""
+"""CSV and Excel import. All the data is made up."""
 
 import io
 import zipfile
@@ -11,142 +11,134 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
-from comptes.models import User
-from comptes.roles import Role
-from comptes.tests.outils import connecter, creer_utilisateur
-from logement.models import Chambre, Etage, Sejour
-from logement.services import sejour_en_cours
-from outils.capture_html import enregistrer_page
-from residents.importation import (
-    LIGNES_MAX,
-    TAILLE_DECOMPRESSEE_MAX,
-    TAILLE_MAX,
-    ErreurFichier,
-    LigneImport,
-    analyser,
-    importer,
-    lire_fichier,
+from accounts.models import User
+from accounts.roles import Role
+from accounts.tests.helpers import log_in_verified, make_user
+from housing.models import Floor, Room, Stay
+from housing.services import current_stay
+from residents.bulk_import import (
+    MAX_ROWS,
+    MAX_SIZE,
+    MAX_UNCOMPRESSED_SIZE,
+    FileError,
+    ImportRow,
+    analyze,
+    read_file,
+    run_import,
 )
-from residents.models import ImportResidents
+from residents.models import ResidentImport
+from tools.html_capture import save_page
 
-AUJOURD_HUI = date(2026, 11, 5)
-
-
-def csv_(texte, nom="residents.csv", encodage="utf-8-sig"):
-    return SimpleUploadedFile(nom, texte.encode(encodage), content_type="text/csv")
+TODAY = date(2026, 11, 5)
 
 
-def xlsx(lignes, nom="residents.xlsx"):
-    classeur = Workbook()
-    feuille = classeur.active
-    for ligne in lignes:
-        feuille.append(ligne)
-    tampon = io.BytesIO()
-    classeur.save(tampon)
-    return SimpleUploadedFile(nom, tampon.getvalue())
+def csv_(text, name="residents.csv", encoding="utf-8-sig"):
+    return SimpleUploadedFile(name, text.encode(encoding), content_type="text/csv")
+
+
+def xlsx(rows, name="residents.xlsx"):
+    workbook = Workbook()
+    sheet = workbook.active
+    for row in rows:
+        sheet.append(row)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return SimpleUploadedFile(name, buffer.getvalue())
 
 
 class ImportTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.e3 = Etage.objects.create(numero=3)
-        cls.c304 = Chambre.objects.create(numero="304", etage=cls.e3)
-        cls.c305 = Chambre.objects.create(numero="305", etage=cls.e3)
-        cls.c312 = Chambre.objects.create(numero="312", etage=cls.e3)
-        cls.ferme = Chambre.objects.create(numero="399", etage=cls.e3, active=False)
-        cls.awa = creer_utilisateur(
-            "awa.kone", first_name="Awa", last_name="Koné", telephone="+33612345647"
-        )
-        Sejour.objects.create(resident=cls.awa, chambre=cls.c312, arrivee=date(2026, 9, 1))
+        cls.f3 = Floor.objects.create(number=3)
+        cls.r304 = Room.objects.create(number="304", floor=cls.f3)
+        cls.r305 = Room.objects.create(number="305", floor=cls.f3)
+        cls.r312 = Room.objects.create(number="312", floor=cls.f3)
+        cls.closed = Room.objects.create(number="399", floor=cls.f3, active=False)
+        cls.awa = make_user("awa.kone", first_name="Awa", last_name="Koné", phone="+33612345647")
+        Stay.objects.create(resident=cls.awa, room=cls.r312, arrival=date(2026, 9, 1))
 
 
-class LectureTests(ImportTestCase):
-    def test_csv_point_virgule_avec_bom(self):
-        lignes = lire_fichier(csv_("Prénom;Nom;Chambre\nInès;Martin;304\n"))
-        self.assertEqual(
-            lignes, [(1, ["Prénom", "Nom", "Chambre"]), (2, ["Inès", "Martin", "304"])]
-        )
+class ReadingTests(ImportTestCase):
+    def test_csv_semicolon_with_bom(self):
+        rows = read_file(csv_("Prénom;Nom;Chambre\nInès;Martin;304\n"))
+        self.assertEqual(rows, [(1, ["Prénom", "Nom", "Chambre"]), (2, ["Inès", "Martin", "304"])])
 
-    def test_csv_virgule_et_guillemets(self):
-        lignes = lire_fichier(csv_('Prénom,Nom\n"Jean, dit Jo",Durand\n'))
-        self.assertEqual(lignes[1][1], ["Jean, dit Jo", "Durand"])
+    def test_csv_comma_and_quotes(self):
+        rows = read_file(csv_('Prénom,Nom\n"Jean, dit Jo",Durand\n'))
+        self.assertEqual(rows[1][1], ["Jean, dit Jo", "Durand"])
 
     def test_csv_windows_1252(self):
-        lignes = lire_fichier(csv_("Prénom;Nom\nLéa;Moreau\n", encodage="cp1252"))
-        self.assertEqual(lignes[1][1], ["Léa", "Moreau"])
+        rows = read_file(csv_("Prénom;Nom\nLéa;Moreau\n", encoding="cp1252"))
+        self.assertEqual(rows[1][1], ["Léa", "Moreau"])
 
-    def test_lignes_vides_ignorees(self):
-        lignes = lire_fichier(csv_("Prénom;Nom\n;\nLéa;Moreau\n\n"))
-        # La ligne vide disparaît, mais Léa garde son numéro de ligne : 3.
-        self.assertEqual(lignes, [(1, ["Prénom", "Nom"]), (3, ["Léa", "Moreau"])])
+    def test_empty_rows_ignored(self):
+        rows = read_file(csv_("Prénom;Nom\n;\nLéa;Moreau\n\n"))
+        # The empty row disappears, but Léa keeps her row number: 3.
+        self.assertEqual(rows, [(1, ["Prénom", "Nom"]), (3, ["Léa", "Moreau"])])
 
     def test_xlsx(self):
-        fichier = xlsx(
+        file = xlsx(
             [
                 ["Prénom", "Nom", "Téléphone", "Arrivée"],
                 ["Léa", "Moreau", 612345678, datetime(2026, 9, 1)],
             ]
         )
-        lignes = lire_fichier(fichier)
-        self.assertEqual(lignes[1], (2, ["Léa", "Moreau", 612345678, datetime(2026, 9, 1)]))
+        rows = read_file(file)
+        self.assertEqual(rows[1], (2, ["Léa", "Moreau", 612345678, datetime(2026, 9, 1)]))
 
-    def test_fichiers_refuses(self):
-        cas = {
-            "ancien format": (SimpleUploadedFile("a.xls", b"x"), "(.xls)"),
+    def test_refused_files(self):
+        cases = {
+            "old format": (SimpleUploadedFile("a.xls", b"x"), "(.xls)"),
             "extension": (SimpleUploadedFile("a.pdf", b"x"), ".csv ou un .xlsx"),
-            "vide": (csv_("\n\n"), "vide"),
-            "illisible": (SimpleUploadedFile("a.xlsx", b"pas un classeur"), "illisible"),
-            "trop long": (csv_("Prénom;Nom\n" + "A;B\n" * (LIGNES_MAX + 1)), "500 lignes"),
+            "empty": (csv_("\n\n"), "vide"),
+            "unreadable": (SimpleUploadedFile("a.xlsx", b"pas un classeur"), "illisible"),
+            "too long": (csv_("Prénom;Nom\n" + "A;B\n" * (MAX_ROWS + 1)), "500 lignes"),
         }
-        for nom, (fichier, extrait) in cas.items():
-            with self.subTest(nom), self.assertRaisesMessage(ErreurFichier, extrait):
-                lire_fichier(fichier)
+        for name, (file, excerpt) in cases.items():
+            with self.subTest(name), self.assertRaisesMessage(FileError, excerpt):
+                read_file(file)
 
-    def test_trop_lourd(self):
-        fichier = csv_("Prénom;Nom\n")
-        fichier.size = 3 * 1024 * 1024
-        with self.assertRaisesMessage(ErreurFichier, "2 Mo"):
-            lire_fichier(fichier)
+    def test_too_heavy(self):
+        file = csv_("Prénom;Nom\n")
+        file.size = 3 * 1024 * 1024
+        with self.assertRaisesMessage(FileError, "2 Mo"):
+            read_file(file)
 
 
-class AnalyseTests(ImportTestCase):
-    def analyser(
-        self, *lignes, en_tete=("Prénom", "Nom", "Téléphone", "Chambre", "Arrivée", "E-mail")
-    ):
-        return analyser(list(enumerate([list(en_tete), *map(list, lignes)], start=1)))
+class AnalysisTests(ImportTestCase):
+    def analyze(self, *rows, header=("Prénom", "Nom", "Téléphone", "Chambre", "Arrivée", "E-mail")):
+        return analyze(list(enumerate([list(header), *map(list, rows)], start=1)))
 
-    def erreurs(self, *lignes, **kwargs):
-        return [ligne.erreurs for ligne in self.analyser(*lignes, **kwargs)]
+    def errors(self, *rows, **kwargs):
+        return [row.errors for row in self.analyze(*rows, **kwargs)]
 
-    def test_ligne_prete(self):
-        (ligne,) = self.analyser(("Inès", "Martin", "07 81 23 45 88", "304", "03/11/2026", ""))
-        self.assertTrue(ligne.prete)
-        self.assertEqual(ligne.numero, 2)
-        self.assertEqual(ligne.telephone, "+33781234588")
-        self.assertEqual(ligne.telephone_affiche, "07 81 23 45 88")
-        self.assertEqual(ligne.date_arrivee, date(2026, 11, 3))
+    def test_ready_row(self):
+        (row,) = self.analyze(("Inès", "Martin", "07 81 23 45 88", "304", "03/11/2026", ""))
+        self.assertTrue(row.ready)
+        self.assertEqual(row.number, 2)
+        self.assertEqual(row.phone, "+33781234588")
+        self.assertEqual(row.phone_display, "07 81 23 45 88")
+        self.assertEqual(row.arrival_date, date(2026, 11, 3))
 
-    def test_en_tetes_souples_et_colonnes_dans_le_desordre(self):
-        (ligne,) = self.analyser(
-            ("304", "martin", "Inès"), en_tete=(" N° chambre ", "NOM", "prenom")
-        )
-        self.assertEqual((ligne.prenom, ligne.nom, ligne.chambre), ("Inès", "martin", "304"))
-        # Chambre sans date : arrivée le jour de l'import, calculé à ce moment-là.
-        self.assertTrue(ligne.arrivee_auto)
-        self.assertEqual(ligne.date_arrivee, timezone.localdate())
+    def test_flexible_headers_and_columns_in_any_order(self):
+        (row,) = self.analyze(("304", "martin", "Inès"), header=(" N° chambre ", "NOM", "prenom"))
+        self.assertEqual((row.first_name, row.last_name, row.room), ("Inès", "martin", "304"))
+        # Room without a date: arrival on the import day, computed at that moment.
+        self.assertTrue(row.auto_arrival)
+        self.assertEqual(row.arrival_date, timezone.localdate())
 
-    def test_en_tetes_obligatoires(self):
-        with self.assertRaisesMessage(ErreurFichier, "Il manque « Prenom » et « Nom »"):
-            analyser([(1, ["Téléphone"]), (2, ["06 12 34 56 78"])])
+    def test_required_headers(self):
+        with self.assertRaisesMessage(FileError, "Il manque « Prenom » et « Nom »"):
+            analyze([(1, ["Téléphone"]), (2, ["06 12 34 56 78"])])
 
-    def test_valeurs_venues_d_excel(self):
-        (ligne,) = self.analyser(("Léa", "Moreau", 612345678, 304.0, datetime(2026, 9, 1), ""))
-        self.assertTrue(ligne.prete, ligne.erreurs)
-        self.assertEqual(ligne.telephone, "+33612345678")
-        self.assertEqual(ligne.chambre, "304")
+    def test_values_coming_from_excel(self):
+        (row,) = self.analyze(("Léa", "Moreau", 612345678, 304.0, datetime(2026, 9, 1), ""))
+        self.assertTrue(row.ready, row.errors)
+        self.assertEqual(row.phone, "+33612345678")
+        self.assertEqual(row.room, "304")
 
-    def test_erreurs_expliquees(self):
-        cas = [
+    def test_errors_explained(self):
+        cases = [
             (("", "", "", "", "", ""), ["Le prénom manque.", "Le nom manque."]),
             (
                 ("A", "B", "06 12 34", "", "", ""),
@@ -162,63 +154,61 @@ class AnalyseTests(ImportTestCase):
             ),
             (("A", "B", "", "", "", "a@"), ["« a@ » n'est pas une adresse e-mail."]),
         ]
-        for ligne, attendu in cas:
-            with self.subTest(ligne=ligne):
-                self.assertEqual(self.erreurs(ligne), [attendu])
+        for row, expected in cases:
+            with self.subTest(row=row):
+                self.assertEqual(self.errors(row), [expected])
 
-    def test_doublons_dans_le_fichier(self):
-        erreurs = self.erreurs(
+    def test_duplicates_in_the_file(self):
+        errors = self.errors(
             ("A", "B", "07 81 23 45 88", "304", "", ""),
             ("C", "D", "+33 7 81 23 45 88", "304", "", ""),
         )
-        self.assertEqual(erreurs[0], [])
-        self.assertEqual(
-            erreurs[1], ["Même numéro que la ligne 2.", "Même chambre que la ligne 2."]
-        )
+        self.assertEqual(errors[0], [])
+        self.assertEqual(errors[1], ["Même numéro que la ligne 2.", "Même chambre que la ligne 2."])
 
-    def test_meme_nom_signale_sans_bloquer(self):
-        (ligne,) = self.analyser(("awa", "KONÉ", "", "", "", ""))
-        self.assertTrue(ligne.prete)
-        self.assertIn("Une fiche existe déjà à ce nom", ligne.avertissements[0])
+    def test_same_name_flagged_without_blocking(self):
+        (row,) = self.analyze(("awa", "KONÉ", "", "", "", ""))
+        self.assertTrue(row.ready)
+        self.assertIn("Une fiche existe déjà à ce nom", row.warnings[0])
 
-    def test_nombre_de_requetes_independant_du_nombre_de_lignes(self):
-        lignes = [(f"P{i}", f"N{i}", f"07 81 23 45 {i:02}", "304", "", "") for i in range(40)]
+    def test_query_count_independent_of_the_row_count(self):
+        rows = [(f"P{i}", f"N{i}", f"07 81 23 45 {i:02}", "304", "", "") for i in range(40)]
         with self.assertNumQueries(4):
-            self.analyser(*lignes)
+            self.analyze(*rows)
 
 
-class ImporterTests(ImportTestCase):
-    def test_tout_ou_rien(self):
-        bonne = LigneImport(
-            numero=2, prenom="Inès", nom="Martin", chambre="304", arrivee="2026-11-03"
+class RunImportTests(ImportTestCase):
+    def test_all_or_nothing(self):
+        good = ImportRow(
+            number=2, first_name="Inès", last_name="Martin", room="304", arrival="2026-11-03"
         )
-        # Ligne qui paraît prête mais vise une chambre occupée : refusée au dernier moment.
-        piege = LigneImport(
-            numero=3, prenom="Léa", nom="Moreau", chambre="312", arrivee="2026-11-03"
+        # Row that looks ready but targets a taken room: refused at the last moment.
+        trap = ImportRow(
+            number=3, first_name="Léa", last_name="Moreau", room="312", arrival="2026-11-03"
         )
-        avant = User.objects.count()
+        before = User.objects.count()
         with self.assertRaises(ValidationError):
-            importer([bonne, piege])
-        self.assertEqual(User.objects.count(), avant)
-        self.assertFalse(Sejour.objects.filter(chambre=self.c304).exists())
+            run_import([good, trap])
+        self.assertEqual(User.objects.count(), before)
+        self.assertFalse(Stay.objects.filter(room=self.r304).exists())
 
 
-class PagesImportTests(ImportTestCase):
+class ImportPagesTests(ImportTestCase):
     def setUp(self):
-        connecter(self.client, creer_utilisateur("nadia", Role.ACCUEIL))
+        log_in_verified(self.client, make_user("nadia", Role.FRONT_DESK))
 
-    def envoyer(self, fichier):
-        return self.client.post(reverse("residents:import"), {"fichier": fichier})
+    def upload(self, file):
+        return self.client.post(reverse("residents:import"), {"file": file})
 
-    def confirmer(self, pretes, jeton=None, action="importer", **kwargs):
-        jeton = jeton or self.client.session["import_residents"]["jeton"]
+    def confirm(self, ready, token=None, action="import", **kwargs):
+        token = token or self.client.session["resident_import"]["token"]
         return self.client.post(
-            reverse("residents:import_apercu"),
-            {"action": action, "pretes": pretes, "jeton": jeton},
+            reverse("residents:import_preview"),
+            {"action": action, "ready": ready, "token": token},
             **kwargs,
         )
 
-    def fichier_type(self):
+    def sample_file(self):
         return csv_(
             "Prénom;Nom;Téléphone;Chambre;Arrivée\n"
             "Inès;Martin;07 81 23 45 88;304;03/11/2026\n"
@@ -227,210 +217,208 @@ class PagesImportTests(ImportTestCase):
             "Zoé;Bernard;06 12 34 56 47;;\n"
         )
 
-    def test_reserve_a_la_gestion_des_residents(self):
-        connecter(self.client, creer_utilisateur("sam", Role.EDUCATEUR))
-        for nom in ["import", "import_apercu", "import_modele"]:
-            self.assertEqual(self.client.get(reverse(f"residents:{nom}")).status_code, 403)
+    def test_only_for_resident_managers(self):
+        log_in_verified(self.client, make_user("sam", Role.EDUCATOR))
+        for name in ["import", "import_preview", "import_template"]:
+            self.assertEqual(self.client.get(reverse(f"residents:{name}")).status_code, 403)
 
-    def test_page_d_envoi(self):
-        reponse = self.client.get(reverse("residents:import"))
-        enregistrer_page("residents-import", reponse)
-        self.assertContains(reponse, 'enctype="multipart/form-data"')
-        self.assertContains(reponse, 'accept=".csv,.xlsx"')
-        reponse = self.client.get(reverse("residents:liste"))
-        self.assertContains(reponse, "Importer CSV ou Excel")
+    def test_upload_page(self):
+        response = self.client.get(reverse("residents:import"))
+        save_page("residents-import", response)
+        self.assertContains(response, 'enctype="multipart/form-data"')
+        self.assertContains(response, 'accept=".csv,.xlsx"')
+        response = self.client.get(reverse("residents:list"))
+        self.assertContains(response, "Importer CSV ou Excel")
 
-    def test_fichier_refuse(self):
-        reponse = self.envoyer(SimpleUploadedFile("vieux.xls", b"x"))
-        enregistrer_page("residents-import-erreur", reponse)
-        self.assertContains(reponse, "L&#x27;ancien format Excel (.xls)")
-        self.assertContains(reponse, 'aria-invalid="true"')
+    def test_file_refused(self):
+        response = self.upload(SimpleUploadedFile("vieux.xls", b"x"))
+        save_page("residents-import-error", response)
+        self.assertContains(response, "L&#x27;ancien format Excel (.xls)")
+        self.assertContains(response, 'aria-invalid="true"')
 
-    def test_apercu_puis_import(self):
-        reponse = self.envoyer(self.fichier_type())
-        self.assertRedirects(reponse, reverse("residents:import_apercu"))
-        reponse = self.client.get(reverse("residents:import_apercu"))
-        enregistrer_page("residents-import-apercu", reponse)
-        self.assertContains(reponse, "Aperçu · residents.csv")
-        self.assertContains(reponse, "2 prêtes")
-        self.assertContains(reponse, "2 à corriger")
-        self.assertContains(reponse, "Ce numéro est déjà celui de Awa Koné.")
-        self.assertContains(reponse, 'name="pretes" value="2,4"')
-        self.assertContains(reponse, "Importer les 2 lignes prêtes")
+    def test_preview_then_import(self):
+        response = self.upload(self.sample_file())
+        self.assertRedirects(response, reverse("residents:import_preview"))
+        response = self.client.get(reverse("residents:import_preview"))
+        save_page("residents-import-preview", response)
+        self.assertContains(response, "Aperçu · residents.csv")
+        self.assertContains(response, "2 prêtes")
+        self.assertContains(response, "2 à corriger")
+        self.assertContains(response, "Ce numéro est déjà celui de Awa Koné.")
+        self.assertContains(response, 'name="ready" value="2,4"')
+        self.assertContains(response, "Importer les 2 lignes prêtes")
 
-        reponse = self.confirmer("2,4", follow=True)
-        self.assertRedirects(reponse, reverse("residents:liste"))
-        self.assertContains(reponse, "2 résidents importés.")
+        response = self.confirm("2,4", follow=True)
+        self.assertRedirects(response, reverse("residents:list"))
+        self.assertContains(response, "2 résidents importés.")
         ines = User.objects.get(first_name="Inès")
-        self.assertEqual(ines.telephone, "+33781234588")
+        self.assertEqual(ines.phone, "+33781234588")
         self.assertFalse(ines.has_usable_password())
-        self.assertEqual(sejour_en_cours(ines).arrivee, date(2026, 11, 3))
+        self.assertEqual(current_stay(ines).arrival, date(2026, 11, 3))
         moussa = User.objects.get(first_name="Moussa")
-        self.assertEqual(sejour_en_cours(moussa).chambre, self.c305)
+        self.assertEqual(current_stay(moussa).room, self.r305)
         self.assertFalse(User.objects.filter(first_name__in=["Léa", "Zoé"]).exists())
-        self.assertNotIn("import_residents", self.client.session)
+        self.assertNotIn("resident_import", self.client.session)
 
-    def test_situation_changee_avant_la_confirmation(self):
-        self.envoyer(self.fichier_type())
-        # Entre l'aperçu et la confirmation, quelqu'un loge une autre personne en 304.
-        Sejour.objects.create(
-            resident=creer_utilisateur("x"), chambre=self.c304, arrivee=AUJOURD_HUI
-        )
-        reponse = self.confirmer("2,4")
-        self.assertContains(reponse, "La situation a changé depuis l'aperçu.")
-        self.assertContains(reponse, 'name="pretes" value="4"')
+    def test_state_changed_before_the_confirmation(self):
+        self.upload(self.sample_file())
+        # Between the preview and the confirmation, someone houses another person in 304.
+        Stay.objects.create(resident=make_user("x"), room=self.r304, arrival=TODAY)
+        response = self.confirm("2,4")
+        self.assertContains(response, "La situation a changé depuis l'aperçu.")
+        self.assertContains(response, 'name="ready" value="4"')
         self.assertFalse(User.objects.filter(first_name="Inès").exists())
 
-    def test_annuler(self):
-        self.envoyer(self.fichier_type())
-        reponse = self.confirmer("", action="annuler", follow=True)
-        self.assertRedirects(reponse, reverse("residents:import"))
-        self.assertContains(reponse, "Import annulé. Aucune fiche n&#x27;a été créée.")
+    def test_cancel(self):
+        self.upload(self.sample_file())
+        response = self.confirm("", action="cancel", follow=True)
+        self.assertRedirects(response, reverse("residents:import"))
+        self.assertContains(response, "Import annulé. Aucune fiche n&#x27;a été créée.")
         self.assertFalse(User.objects.filter(first_name="Inès").exists())
 
-    def test_apercu_sans_fichier(self):
-        reponse = self.client.get(reverse("residents:import_apercu"))
-        self.assertRedirects(reponse, reverse("residents:import"))
+    def test_preview_without_file(self):
+        response = self.client.get(reverse("residents:import_preview"))
+        self.assertRedirects(response, reverse("residents:import"))
 
-    def test_xlsx_de_bout_en_bout(self):
-        self.envoyer(
+    def test_xlsx_end_to_end(self):
+        self.upload(
             xlsx([["Nom", "Prénom", "Portable", "Chambre"], ["Diallo", "Moussa", 781234588, 305]])
         )
-        self.confirmer("2")
+        self.confirm("2")
         moussa = User.objects.get(first_name="Moussa")
-        self.assertEqual(moussa.telephone, "+33781234588")
-        self.assertEqual(sejour_en_cours(moussa).chambre, self.c305)
+        self.assertEqual(moussa.phone, "+33781234588")
+        self.assertEqual(current_stay(moussa).room, self.r305)
 
-    def test_modele_csv(self):
-        reponse = self.client.get(reverse("residents:import_modele"))
-        self.assertEqual(reponse["Content-Type"], "text/csv; charset=utf-8")
-        self.assertIn("attachment", reponse["Content-Disposition"])
-        texte = reponse.content.decode("utf-8-sig")
-        self.assertEqual(texte, "Prénom;Nom;Téléphone;Chambre;Arrivée;E-mail\r\n")
-        # Le modèle se relit sans erreur.
-        lignes = lire_fichier(SimpleUploadedFile("modele.csv", reponse.content))
-        self.assertEqual(len(lignes), 1)
+    def test_csv_template(self):
+        response = self.client.get(reverse("residents:import_template"))
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn("attachment", response["Content-Disposition"])
+        text = response.content.decode("utf-8-sig")
+        self.assertEqual(text, "Prénom;Nom;Téléphone;Chambre;Arrivée;E-mail\r\n")
+        # The template can be read back without error.
+        rows = read_file(SimpleUploadedFile("modele.csv", response.content))
+        self.assertEqual(len(rows), 1)
 
 
-class FichiersPiegesTests(ImportTestCase):
-    """Fichiers abîmés ou piégés : refusés avec un message, jamais une erreur 500."""
+class TrappedFilesTests(ImportTestCase):
+    """Damaged or trapped files: refused with a message, never a 500 error."""
 
-    def test_lignes_vides_ne_font_pas_perdre_de_lignes(self):
-        lignes = "".join(f"P{i};N{i}\n" for i in range(LIGNES_MAX))
-        fichier = csv_("Prénom;Nom\n\n\n" + lignes + "\n\n")
-        self.assertEqual(len(lire_fichier(fichier)), LIGNES_MAX + 1)
-        with self.assertRaisesMessage(ErreurFichier, "500 lignes"):
-            lire_fichier(csv_("Prénom;Nom\n\n" + lignes + "Un;De trop\n"))
+    def test_empty_rows_do_not_lose_rows(self):
+        rows = "".join(f"P{i};N{i}\n" for i in range(MAX_ROWS))
+        file = csv_("Prénom;Nom\n\n\n" + rows + "\n\n")
+        self.assertEqual(len(read_file(file)), MAX_ROWS + 1)
+        with self.assertRaisesMessage(FileError, "500 lignes"):
+            read_file(csv_("Prénom;Nom\n\n" + rows + "Un;De trop\n"))
 
-    def test_trop_de_lignes_vides(self):
-        with self.assertRaisesMessage(ErreurFichier, "500 lignes"):
-            lire_fichier(csv_("Prénom;Nom\n" + ";\n" * 6000))
+    def test_too_many_empty_rows(self):
+        with self.assertRaisesMessage(FileError, "500 lignes"):
+            read_file(csv_("Prénom;Nom\n" + ";\n" * 6000))
 
-    def test_csv_illisible(self):
-        cas = {
-            "encodage": (SimpleUploadedFile("a.csv", b"Pr\x81nom;Nom\n"), "illisibles"),
-            "cellule géante": (csv_('Prénom;Nom\n"' + "x" * 200_000 + '";B\n'), "mal formé"),
+    def test_unreadable_csv(self):
+        cases = {
+            "encoding": (SimpleUploadedFile("a.csv", b"Pr\x81nom;Nom\n"), "illisibles"),
+            "huge cell": (csv_('Prénom;Nom\n"' + "x" * 200_000 + '";B\n'), "mal formé"),
         }
-        for nom, (fichier, extrait) in cas.items():
-            with self.subTest(nom), self.assertRaisesMessage(ErreurFichier, extrait):
-                lire_fichier(fichier)
+        for name, (file, excerpt) in cases.items():
+            with self.subTest(name), self.assertRaisesMessage(FileError, excerpt):
+                read_file(file)
 
-    def _xlsx_modifie(self, modifier):
+    def _modified_xlsx(self, modify):
         source = xlsx([["Prénom", "Nom"], ["Léa", "Moreau"]])
-        entree, sortie = io.BytesIO(source.read()), io.BytesIO()
+        source_buffer, output = io.BytesIO(source.read()), io.BytesIO()
         with (
-            zipfile.ZipFile(entree) as zin,
-            zipfile.ZipFile(sortie, "w", zipfile.ZIP_DEFLATED) as zout,
+            zipfile.ZipFile(source_buffer) as zin,
+            zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zout,
         ):
             for info in zin.infolist():
-                zout.writestr(info, modifier(info.filename, zin.read(info.filename)))
-            if modifier("ajout", None) is not None:
-                zout.writestr("ajout.bin", modifier("ajout", None))
-        return SimpleUploadedFile("a.xlsx", sortie.getvalue())
+                zout.writestr(info, modify(info.filename, zin.read(info.filename)))
+            if modify("extra", None) is not None:
+                zout.writestr("extra.bin", modify("extra", None))
+        return SimpleUploadedFile("a.xlsx", output.getvalue())
 
-    def test_xlsx_xml_abime(self):
-        fichier = self._xlsx_modifie(
-            lambda nom, contenu: contenu[:-40] if nom.endswith("sheet1.xml") else contenu
+    def test_damaged_xlsx_xml(self):
+        file = self._modified_xlsx(
+            lambda name, content: content[:-40] if name.endswith("sheet1.xml") else content
         )
-        with self.assertRaisesMessage(ErreurFichier, "illisible"):
-            lire_fichier(fichier)
+        with self.assertRaisesMessage(FileError, "illisible"):
+            read_file(file)
 
-    def test_xlsx_qui_gonfle(self):
-        gros = b"0" * (TAILLE_DECOMPRESSEE_MAX + 1)
-        fichier = self._xlsx_modifie(lambda nom, contenu: gros if nom == "ajout" else contenu)
-        self.assertLess(fichier.size, TAILLE_MAX)
-        with self.assertRaisesMessage(ErreurFichier, "illisible"):
-            lire_fichier(fichier)
+    def test_inflating_xlsx(self):
+        big = b"0" * (MAX_UNCOMPRESSED_SIZE + 1)
+        file = self._modified_xlsx(lambda name, content: big if name == "extra" else content)
+        self.assertLess(file.size, MAX_SIZE)
+        with self.assertRaisesMessage(FileError, "illisible"):
+            read_file(file)
 
 
-class SejourTermineTests(ImportTestCase):
-    def test_arrivee_pendant_un_ancien_sejour(self):
-        Sejour.objects.create(
-            resident=creer_utilisateur("ancien"),
-            chambre=self.c305,
-            arrivee=date(2025, 9, 1),
-            depart=date(2026, 6, 30),
+class EndedStayTests(ImportTestCase):
+    def test_arrival_during_a_past_stay(self):
+        Stay.objects.create(
+            resident=make_user("former"),
+            room=self.r305,
+            arrival=date(2025, 9, 1),
+            departure=date(2026, 6, 30),
         )
-        lignes = analyser(
+        rows = analyze(
             [(1, ["Prénom", "Nom", "Chambre", "Arrivée"]), (2, ["A", "B", "305", "01/03/2026"])]
         )
         self.assertEqual(
-            lignes[0].erreurs,
+            rows[0].errors,
             [
                 "La chambre 305 était occupée jusqu'au 30/06/2026 : "
                 "l'arrivée doit être à partir de cette date."
             ],
         )
 
-    def test_l_erreur_d_import_donne_la_ligne(self):
-        piege = LigneImport(
-            numero=7, prenom="Léa", nom="Moreau", chambre="312", arrivee="2026-11-03"
+    def test_import_error_gives_the_row(self):
+        trap = ImportRow(
+            number=7, first_name="Léa", last_name="Moreau", room="312", arrival="2026-11-03"
         )
         with self.assertRaisesMessage(ValidationError, "Ligne 7 :"):
-            importer([piege])
+            run_import([trap])
 
 
-class ConfirmationTests(PagesImportTests):
-    def fichier(self, nom, prenom):
-        return csv_(f"Prénom;Nom\n{prenom};Test\n", nom=nom)
+class ConfirmationTests(ImportPagesTests):
+    def file(self, name, first_name):
+        return csv_(f"Prénom;Nom\n{first_name};Test\n", name=name)
 
-    def test_deux_onglets(self):
-        self.envoyer(self.fichier("a.csv", "Alice"))
-        jeton_a = self.client.session["import_residents"]["jeton"]
-        self.envoyer(self.fichier("b.csv", "Bruno"))
-        reponse = self.confirmer("2", jeton=jeton_a)
-        self.assertContains(reponse, "Un autre fichier a été envoyé depuis.")
-        self.assertContains(reponse, "Aperçu · b.csv")
+    def test_two_tabs(self):
+        self.upload(self.file("a.csv", "Alice"))
+        token_a = self.client.session["resident_import"]["token"]
+        self.upload(self.file("b.csv", "Bruno"))
+        response = self.confirm("2", token=token_a)
+        self.assertContains(response, "Un autre fichier a été envoyé depuis.")
+        self.assertContains(response, "Aperçu · b.csv")
         self.assertFalse(User.objects.filter(last_name="Test").exists())
 
-    def test_double_envoi(self):
-        self.envoyer(self.fichier("a.csv", "Alice"))
-        donnees = self.client.session["import_residents"]
-        self.confirmer("2")
-        # Seconde requête partie avant que la première ait vidé la session.
+    def test_double_submit(self):
+        self.upload(self.file("a.csv", "Alice"))
+        data = self.client.session["resident_import"]
+        self.confirm("2")
+        # Second request sent before the first one emptied the session.
         session = self.client.session
-        session["import_residents"] = donnees
+        session["resident_import"] = data
         session.save()
-        reponse = self.confirmer("2", follow=True)
-        self.assertContains(reponse, "Cet import a déjà été fait.")
+        response = self.confirm("2", follow=True)
+        self.assertContains(response, "Cet import a déjà été fait.")
         self.assertEqual(User.objects.filter(first_name="Alice").count(), 1)
-        trace = ImportResidents.objects.get()
-        self.assertEqual((trace.fichier, trace.nombre), ("a.csv", 1))
+        record = ResidentImport.objects.get()
+        self.assertEqual((record.file_name, record.count), ("a.csv", 1))
 
-    def test_apercu_expire(self):
-        self.envoyer(self.fichier("a.csv", "Alice"))
+    def test_preview_expired(self):
+        self.upload(self.file("a.csv", "Alice"))
         session = self.client.session
-        session["import_residents"]["cree_le"] -= 2 * 60 * 60
+        session["resident_import"]["created_at"] -= 2 * 60 * 60
         session.save()
-        reponse = self.client.get(reverse("residents:import_apercu"), follow=True)
-        self.assertRedirects(reponse, reverse("residents:import"))
-        self.assertContains(reponse, "L&#x27;aperçu a expiré.")
-        self.assertNotIn("import_residents", self.client.session)
+        response = self.client.get(reverse("residents:import_preview"), follow=True)
+        self.assertRedirects(response, reverse("residents:import"))
+        self.assertContains(response, "L&#x27;aperçu a expiré.")
+        self.assertNotIn("resident_import", self.client.session)
 
-    def test_arrivee_du_jour_de_l_import(self):
-        self.envoyer(csv_("Prénom;Nom;Chambre\nAlice;Test;304\n"))
-        reponse = self.client.get(reverse("residents:import_apercu"))
-        self.assertContains(reponse, "Aujourd'hui")
-        self.confirmer("2")
+    def test_arrival_on_the_import_day(self):
+        self.upload(csv_("Prénom;Nom;Chambre\nAlice;Test;304\n"))
+        response = self.client.get(reverse("residents:import_preview"))
+        self.assertContains(response, "Aujourd'hui")
+        self.confirm("2")
         alice = User.objects.get(first_name="Alice")
-        self.assertEqual(sejour_en_cours(alice).arrivee, timezone.localdate())
+        self.assertEqual(current_stay(alice).arrival, timezone.localdate())

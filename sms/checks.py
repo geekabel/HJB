@@ -1,29 +1,28 @@
-"""Contrôles « manage.py check » du réglage SMS.
+"""System checks ("manage.py check") for the SMS setting.
 
-Doc : https://docs.djangoproject.com/en/6.1/topics/checks/
+Django docs: https://docs.djangoproject.com/en/6.1/topics/checks/
 """
 
 from django.conf import settings
 from django.core.checks import Error, Warning, register
 
-FOURNISSEURS_DE_TEST = ("FournisseurAucun", "FournisseurConsole", "FournisseurMemoire")
+TEST_PROVIDERS = ("DisabledProvider", "ConsoleProvider", "MemoryProvider")
 
 
 @register("sms")
-def verifier_reglage_sms(app_configs, **kwargs):
-    from .fournisseurs.base import ErreurConfiguration
-    from .service import fournisseur_actif
+def check_sms_setting(app_configs, **kwargs):
+    from .providers.base import ConfigurationError
+    from .service import active_provider
 
     try:
-        fournisseur = fournisseur_actif()
-    except ErreurConfiguration as erreur:
-        return [Error(str(erreur), hint="Voir le réglage SMS.", id="sms.E001")]
-    manquantes = fournisseur.options_manquantes()
-    if manquantes:
+        provider = active_provider()
+    except ConfigurationError as error:
+        return [Error(str(error), hint="Voir le réglage SMS.", id="sms.E001")]
+    missing = provider.missing_options()
+    if missing:
         return [
             Error(
-                f"Fournisseur SMS « {fournisseur.nom} » : "
-                f"options manquantes ({', '.join(manquantes)}).",
+                f"Fournisseur SMS « {provider.name} » : options manquantes ({', '.join(missing)}).",
                 hint="Remplir les variables d'environnement correspondantes (.env.example).",
                 id="sms.E002",
             )
@@ -32,13 +31,13 @@ def verifier_reglage_sms(app_configs, **kwargs):
 
 
 @register("sms", deploy=True)
-def verifier_fournisseur_de_production(app_configs, **kwargs):
-    nom_classe = getattr(settings, "SMS", {}).get("BACKEND", "").rsplit(".", 1)[-1]
-    if nom_classe in FOURNISSEURS_DE_TEST:
+def check_production_provider(app_configs, **kwargs):
+    class_name = getattr(settings, "SMS", {}).get("BACKEND", "").rsplit(".", 1)[-1]
+    if class_name in TEST_PROVIDERS:
         return [
             Warning(
                 "Les SMS ne partent pas : aucun fournisseur réel n'est configuré.",
-                hint="Régler DJANGO_SMS_FOURNISSEUR sur « ovh » (ou « smsgate » pour des essais).",
+                hint="Régler DJANGO_SMS_PROVIDER sur « ovh » (ou « smsgate » pour des essais).",
                 id="sms.W001",
             )
         ]

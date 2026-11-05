@@ -6,4 +6,4 @@ class SmsConfig(AppConfig):
     verbose_name = "SMS"
 
     def ready(self):
-        from . import checks  # noqa: F401  (enregistre les contrôles)
+        from . import checks  # noqa: F401  (registers the checks)

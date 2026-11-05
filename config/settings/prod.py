@@ -1,38 +1,39 @@
-"""Réglages de production.
+"""Production settings.
 
-Toutes les valeurs sensibles viennent de variables d'environnement
-(voir ``.env.example``). Liste de contrôle suivie :
+All sensitive values come from environment variables
+(see ``.env.example``). Checklist followed:
 https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 """
 
 import os
 
 from .base import *  # noqa: F403
+from .base import sms_setting
 
 
-def _liste(nom):
-    """Lit une variable d'environnement « a,b,c » et renvoie une liste."""
-    return [valeur.strip() for valeur in os.environ.get(nom, "").split(",") if valeur.strip()]
+def _list(name):
+    """Read an "a,b,c" environment variable and return a list."""
+    return [value.strip() for value in os.environ.get(name, "").split(",") if value.strip()]
 
 
 DEBUG = False
 
-# Obligatoire : l'application refuse de démarrer sans clé.
+# Required: the application refuses to start without a key.
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
-SECRET_KEY_FALLBACKS = _liste("DJANGO_SECRET_KEY_FALLBACKS")
+SECRET_KEY_FALLBACKS = _list("DJANGO_SECRET_KEY_FALLBACKS")
 
-ALLOWED_HOSTS = _liste("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = _list("DJANGO_ALLOWED_HOSTS")
 
-# Adresse de l'administration (T14), par exemple « gestion-7f3k/ ». Elle reste
-# protégée par la clé d'accès ; une adresse peu connue évite seulement le bruit
-# des robots. `check --deploy` signale « admin/ » (connexion.W001).
+# Address of the admin (T14), for example "gestion-7f3k/". It stays
+# protected by the passkey; a little-known address only avoids the noise
+# of bots. `check --deploy` reports "admin/" (access.W001).
 ADMIN_URL = os.environ.get("DJANGO_ADMIN_URL", "").strip("/") + "/"
 if ADMIN_URL == "/":
     ADMIN_URL = "admin/"
 
 
-# Base de données : PostgreSQL si POSTGRES_DB est défini, sinon SQLite.
-# Le choix final est fait en T38 (déploiement).
+# Database: PostgreSQL if POSTGRES_DB is set, else SQLite.
+# The final choice is made in T38 (deployment).
 # https://docs.djangoproject.com/en/6.1/ref/databases/
 
 if os.environ.get("POSTGRES_DB"):
@@ -55,7 +56,7 @@ else:
     }
 
 
-# E-mail : un vrai serveur SMTP en production (MAILERS, nouveau en 6.1).
+# E-mail: a real SMTP server in production (MAILERS, new in 6.1).
 # https://docs.djangoproject.com/en/6.1/ref/settings/#mailers
 
 MAILERS = {
@@ -75,19 +76,19 @@ DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "webmaster@loca
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
-# SMS : sans DJANGO_SMS_FOURNISSEUR, aucun envoi, et rien d'écrit dans les
-# journaux (la console y mettrait numéros et codes). Voir base.py.
+# SMS: without DJANGO_SMS_PROVIDER, nothing is sent, and nothing is written
+# to the logs (the console would put numbers and codes there). See base.py.
 
-SMS = reglage_sms("aucun")  # noqa: F405
+SMS = sms_setting("disabled")
 
 
-# Clés d'accès (T13) : le domaine du site, par exemple « residence.example.fr »,
-# et ses origines en https. Sans eux, `check` signale une erreur (otp_webauthn.E010, E030).
-# Attention : changer de domaine rend toutes les clés d'accès inutilisables.
+# Passkeys (T13): the site domain, for example "residence.example.fr",
+# and its https origins. Without them, `check` reports an error (otp_webauthn.E010, E030).
+# Warning: changing the domain makes all passkeys unusable.
 
 OTP_WEBAUTHN_RP_ID = os.environ.get("DJANGO_WEBAUTHN_RP_ID", "")
-OTP_WEBAUTHN_ALLOWED_ORIGINS = _liste("DJANGO_WEBAUTHN_ORIGINES")
-# L'administration n'affiche pas les clés publiques.
+OTP_WEBAUTHN_ALLOWED_ORIGINS = _list("DJANGO_WEBAUTHN_ORIGINS")
+# The admin does not show the public keys.
 OTP_ADMIN_HIDE_SENSITIVE_DATA = True
 
 
@@ -98,16 +99,16 @@ SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
-# HSTS : on commence par une courte durée, puis on l'augmente une fois
-# HTTPS vérifié (carte T37).
+# HSTS: we start with a short duration, then raise it once
+# HTTPS is checked (card T37).
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
 
-# Ces deux réglages touchent tous les sous-domaines du domaine choisi.
-# Ils restent désactivés tant que le domaine n'est pas connu (T37) :
-# `check --deploy` affiche donc security.W005 et security.W021.
+# These two settings affect all subdomains of the chosen domain.
+# They stay off until the domain is known (T37):
+# so `check --deploy` shows security.W005 and security.W021.
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS") == "1"
 SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD") == "1"
 
-# À activer seulement derrière un proxy qui écrase cet en-tête.
+# Turn on only behind a proxy that overwrites this header.
 if os.environ.get("DJANGO_BEHIND_PROXY") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

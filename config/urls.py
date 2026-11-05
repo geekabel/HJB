@@ -19,18 +19,18 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
-from connexion import views as connexion_views
+from access import views as access_views
 
 urlpatterns = [
-    path("", connexion_views.accueil, name="accueil"),
+    path("", access_views.home, name="home"),
     path(settings.ADMIN_URL, admin.site.urls),
-    # Connexion par clé d'accès (carte T13).
-    path("connexion/", include("connexion.urls")),
-    # Espace résident : activation du compte (cartes T11 à T13).
+    # Login by passkey (card T13).
+    path("connexion/", include("access.urls")),
+    # Resident area: account activation (cards T11 to T13).
     path("activer/", include("activation.urls")),
-    # Guide de style, réservé à l'équipe.
-    path("guide/", include("interface.urls")),
-    # Espace équipe.
-    path("equipe/journal/", include("journal.urls")),
+    # Style guide, for staff only.
+    path("guide/", include("ui.urls")),
+    # Staff area.
+    path("equipe/journal/", include("audit.urls")),
     path("equipe/residents/", include("residents.urls")),
 ]

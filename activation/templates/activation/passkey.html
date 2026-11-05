@@ -1,0 +1,19 @@
+{% extends "activation/base.html" %}
+{% load icons static %}
+{% block title %}Créer ma clé d'accès{% endblock %}
+{% block head %}<script src="{% static 'ui/js/passkey.js' %}" defer></script>{% endblock %}
+{% block step %}
+<div class="alert alert--success" role="status">{% icon "check" %}<p>Votre téléphone est vérifié. Merci {{ person.first_name }}.</p></div>
+<header class="stack stack--tight">
+  <h1>Dernière étape : votre clé d'accès</h1>
+  <p class="text-muted">Vous vous connecterez avec Face ID, votre empreinte ou le code de votre téléphone. Pas de mot de passe à retenir.</p>
+</header>
+
+<ul class="bullet-list">
+  <li>Votre téléphone garde la clé. Elle ne quitte jamais votre appareil, ou votre trousseau (iCloud, Google).</li>
+  <li>Créez-la sur le téléphone que vous utilisez tous les jours.</li>
+  <li>Téléphone perdu ou changé ? L'accueil vous remettra un nouveau code. L'ancienne clé ne marchera plus.</li>
+</ul>
+
+{% include "access/_passkey_button.html" with label="Créer ma clé d'accès" %}
+{% endblock %}

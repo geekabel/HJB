@@ -1,0 +1,19 @@
+{% extends "ui/resident.html" %}
+{% load icons static %}
+{% block title %}Confirmer que c'est vous{% endblock %}
+{% block head %}{% if has_passkey %}<script src="{% static 'ui/js/passkey.js' %}" defer></script>{% endif %}{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<header class="stack stack--tight">
+  <h1>Confirmez que c'est vous</h1>
+  <p class="text-muted">Cette page protège des informations sensibles. Utilisez votre clé d'accès pour continuer.</p>
+</header>
+
+{% if has_passkey %}
+{% include "access/_passkey_button.html" with label="Confirmer avec ma clé d'accès" %}
+{% else %}
+<div class="alert alert--warning">{% icon "alert" %}<p>Votre compte n'a pas encore de clé d'accès. Cette page en demande une. Demandez un code d'activation à l'accueil, ou à un administrateur si vous faites partie du personnel.</p></div>
+{% endif %}
+
+<p><a href="{% url 'home' %}">Retour à l'accueil</a></p>
+{% endblock %}

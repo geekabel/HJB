@@ -1,8 +1,8 @@
-"""Espace équipe : liste et fiche des résidents (maquette P5).
+"""Staff area: list and profile of the residents (mockup P5).
 
-Consultation : permission ``comptes.voir_residents`` (Accueil, Éducateurs,
-Administration). Création, modification, import et départ :
-``comptes.gerer_residents`` (Accueil, Administration).
+Viewing: permission ``accounts.view_residents`` (Accueil, Éducateurs,
+Administration). Creation, change, import and departure:
+``accounts.manage_residents`` (Accueil, Administration).
 """
 
 import logging
@@ -25,414 +25,415 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
 from django_otp_webauthn.utils import get_credential_model
 
-from comptes.activation import (
-    DUREE_VALIDITE,
-    envoyer_code_par_sms,
-    etat_activation,
-    generer_code,
+from accounts.activation_codes import (
+    VALIDITY,
+    activation_state,
+    issue_code,
+    send_code_by_sms,
 )
-from comptes.models import FILTRE_ETAT_COMPTE, EtatCompte, User
-from comptes.roles import Role
-from logement.models import Etage, Sejour
-from logement.services import sejour_en_cours
+from accounts.models import ACCOUNT_STATE_FILTERS, AccountState, User
+from accounts.roles import Role
+from housing.models import Floor, Stay
+from housing.services import current_stay
 
-from .depart import enregistrer_depart, enregistrer_retour, est_parti
-from .forms import FormulaireDepart, FormulaireImport, FormulaireResident, FormulaireRetour
-from .importation import (
-    EN_TETES,
-    ErreurFichier,
-    analyser,
-    depuis_session,
-    importer,
-    lire_fichier,
-    vers_session,
+from .bulk_import import (
+    HEADERS,
+    FileError,
+    analyze,
+    from_session,
+    read_file,
+    run_import,
+    to_session,
 )
-from .models import ImportResidents
+from .departure import has_left, record_departure, record_return
+from .forms import DepartureForm, ImportForm, ResidentForm, ReturnForm
+from .models import ResidentImport
 
-journal_erreurs = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-RESIDENTS_PAR_PAGE = 50
-SANS_CHAMBRE = "sans"
+RESIDENTS_PER_PAGE = 50
+NO_ROOM = "none"
 
 
-def _sejours_en_cours():
-    return Sejour.objects.en_cours().select_related("chambre__etage")
+def _current_stays():
+    return Stay.objects.current().select_related("room__floor")
 
 
 def _residents():
     return (
         User.objects.residents()
         .prefetch_related(
-            Prefetch("sejours", queryset=_sejours_en_cours(), to_attr="sejours_en_cours"),
+            Prefetch("stays", queryset=_current_stays(), to_attr="current_stays"),
             "groups",
         )
         .order_by("last_name", "first_name", "pk")
     )
 
 
-def _anciens():
-    """Anciens résidents : compte désactivé et plus de séjour en cours.
+def _former():
+    """Former residents: account disabled and no current stay.
 
-    Un compte désactivé mais encore logé reste dans la liste : son départ
-    n'est pas fini (la chambre n'est pas libérée).
+    An account that is disabled but still housed stays in the list: its
+    departure is not finished (the room is not free).
     """
-    en_cours = Sejour.objects.filter(resident=OuterRef("pk"), depart__isnull=True)
-    return Q(is_active=False) & ~Exists(en_cours)
+    current = Stay.objects.filter(resident=OuterRef("pk"), departure__isnull=True)
+    return Q(is_active=False) & ~Exists(current)
 
 
-def _filtrer(residents, recherche, etage, compte):
-    en_cours = Sejour.objects.filter(resident=OuterRef("pk"), depart__isnull=True)
-    for mot in recherche.split():
+def _filter(residents, search, floor, account):
+    current = Stay.objects.filter(resident=OuterRef("pk"), departure__isnull=True)
+    for word in search.split():
         residents = residents.filter(
-            Q(first_name__icontains=mot)
-            | Q(last_name__icontains=mot)
-            | Exists(en_cours.filter(chambre__numero__iexact=mot))
+            Q(first_name__icontains=word)
+            | Q(last_name__icontains=word)
+            | Exists(current.filter(room__number__iexact=word))
         )
-    if etage == SANS_CHAMBRE:
-        residents = residents.exclude(Exists(en_cours))
-    elif etage:
-        residents = residents.filter(Exists(en_cours.filter(chambre__etage_id=etage)))
-    if compte:
-        residents = residents.filter(FILTRE_ETAT_COMPTE[compte])
+    if floor == NO_ROOM:
+        residents = residents.exclude(Exists(current))
+    elif floor:
+        residents = residents.filter(Exists(current.filter(room__floor_id=floor)))
+    if account:
+        residents = residents.filter(ACCOUNT_STATE_FILTERS[account])
     return residents
 
 
 @login_required
-@permission_required("comptes.voir_residents", raise_exception=True)
-def liste(request):
-    recherche = request.GET.get("q", "").strip()[:100]
-    etages = list(Etage.objects.all())
-    etage = request.GET.get("etage", "")
-    if etage != SANS_CHAMBRE and etage not in {str(e.pk) for e in etages}:
-        etage = ""
-    peut_gerer = request.user.has_perm("comptes.gerer_residents")
-    etats = EtatCompte.choices
-    if not peut_gerer:
-        # Les éducateurs ne voient que les résidents actuels (minimisation des données).
-        etats = [choix for choix in etats if choix[0] != EtatCompte.DESACTIVE]
-    compte = request.GET.get("compte", "")
-    if compte not in dict(etats):
-        compte = ""
+@permission_required("accounts.view_residents", raise_exception=True)
+def resident_list(request):
+    search = request.GET.get("q", "").strip()[:100]
+    floors = list(Floor.objects.all())
+    floor = request.GET.get("floor", "")
+    if floor != NO_ROOM and floor not in {str(f.pk) for f in floors}:
+        floor = ""
+    can_manage = request.user.has_perm("accounts.manage_residents")
+    states = AccountState.choices
+    if not can_manage:
+        # Educators only see current residents (data minimisation).
+        states = [choice for choice in states if choice[0] != AccountState.DISABLED]
+    account = request.GET.get("account", "")
+    if account not in dict(states):
+        account = ""
 
-    tous = User.objects.residents()
-    compteurs = tous.aggregate(
+    everyone = User.objects.residents()
+    counts = everyone.aggregate(
         total=Count("pk"),
-        anciens=Count("pk", filter=_anciens()),
-        **{etat: Count("pk", filter=q) for etat, q in FILTRE_ETAT_COMPTE.items()},
+        former=Count("pk", filter=_former()),
+        **{state: Count("pk", filter=q) for state, q in ACCOUNT_STATE_FILTERS.items()},
     )
-    compteurs["actuels"] = compteurs["total"] - compteurs["anciens"]
-    residents = _filtrer(_residents(), recherche, etage, compte)
-    if compte != EtatCompte.DESACTIVE:
-        # Les anciens résidents n'apparaissent qu'avec le filtre « Désactivé ».
-        residents = residents.exclude(_anciens())
-    page = Paginator(residents, RESIDENTS_PAR_PAGE).get_page(request.GET.get("page"))
+    counts["current"] = counts["total"] - counts["former"]
+    residents = _filter(_residents(), search, floor, account)
+    if account != AccountState.DISABLED:
+        # Former residents only show up with the "Désactivé" filter.
+        residents = residents.exclude(_former())
+    page = Paginator(residents, RESIDENTS_PER_PAGE).get_page(request.GET.get("page"))
     for resident in page:
-        resident.sejour = resident.sejours_en_cours[0] if resident.sejours_en_cours else None
-        resident.est_moderateur = Role.MODERATEUR in resident.roles
+        resident.stay = resident.current_stays[0] if resident.current_stays else None
+        resident.is_moderator = Role.MODERATOR in resident.roles
 
-    filtres = request.GET.copy()
-    filtres.pop("page", None)
+    filters = request.GET.copy()
+    filters.pop("page", None)
     return render(
         request,
-        "residents/liste.html",
+        "residents/list.html",
         {
-            "actif": "residents",
+            "active_nav": "residents",
             "page_obj": page,
-            "compteurs": compteurs,
-            "recherche": recherche,
-            "etages": etages,
-            "etage": etage,
-            "etats": etats,
-            "peut_gerer": peut_gerer,
-            "compte": compte,
-            "filtre_actif": bool(recherche or etage or compte),
-            "parametres": filtres.urlencode(),
+            "counts": counts,
+            "search": search,
+            "floors": floors,
+            "floor": floor,
+            "states": states,
+            "can_manage": can_manage,
+            "account": account,
+            "filters_active": bool(search or floor or account),
+            "query_string": filters.urlencode(),
         },
     )
 
 
-def _formulaire(request, resident):
-    formulaire = FormulaireResident(request.POST or None, instance=resident)
-    if request.method == "POST" and formulaire.is_valid():
+def _resident_form(request, resident):
+    form = ResidentForm(request.POST or None, instance=resident)
+    if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():
-                resident = formulaire.enregistrer()
-        except ValidationError as erreur:
-            formulaire.ajouter_erreurs_sejour(erreur)
+                resident = form.save_resident()
+        except ValidationError as error:
+            form.add_stay_errors(error)
         except IntegrityError:
-            # Deux personnes de l'équipe ont choisi la même chambre au même moment.
-            formulaire.add_error(
-                "chambre", "Cette chambre vient d'être attribuée. Choisissez-en une autre."
-            )
+            # Two staff members chose the same room at the same moment.
+            form.add_error("room", "Cette chambre vient d'être attribuée. Choisissez-en une autre.")
         else:
-            return formulaire, resident
-    return formulaire, None
+            return form, resident
+    return form, None
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def creer(request):
-    formulaire, resident = _formulaire(request, User())
+@permission_required("accounts.manage_residents", raise_exception=True)
+def create(request):
+    form, resident = _resident_form(request, User())
     if resident:
         messages.success(request, f"La fiche de {resident.get_full_name()} est créée.")
-        return redirect("residents:fiche", pk=resident.pk)
+        return redirect("residents:detail", pk=resident.pk)
     return render(
         request,
-        "residents/fiche.html",
-        {"actif": "residents", "formulaire": formulaire, "resident": None},
+        "residents/detail.html",
+        {"active_nav": "residents", "form": form, "resident": None},
     )
 
 
 @login_required
-@permission_required("comptes.voir_residents", raise_exception=True)
-def fiche(request, pk):
+@permission_required("accounts.view_residents", raise_exception=True)
+def detail(request, pk):
     resident = get_object_or_404(User.objects.residents(), pk=pk)
-    peut_gerer = request.user.has_perm("comptes.gerer_residents")
-    if not peut_gerer and est_parti(resident):
-        raise Http404  # anciens résidents : réservés à l'accueil et à l'administration
-    formulaire = None
-    if peut_gerer:
-        formulaire, enregistre = _formulaire(request, resident)
-        if enregistre:
+    can_manage = request.user.has_perm("accounts.manage_residents")
+    if not can_manage and has_left(resident):
+        raise Http404  # former residents: only for the front desk and the administration
+    form = None
+    if can_manage:
+        form, saved = _resident_form(request, resident)
+        if saved:
             messages.success(request, "Les modifications sont enregistrées.")
-            return redirect("residents:fiche", pk=resident.pk)
-        resident.refresh_from_db()  # le formulaire a pu modifier l'objet sans l'enregistrer
+            return redirect("residents:detail", pk=resident.pk)
+        resident.refresh_from_db()  # the form may have changed the object without saving it
     elif request.method == "POST":
         raise PermissionDenied
     return render(
         request,
-        "residents/fiche.html",
+        "residents/detail.html",
         {
-            "actif": "residents",
-            "formulaire": formulaire,
+            "active_nav": "residents",
+            "form": form,
             "resident": resident,
-            "sejour": sejour_en_cours(resident),
-            "sejours": resident.sejours.select_related("chambre__etage"),
-            "activation": etat_activation(resident),
-            "jeton_code": jeton_code_activation(request, resident)
-            if request.user.has_perm("comptes.generer_code_activation")
+            "stay": current_stay(resident),
+            "stays": resident.stays.select_related("room__floor"),
+            "activation": activation_state(resident),
+            "code_token": activation_code_token(request, resident)
+            if request.user.has_perm("accounts.issue_activation_codes")
             else "",
-            # Dernière clé d'accès : montrée avec l'activation, à l'Accueil et à l'Administration.
-            "cle_acces": get_credential_model()
+            # Latest passkey: shown with the activation, to the front desk and the administration.
+            "passkey": get_credential_model()
             .objects.filter(user=resident)
             .order_by("-created_at")
             .first()
-            if request.user.has_perm("comptes.generer_code_activation")
+            if request.user.has_perm("accounts.issue_activation_codes")
             else None,
-            "dernier_depart": resident.sejours.filter(depart__isnull=False)
-            .order_by("-depart")
-            .values_list("depart", flat=True)
+            "last_departure": resident.stays.filter(departure__isnull=False)
+            .order_by("-departure")
+            .values_list("departure", flat=True)
             .first(),
         },
     )
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def depart(request, pk):
-    """Départ (carte T09) : page de confirmation, car l'action ferme le compte."""
+@permission_required("accounts.manage_residents", raise_exception=True)
+def departure(request, pk):
+    """Departure (card T09): confirmation page, because the action closes the account."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
     if resident.pk == request.user.pk:
         raise PermissionDenied
-    if est_parti(resident):
+    if has_left(resident):
         messages.info(request, "Le départ de cette personne est déjà enregistré.")
-        return redirect("residents:fiche", pk=resident.pk)
-    sejour = sejour_en_cours(resident)
-    formulaire = FormulaireDepart(request.POST or None, sejour=sejour)
-    if request.method == "POST" and formulaire.is_valid():
+        return redirect("residents:detail", pk=resident.pk)
+    stay = current_stay(resident)
+    form = DepartureForm(request.POST or None, stay=stay)
+    if request.method == "POST" and form.is_valid():
         try:
-            enregistrer_depart(resident, formulaire.cleaned_data["depart"], requete=request)
-        except ValidationError as erreur:
-            if erreur.code == "deja_parti":
-                messages.info(request, erreur.messages[0])
-                return redirect("residents:fiche", pk=resident.pk)
-            formulaire.add_error("depart", erreur.messages)
+            record_departure(resident, form.cleaned_data["departure"], request=request)
+        except ValidationError as error:
+            if error.code == "already_left":
+                messages.info(request, error.messages[0])
+                return redirect("residents:detail", pk=resident.pk)
+            form.add_error("departure", error.messages)
         else:
-            nom = resident.get_full_name() or resident.get_username()
+            name = resident.get_full_name() or resident.get_username()
             messages.success(
-                request, f"Le départ de {nom} est enregistré. Son compte est désactivé."
+                request, f"Le départ de {name} est enregistré. Son compte est désactivé."
             )
-            return redirect("residents:fiche", pk=resident.pk)
+            return redirect("residents:detail", pk=resident.pk)
     return render(
         request,
-        "residents/depart.html",
-        {"actif": "residents", "resident": resident, "sejour": sejour, "formulaire": formulaire},
+        "residents/departure.html",
+        {"active_nav": "residents", "resident": resident, "stay": stay, "form": form},
     )
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def retour(request, pk):
-    """Retour d'un ancien résident : choisir sa chambre, puis lui remettre un code."""
+@permission_required("accounts.manage_residents", raise_exception=True)
+def return_view(request, pk):
+    """Return of a former resident: choose their room, then give them a code."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
-    if not est_parti(resident):
-        return redirect("residents:fiche", pk=resident.pk)
-    formulaire = FormulaireRetour(request.POST or None)
-    if request.method == "POST" and formulaire.is_valid():
-        donnees = formulaire.cleaned_data
+    if not has_left(resident):
+        return redirect("residents:detail", pk=resident.pk)
+    form = ReturnForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
         try:
-            enregistrer_retour(resident, donnees["chambre"], donnees["arrivee"], requete=request)
-        except (ValidationError, IntegrityError) as erreur:
-            messages_erreur = getattr(erreur, "messages", ["Cette chambre vient d'être prise."])
-            formulaire.add_error(None, messages_erreur)
+            record_return(resident, data["room"], data["arrival"], request=request)
+        except (ValidationError, IntegrityError) as error:
+            error_messages = getattr(error, "messages", ["Cette chambre vient d'être prise."])
+            form.add_error(None, error_messages)
         else:
             messages.success(
                 request,
                 "Le retour est enregistré et le compte réactivé. "
                 "Générez un code d'activation pour la personne.",
             )
-            return redirect("residents:fiche", pk=resident.pk)
+            return redirect("residents:detail", pk=resident.pk)
     return render(
         request,
-        "residents/retour.html",
-        {"actif": "residents", "resident": resident, "formulaire": formulaire},
+        "residents/return.html",
+        {"active_nav": "residents", "resident": resident, "form": form},
     )
 
 
-CLE_JETONS_CODE = "jetons_code_activation"
-JETONS_MAX = 10
+CODE_TOKENS_KEY = "activation_code_tokens"
+MAX_TOKENS = 10
 
 
-def jeton_code_activation(request, resident):
-    """Jeton à usage unique pour le bouton « Générer un code » de la fiche.
+def activation_code_token(request, resident):
+    """Single-use token for the "Générer un code" button of the profile.
 
-    Recharger la page du code renvoie le même jeton, déjà consommé : aucun
-    nouveau code ne remplace celui déjà remis. Le code n'est jamais gardé en
-    clair, ni en base ni dans la session.
+    Reloading the code page sends the same token, already used: no new
+    code replaces the one already handed over. The code is never kept in
+    plain text, neither in the database nor in the session.
     """
-    jeton = secrets.token_urlsafe(16)
-    jetons = request.session.get(CLE_JETONS_CODE, [])[-(JETONS_MAX - 1) :]
-    request.session[CLE_JETONS_CODE] = [*jetons, [jeton, resident.pk]]
-    return jeton
+    token = secrets.token_urlsafe(16)
+    tokens = request.session.get(CODE_TOKENS_KEY, [])[-(MAX_TOKENS - 1) :]
+    request.session[CODE_TOKENS_KEY] = [*tokens, [token, resident.pk]]
+    return token
 
 
 @require_POST
 @login_required
-@permission_required("comptes.generer_code_activation", raise_exception=True)
-def couper_acces(request, pk):
-    """Téléphone perdu ou volé : l'appareil est déconnecté tout de suite (carte T13)."""
-    from connexion.services import couper_acces as couper
+@permission_required("accounts.issue_activation_codes", raise_exception=True)
+def cut_access(request, pk):
+    """Lost or stolen phone: the device is logged out right away (card T13)."""
+    from access.services import cut_access as cut_user_access
 
     resident = get_object_or_404(User.objects.residents(), pk=pk)
-    cles, sessions = couper(resident, par=request.user, requete=request)
-    sc, ss = ("s" if cles > 1 else ""), ("s" if sessions > 1 else "")
+    passkeys, sessions = cut_user_access(resident, by=request.user, request=request)
+    sp, ss = ("s" if passkeys > 1 else ""), ("s" if sessions > 1 else "")
     messages.success(
         request,
-        f"Accès coupé : {cles} clé{sc} d'accès supprimée{sc}, {sessions} session{ss} "
+        f"Accès coupé : {passkeys} clé{sp} d'accès supprimée{sp}, {sessions} session{ss} "
         f"fermée{ss}. Vérifiez le numéro de téléphone, puis générez un nouveau code.",
     )
-    return redirect("residents:fiche", pk=resident.pk)
+    return redirect("residents:detail", pk=resident.pk)
 
 
 @require_POST
 @login_required
-@permission_required("comptes.generer_code_activation", raise_exception=True)
-def code_activation(request, pk):
-    """Génère un code et l'affiche une seule fois, en page imprimable, jamais mise en cache."""
+@permission_required("accounts.issue_activation_codes", raise_exception=True)
+def activation_code(request, pk):
+    """Issue a code and show it only once, on a printable page that is never cached."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
-    jetons = request.session.get(CLE_JETONS_CODE, [])
-    attendu = [request.POST.get("jeton", ""), resident.pk]
-    if attendu not in jetons:
+    tokens = request.session.get(CODE_TOKENS_KEY, [])
+    expected = [request.POST.get("token", ""), resident.pk]
+    if expected not in tokens:
         messages.info(
             request,
             "Ce code a déjà été généré : il reste valable. "
             "S'il ne s'est pas affiché ou s'il est perdu, générez-en un nouveau.",
         )
-        return redirect("residents:fiche", pk=resident.pk)
-    request.session[CLE_JETONS_CODE] = [j for j in jetons if j != attendu]
+        return redirect("residents:detail", pk=resident.pk)
+    request.session[CODE_TOKENS_KEY] = [t for t in tokens if t != expected]
     if not resident.is_active:
         messages.info(request, "Ce compte est désactivé : enregistrez d'abord le retour.")
-        return redirect("residents:fiche", pk=resident.pk)
-    code = generer_code(resident, par=request.user, requete=request)
-    return feuille_code(request, resident, code, reverse("residents:fiche", args=[resident.pk]))
-
-
-def feuille_code(request, utilisateur, code, retour):
-    """Feuille imprimable du code, jamais mise en cache. Sert aussi pour le personnel (T14)."""
-    adresse = request.build_absolute_uri(reverse("activation:saisie"))
-    qr = segno.make_qr(f"{adresse}#{code}", error="m").svg_inline(
-        scale=4, title=f"Code QR pour activer le compte de {utilisateur.get_full_name()}"
+        return redirect("residents:detail", pk=resident.pk)
+    code = issue_code(resident, by=request.user, request=request)
+    return activation_sheet(
+        request, resident, code, reverse("residents:detail", args=[resident.pk])
     )
-    reponse = render(
+
+
+def activation_sheet(request, user, code, back_url):
+    """Printable sheet with the code, never cached. Also used for staff accounts (T14)."""
+    address = request.build_absolute_uri(reverse("activation:enter_code"))
+    qr = segno.make_qr(f"{address}#{code}", error="m").svg_inline(
+        scale=4, title=f"Code QR pour activer le compte de {user.get_full_name()}"
+    )
+    response = render(
         request,
-        "residents/code_activation.html",
+        "residents/activation_code.html",
         {
-            "actif": "residents",
-            "resident": utilisateur,
+            "active_nav": "residents",
+            "resident": user,
             "code": code,
-            "adresse": adresse,
-            "expire_le": timezone.now() + DUREE_VALIDITE,
-            "qr": mark_safe(qr),  # SVG produit par segno à partir de notre propre lien
-            "retour": retour,
+            "address": address,
+            "expires_at": timezone.now() + VALIDITY,
+            "qr": mark_safe(qr),  # SVG made by segno from our own link
+            "back_url": back_url,
         },
     )
-    add_never_cache_headers(reponse)
-    return reponse
+    add_never_cache_headers(response)
+    return response
 
 
-# --- Import CSV et Excel (carte T08) ------------------------------------------
+# --- CSV and Excel import (card T08) ------------------------------------------
 
-CLE_SESSION_IMPORT = "import_residents"
-DUREE_APERCU = 60 * 60  # secondes
-TITRES_MODELE = ["Prénom", "Nom", "Téléphone", "Chambre", "Arrivée", "E-mail"]
+IMPORT_SESSION_KEY = "resident_import"
+PREVIEW_DURATION = 60 * 60  # seconds
+# Column titles of the template file: they stay in French, users type them.
+TEMPLATE_HEADERS = ["Prénom", "Nom", "Téléphone", "Chambre", "Arrivée", "E-mail"]
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def import_fichier(request):
-    """Étape 1 : envoi du fichier. Il est lu puis oublié : seules les lignes
-    analysées restent dans la session, une heure au plus, jusqu'à la confirmation."""
-    formulaire = FormulaireImport(request.POST or None, request.FILES or None)
-    if request.method == "POST" and formulaire.is_valid():
-        fichier = formulaire.cleaned_data["fichier"]
+@permission_required("accounts.manage_residents", raise_exception=True)
+def import_file(request):
+    """Step 1: upload the file. It is read, then forgotten: only the analyzed rows
+    stay in the session, one hour at most, until the confirmation."""
+    form = ImportForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        file = form.cleaned_data["file"]
         try:
-            lignes = analyser(lire_fichier(fichier))
-        except ErreurFichier as erreur:
-            formulaire.add_error("fichier", str(erreur))
+            rows = analyze(read_file(file))
+        except FileError as error:
+            form.add_error("file", str(error))
         else:
-            request.session[CLE_SESSION_IMPORT] = {
-                # Relie la confirmation à cet aperçu précis (deux onglets, double clic).
-                "jeton": secrets.token_urlsafe(32),
-                "cree_le": time.time(),
-                "fichier": fichier.name[:100],
-                "lignes": vers_session(lignes),
+            request.session[IMPORT_SESSION_KEY] = {
+                # Ties the confirmation to this exact preview (two tabs, double click).
+                "token": secrets.token_urlsafe(32),
+                "created_at": time.time(),
+                "file_name": file.name[:100],
+                "rows": to_session(rows),
             }
-            return redirect("residents:import_apercu")
+            return redirect("residents:import_preview")
     return render(
         request,
         "residents/import.html",
-        {"actif": "residents", "formulaire": formulaire, "en_tetes": EN_TETES},
+        {"active_nav": "residents", "form": form, "headers": HEADERS},
     )
 
 
-def _import_en_cours(request):
-    donnees = request.session.get(CLE_SESSION_IMPORT)
-    if donnees and time.time() - donnees.get("cree_le", 0) > DUREE_APERCU:
-        # Les noms et numéros ne restent pas dans la session plus que nécessaire.
-        del request.session[CLE_SESSION_IMPORT]
+def _pending_import(request):
+    data = request.session.get(IMPORT_SESSION_KEY)
+    if data and time.time() - data.get("created_at", 0) > PREVIEW_DURATION:
+        # Names and numbers do not stay in the session longer than needed.
+        del request.session[IMPORT_SESSION_KEY]
         messages.info(request, "L'aperçu a expiré. Envoyez de nouveau le fichier.")
         return None
-    return donnees
+    return data
 
 
-def _confirmer(request, import_en_cours, lignes):
-    """Crée les fiches. Renvoie la liste créée, ou None avec un message d'erreur."""
+def _confirm(request, pending_import, rows):
+    """Create the residents. Return the created list, or None with an error message."""
     try:
         with transaction.atomic():
-            trace = ImportResidents.objects.create(
-                jeton=import_en_cours["jeton"],
-                importe_par=request.user,
-                fichier=import_en_cours["fichier"],
+            record = ResidentImport.objects.create(
+                token=pending_import["token"],
+                imported_by=request.user,
+                file_name=pending_import["file_name"],
             )
-            creees = importer(lignes)
-            trace.nombre = len(creees)
-            trace.save(update_fields=["nombre"])
-    except ValidationError as erreur:
-        messages.warning(request, f"Rien n'a été importé. {' '.join(erreur.messages)}")
+            created = run_import(rows)
+            record.count = len(created)
+            record.save(update_fields=["count"])
+    except ValidationError as error:
+        messages.warning(request, f"Rien n'a été importé. {' '.join(error.messages)}")
     except IntegrityError:
-        if ImportResidents.objects.filter(jeton=import_en_cours["jeton"]).exists():
+        if ResidentImport.objects.filter(token=pending_import["token"]).exists():
             messages.info(request, "Cet import a déjà été fait.")
-            del request.session[CLE_SESSION_IMPORT]
+            del request.session[IMPORT_SESSION_KEY]
             return []
         messages.warning(
             request,
@@ -440,106 +441,105 @@ def _confirmer(request, import_en_cours, lignes):
             "Vérifiez l'aperçu à jour.",
         )
     else:
-        return creees
+        return created
     return None
 
 
-CODES_SMS_MAX = 20  # au-delà, la page attendrait trop longtemps les fournisseurs
+MAX_SMS_CODES = 20  # above this, the page would wait too long for the providers
 
 
-def _envoyer_codes(request, residents):
-    """Option de l'import : un code d'activation par SMS aux nouveaux qui ont un numéro."""
-    adresse = request.build_absolute_uri(reverse("activation:saisie"))
-    avec_numero = [r for r in residents if r.telephone]
-    if len(avec_numero) > CODES_SMS_MAX:
+def _send_codes(request, residents):
+    """Import option: an activation code by SMS to the new residents who have a number."""
+    address = request.build_absolute_uri(reverse("activation:enter_code"))
+    with_number = [r for r in residents if r.phone]
+    if len(with_number) > MAX_SMS_CODES:
         messages.warning(
             request,
-            f"Plus de {CODES_SMS_MAX} codes à envoyer : aucun SMS n'est parti. "
+            f"Plus de {MAX_SMS_CODES} codes à envoyer : aucun SMS n'est parti. "
             "Remettez les codes à l'accueil, ou envoyez-les depuis chaque fiche.",
         )
         return
-    envoyes = 0
-    for resident in avec_numero:
+    sent = 0
+    for resident in with_number:
         try:
-            envoyes += envoyer_code_par_sms(resident, adresse, par=request.user, requete=request)
-        except Exception:  # une panne imprévue ne doit pas cacher l'import réussi
-            journal_erreurs.exception("Envoi du code d'activation impossible")
-    if envoyes:
-        s = "s" if envoyes > 1 else ""
-        messages.success(request, f"{envoyes} code{s} d'activation envoyé{s} par SMS.")
-    if envoyes < len(avec_numero):
+            sent += send_code_by_sms(resident, address, by=request.user, request=request)
+        except Exception:  # an unexpected failure must not hide the successful import
+            logger.exception("Could not send the activation code")
+    if sent:
+        s = "s" if sent > 1 else ""
+        messages.success(request, f"{sent} code{s} d'activation envoyé{s} par SMS.")
+    if sent < len(with_number):
         messages.warning(
             request,
-            f"{len(avec_numero) - envoyes} SMS n'ont pas pu partir : "
-            "remettez ces codes à l'accueil.",
+            f"{len(with_number) - sent} SMS n'ont pas pu partir : remettez ces codes à l'accueil.",
         )
-    if len(avec_numero) < len(residents):
+    if len(with_number) < len(residents):
         messages.info(
             request,
-            f"{len(residents) - len(avec_numero)} résident(s) sans numéro : "
+            f"{len(residents) - len(with_number)} résident(s) sans numéro : "
             "code à remettre à l'accueil.",
         )
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def import_apercu(request):
-    """Étape 2 : aperçu ligne par ligne, puis import des lignes prêtes."""
-    import_en_cours = _import_en_cours(request)
-    if not import_en_cours:
+@permission_required("accounts.manage_residents", raise_exception=True)
+def import_preview(request):
+    """Step 2: row by row preview, then import of the ready rows."""
+    pending_import = _pending_import(request)
+    if not pending_import:
         return redirect("residents:import")
-    lignes = depuis_session(import_en_cours["lignes"])
-    pretes = [ligne.numero for ligne in lignes if ligne.prete]
-    situation_changee = autre_apercu = False
+    rows = from_session(pending_import["rows"])
+    ready = [row.number for row in rows if row.ready]
+    state_changed = other_preview = False
 
     if request.method == "POST":
-        if request.POST.get("jeton") != import_en_cours["jeton"]:
-            # Cet onglet montrait un autre fichier, remplacé depuis dans la session.
-            autre_apercu = True
-        elif request.POST.get("action") == "annuler":
-            del request.session[CLE_SESSION_IMPORT]
+        if request.POST.get("token") != pending_import["token"]:
+            # This tab showed another file, replaced since then in the session.
+            other_preview = True
+        elif request.POST.get("action") == "cancel":
+            del request.session[IMPORT_SESSION_KEY]
             messages.info(request, "Import annulé. Aucune fiche n'a été créée.")
             return redirect("residents:import")
-        elif request.POST.get("pretes", "") != ",".join(map(str, pretes)):
-            # Une chambre ou un numéro a été pris depuis l'aperçu.
-            situation_changee = True
+        elif request.POST.get("ready", "") != ",".join(map(str, ready)):
+            # A room or a number was taken since the preview.
+            state_changed = True
         else:
-            creees = _confirmer(request, import_en_cours, lignes)
-            if creees is not None:
-                request.session.pop(CLE_SESSION_IMPORT, None)
-                if creees:
-                    s = "s" if len(creees) > 1 else ""
-                    messages.success(request, f"{len(creees)} résident{s} importé{s}.")
-                    peut_generer = request.user.has_perm("comptes.generer_code_activation")
-                    if request.POST.get("envoyer_codes") == "oui" and peut_generer:
-                        _envoyer_codes(request, creees)
-                return redirect("residents:liste")
-            lignes = depuis_session(import_en_cours["lignes"])
-            pretes = [ligne.numero for ligne in lignes if ligne.prete]
+            created = _confirm(request, pending_import, rows)
+            if created is not None:
+                request.session.pop(IMPORT_SESSION_KEY, None)
+                if created:
+                    s = "s" if len(created) > 1 else ""
+                    messages.success(request, f"{len(created)} résident{s} importé{s}.")
+                    can_issue = request.user.has_perm("accounts.issue_activation_codes")
+                    if request.POST.get("send_codes") == "yes" and can_issue:
+                        _send_codes(request, created)
+                return redirect("residents:list")
+            rows = from_session(pending_import["rows"])
+            ready = [row.number for row in rows if row.ready]
 
     return render(
         request,
         "residents/import.html",
         {
-            "actif": "residents",
-            "fichier": import_en_cours["fichier"],
-            "jeton": import_en_cours["jeton"],
-            "lignes": lignes,
-            "pretes": ",".join(map(str, pretes)),
-            "nombre_pretes": len(pretes),
-            "nombre_a_corriger": len(lignes) - len(pretes),
-            "situation_changee": situation_changee,
-            "autre_apercu": autre_apercu,
+            "active_nav": "residents",
+            "file_name": pending_import["file_name"],
+            "token": pending_import["token"],
+            "rows": rows,
+            "ready": ",".join(map(str, ready)),
+            "ready_count": len(ready),
+            "to_fix_count": len(rows) - len(ready),
+            "state_changed": state_changed,
+            "other_preview": other_preview,
         },
     )
 
 
 @require_GET
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
-def import_modele(request):
-    """Fichier modèle : les titres de colonnes, en CSV lisible par Excel (BOM et « ; »)."""
-    reponse = HttpResponse(content_type="text/csv; charset=utf-8")
-    reponse["Content-Disposition"] = 'attachment; filename="modele-import-residents.csv"'
-    reponse.write("\ufeff" + ";".join(TITRES_MODELE) + "\r\n")
-    return reponse
+@permission_required("accounts.manage_residents", raise_exception=True)
+def import_template(request):
+    """Template file: the column titles, as a CSV that Excel can read (BOM and ";")."""
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="modele-import-residents.csv"'
+    response.write("﻿" + ";".join(TEMPLATE_HEADERS) + "\r\n")
+    return response

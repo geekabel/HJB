@@ -1,0 +1,95 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Résidents{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Résidents</h1>
+    <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluralize }} · {{ counts.active }} compte{{ counts.active|pluralize }} activé{{ counts.active|pluralize }} · {{ counts.pending }} pas encore activé{{ counts.pending|pluralize }}{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluralize }} résident{{ counts.former|pluralize }}</a>{% endif %}</p>
+  </div>
+  {% if perms.accounts.manage_residents %}
+  <div class="row">
+    <a class="button button--quiet" href="{% url 'residents:import' %}">{% icon "import" %}Importer CSV ou Excel</a>
+    <a class="button" href="{% url 'residents:create' %}">{% icon "plus" %}Nouveau résident</a>
+  </div>
+  {% endif %}
+</header>
+
+<form class="row filters" method="get" role="search" aria-label="Rechercher et filtrer les résidents">
+  <div class="field filters__search">
+    <label for="filter-q">Rechercher</label>
+    <input id="filter-q" name="q" type="search" value="{{ search }}" placeholder="Nom ou numéro de chambre" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="filter-floor">Étage</label>
+    <select id="filter-floor" name="floor">
+      <option value="">Tous les étages</option>
+      {% for f in floors %}
+      <option value="{{ f.pk }}"{% if floor == f.pk|stringformat:"d" %} selected{% endif %}>{{ f }}</option>
+      {% endfor %}
+      <option value="none"{% if floor == "none" %} selected{% endif %}>Sans chambre</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="filter-account">Compte</label>
+    <select id="filter-account" name="account">
+      <option value="">Tous les comptes</option>
+      {% for value, label in states %}
+      <option value="{{ value }}"{% if account == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="button button--quiet" type="submit">Filtrer</button>
+  {% if filters_active %}<a class="button button--quiet" href="{% url 'residents:list' %}">Effacer les filtres</a>{% endif %}
+</form>
+
+{% if page_obj.object_list %}
+<p class="text-muted text-small" aria-live="polite">{{ page_obj.paginator.count }} résultat{{ page_obj.paginator.count|pluralize }}</p>
+<div class="table-scroll" role="region" aria-labelledby="residents-caption" tabindex="0">
+  <table class="table">
+    <caption id="residents-caption" class="visually-hidden">Résidents, par ordre alphabétique</caption>
+    <thead>
+      <tr>
+        <th scope="col">Résident</th>
+        <th scope="col">Chambre</th>
+        <th scope="col">Téléphone</th>
+        <th scope="col">Compte</th>
+        <th scope="col">Arrivée</th>
+        <th scope="col"><span class="visually-hidden">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in page_obj %}
+      <tr>
+        <th scope="row" class="table__row-header">{{ r.get_full_name|default:r.get_username }}{% if r.is_moderator %} <span class="badge badge--neutral">Modérateur</span>{% endif %}</th>
+        <td class="table__number">{% if r.stay %}{{ r.stay.room.number }} · {{ r.stay.room.floor.short_label }}{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</td>
+        <td class="table__number">{% if r.phone %}<span class="masked-phone" aria-hidden="true">{{ r.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ r.phone|slice:"-2:" }}</span>{% else %}<span class="text-muted">Aucun</span>{% endif %}</td>
+        <td>{% with state=r.account_state %}<span class="badge {% if state == 'active' %}badge--info{% elif state == 'pending' %}badge--warning{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% endwith %}</td>
+        <td class="table__number">{% if r.stay %}<time datetime="{{ r.stay.arrival|date:'Y-m-d' }}">{{ r.stay.arrival|date:"j F Y" }}</time>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+        <td class="table__action"><a href="{% url 'residents:detail' r.pk %}">{% if perms.accounts.manage_residents %}Gérer{% else %}Voir{% endif %}<span class="visually-hidden"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Pages de la liste">
+  {% if page_obj.has_previous %}
+  <a class="button button--quiet" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Page précédente</a>
+  {% endif %}
+  <span class="text-muted">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a class="button button--quiet" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Page suivante</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% elif filters_active %}
+<p class="card text-muted">Aucun résident ne correspond à ces critères.</p>
+{% else %}
+<div class="card stack">
+  <p>Aucun résident pour l'instant.</p>
+  <p class="text-muted">Créez une fiche avec « Nouveau résident ».</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,6 @@
-"""Site d'administration : personnel vérifié par clé d'accès, sans mot de passe (carte T14).
+"""Admin site: staff verified by passkey, with no password (card T14).
 
-Doc Django : « Overriding the default admin site »
+Django docs: "Overriding the default admin site"
 https://docs.djangoproject.com/en/6.1/ref/contrib/admin/#overriding-the-default-admin-site
 """
 
@@ -11,23 +11,23 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 
-class SiteAdministration(AdminSite):
+class HJBAdminSite(AdminSite):
     site_header = "HJB Résidence · administration"
     site_title = "HJB Résidence"
 
     def has_permission(self, request):
-        # is_verified() vient de django-otp (OTPMiddleware) : vrai si la session a
-        # été ouverte ou confirmée avec une clé d'accès.
+        # is_verified() comes from django-otp (OTPMiddleware): true if the session
+        # was opened or confirmed with a passkey.
         return super().has_permission(request) and request.user.is_verified()
 
     def login(self, request, extra_context=None):
-        """Pas de formulaire de mot de passe : la connexion passe par /connexion/."""
-        suite = request.GET.get("next", "")
+        """No password form: login goes through /connexion/."""
+        next_url = request.GET.get("next", "")
         if not url_has_allowed_host_and_scheme(
-            suite, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
         ):
-            suite = ""
-        suite = suite or reverse("admin:index")
+            next_url = ""
+        next_url = next_url or reverse("admin:index")
         if self.has_permission(request):
-            return redirect(suite)
-        return redirect_to_login(suite)
+            return redirect(next_url)
+        return redirect_to_login(next_url)

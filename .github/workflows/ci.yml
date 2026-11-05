@@ -1,4 +1,4 @@
-# Qualité, tests et validation W3C à chaque push et chaque pull request.
+# Quality, tests and W3C validation on each push and each pull request.
 # setup-python : https://github.com/actions/setup-python
 # setup-java : https://github.com/actions/setup-java
 # Nu Html Checker : https://validator.github.io/validator/docs/vnu.1.html
@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 env:
-  # Version du validateur W3C (paquet npm vnu-jar), épinglée.
+  # Version of the W3C validator (npm package vnu-jar), pinned.
   VNU_VERSION: "26.10.12"
 
 jobs:
-  qualite:
-    name: Qualité, tests et W3C
+  quality:
+    name: Quality, tests and W3C
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -29,7 +29,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
-      - name: Installer les dépendances
+      - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
       - name: Ruff (lint)
@@ -38,26 +38,26 @@ jobs:
       - name: Ruff (format)
         run: ruff format --check .
 
-      - name: Contrôles Django
+      - name: Django checks
         run: python manage.py check
 
-      - name: Migrations à jour
+      - name: Migrations up to date
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Contrôle avant déploiement
+      - name: Deployment checks
         env:
           DJANGO_SETTINGS_MODULE: config.settings.prod
           DJANGO_ALLOWED_HOSTS: ci.example
           DJANGO_WEBAUTHN_RP_ID: ci.example
-          DJANGO_WEBAUTHN_ORIGINES: https://ci.example
+          DJANGO_WEBAUTHN_ORIGINS: https://ci.example
           DJANGO_ADMIN_URL: gestion-ci
           DJANGO_SQLITE_PATH: ${{ runner.temp }}/check-deploy.sqlite3
         run: |
-          # Clé jetable générée à chaque exécution : aucun secret dans le dépôt.
+          # Throwaway key generated on each run: no secret in the repository.
           export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
           python manage.py check --deploy
 
-      - name: Tests (avec capture des pages)
+      - name: Tests (with page capture)
         env:
           HTML_CAPTURE_DIR: build/html
         run: python manage.py test
@@ -67,8 +67,8 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Installer le validateur W3C
+      - name: Install the W3C validator
         run: npm install --no-save --prefix "$RUNNER_TEMP/vnu" "vnu-jar@$VNU_VERSION"
 
-      - name: Validation W3C (HTML et CSS)
-        run: python -m outils.valider_w3c --jar "$RUNNER_TEMP/vnu/node_modules/vnu-jar/build/dist/vnu.jar" --html build/html
+      - name: W3C validation (HTML and CSS)
+        run: python -m tools.validate_w3c --jar "$RUNNER_TEMP/vnu/node_modules/vnu-jar/build/dist/vnu.jar" --html build/html

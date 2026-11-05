@@ -22,7 +22,7 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 python manage.py migrate
 python manage.py createsuperuser --noinput --username marie --email ""
-python manage.py code_activation marie --telephone "06 12 34 56 78"
+python manage.py activation_code marie --phone "06 12 34 56 78"
 python manage.py runserver
 ```
 
@@ -53,12 +53,12 @@ python manage.py check --deploy
 
 ### Validation W3C
 
-Les tests enregistrent les pages rendues quand `HTML_CAPTURE_DIR` est défini (voir `outils/capture_html.py`). Le Nu Html Checker du W3C valide ensuite ces pages et tous les fichiers CSS du projet. Il faut Java 17 ou plus et Node.js :
+Les tests enregistrent les pages rendues quand `HTML_CAPTURE_DIR` est défini (voir `tools/html_capture.py`). Le Nu Html Checker du W3C valide ensuite ces pages et tous les fichiers CSS du projet. Il faut Java 17 ou plus et Node.js :
 
 ```sh
 npm install --no-save --prefix ~/.cache/vnu vnu-jar@26.10.12
 HTML_CAPTURE_DIR=build/html python manage.py test
-python -m outils.valider_w3c --jar ~/.cache/vnu/node_modules/vnu-jar/build/dist/vnu.jar --html build/html
+python -m tools.validate_w3c --jar ~/.cache/vnu/node_modules/vnu-jar/build/dist/vnu.jar --html build/html
 ```
 
 ### Secrets
@@ -80,16 +80,16 @@ Les serveurs WSGI et ASGI utilisent `config.settings.prod` par défaut.
 Tout le monde se connecte avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. Il n'y a pas de mot de passe, ni pour les résidents ni pour le personnel. Un membre du personnel reçoit son premier code d'un administrateur (action « Générer un code d'activation (personnel) » dans l'administration). La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
 
 - En développement, ouvrir **http://localhost:8000**, pas http://127.0.0.1:8000 : les navigateurs refusent les clés d'accès sur une adresse IP.
-- En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINES` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
+- En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINS` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
 - Téléphone perdu : bouton « Couper l'accès » sur la fiche du résident. Les clés sont supprimées et les sessions fermées. Une clé supprimée dans l'administration ferme aussi les sessions.
 
 ## Envoi de SMS
 
-Le fournisseur se choisit avec `DJANGO_SMS_FOURNISSEUR` (voir [.env.example](.env.example)) :
+Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :
 
 | Valeur | Usage |
 |---|---|
-| *(vide)* | En production : aucun SMS ne part, et rien n'est écrit dans les journaux |
+| *(vide)* ou `disabled` | En production : aucun SMS ne part, et rien n'est écrit dans les journaux |
 | `console` | Par défaut en développement. Le SMS s'affiche dans la console, rien n'est envoyé. Jamais en production : numéros et codes finiraient dans les journaux |
 | `smsgate` | Essais réels avec un téléphone Android et l'application [SMSGate](https://docs.sms-gate.app) |
 | `ovh` | Production, avec l'[API SMS d'OVHcloud](https://docs.ovhcloud.com/fr/guides/web-cloud/messaging/sms/sending-via-api-c.md) |
@@ -97,12 +97,14 @@ Le fournisseur se choisit avec `DJANGO_SMS_FOURNISSEUR` (voir [.env.example](.en
 Pour vérifier un réglage, envoyer un SMS d'essai :
 
 ```sh
-python manage.py envoyer_sms_essai "06 12 34 56 78" "Bonjour, ceci est un essai."
+python manage.py send_test_sms "06 12 34 56 78" "Bonjour, ceci est un essai."
 ```
 
 `python manage.py check` signale une option manquante. Pendant les tests, aucun vrai SMS ne part : le lanceur de tests remplace le fournisseur par une boîte en mémoire.
 
 ## Conventions
+
+- Le code est en anglais : noms, commentaires et tests. Les textes affichés et les adresses visibles restent en français. Le [glossaire](docs/glossaire.md) relie les mots du métier aux noms du code.
 
 - Une branche locale `feat/tXX-nom-court` par tâche, fusionnée dans `develop`.
 - Messages de commit au format [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification).

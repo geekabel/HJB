@@ -11,7 +11,7 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-# Un serveur ASGI sert la production : réglages de production par défaut.
+# An ASGI server serves production: production settings by default.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
 application = get_asgi_application()
