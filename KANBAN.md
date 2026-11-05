@@ -7,6 +7,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - Maquettes UI/UX : canevas « HJB Résidence · maquettes » (12 écrans)
 - Tableau visuel : artifact « Kanban HJB Résidence », mis à jour en même temps que ce fichier
 - Modèle de données : [docs/modele-de-donnees.md](docs/modele-de-donnees.md)
+- Glossaire du code : [docs/glossaire.md](docs/glossaire.md). Depuis T14b, le code est en anglais ; les cartes plus anciennes citent les anciens noms français.
 
 ## Règles de travail
 
@@ -70,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T14b | Code en anglais | Qualité | T14 |
 | T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
 | T16 | Écran « Mon wifi » du résident | E3 Wifi | T13, T15 |
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
@@ -121,6 +121,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T12 | Vérification du téléphone par code SMS | 5 nov. 2026 |
 | T13 | Connexion par clé d'accès (passkey) | 5 nov. 2026 |
 | T14 | Sécurité de l'espace équipe | 5 nov. 2026 |
+| T14b | Code en anglais | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -291,13 +292,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### Qualité
 
-#### T14b Code en anglais
-- Décidé le 5 nov. 2026, à faire juste après T14.
-- [ ] Noms en anglais : applications, modèles, champs, fonctions, variables, adresses internes (noms d'URL), classes CSS, fichiers JavaScript, tests
-- [ ] Commentaires et docstrings en anglais
-- [ ] Les textes affichés restent en français ; les adresses visibles par les résidents (/activer/, /connexion/) aussi
-- [ ] Migrations recréées depuis zéro (aucune donnée réelle pour l'instant), base de développement recréée
-- [ ] Mêmes tests, W3C et essais de bout en bout qu'avant ; documentation mise à jour
+#### T14b Code en anglais (fait le 5 nov. 2026)
+- Décidé le 5 nov. 2026, fait juste après T14.
+- [x] Noms en anglais : applications (`accounts`, `access`, `activation`, `audit`, `housing`, `residents`, `sms`, `ui`, `tools`), modèles, champs, fonctions, variables, noms d'URL, gabarits, classes et variables CSS, JavaScript, tests et fichiers de test
+- [x] Commentaires et docstrings en anglais
+- [x] Les textes affichés restent en français ; les adresses visibles (/activer/, /connexion/, /equipe/…) aussi
+- [x] Migrations recréées depuis zéro (aucune donnée réelle), base de développement recréée
+- [x] Mêmes tests (367), W3C, contrôle avant déploiement et essais de bout en bout (résident et administrateur) qu'avant ; documentation mise à jour
+- **Notes** : le [glossaire](docs/glossaire.md) relie chaque ancien nom au nouveau. Traduction faite en parallèle, application par application, avec ce glossaire comme référence unique. Contrôles en plus : la feuille de style a gardé exactement la même structure (chaque ancienne classe correspond à une seule nouvelle), chaque classe utilisée dans un gabarit existe, et les captures d'écran des pages des résidents sont identiques au pixel près. Changements pour l'installation : variables d'environnement renommées (`DJANGO_SMS_PROVIDER`, `DJANGO_WEBAUTHN_ORIGINS`, `SMSGATE_TOKEN`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, `OVH_SMS_SENDER`), commande `activation_code --phone`. Les paramètres de filtre de la liste des résidents sont en anglais (`?floor=`, `?account=`).
 
 ### E3 Wifi
 
