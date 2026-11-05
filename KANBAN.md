@@ -122,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T14 | Sécurité de l'espace équipe | 5 nov. 2026 |
 | T14b | Code en anglais | 5 nov. 2026 |
 | T15 | Accès wifi chiffré (équipe) | 5 nov. 2026 |
+| T15b | Format du portail wifi et import de la liste | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -314,6 +315,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Liste des résidents : colonne « Wifi valable jusqu'au », avec « dans N j » à 30 jours de l'expiration et « Expiré » ensuite (une seule requête de plus, quel que soit le nombre de résidents)
 - **Notes** : la table des consultations prévue (`WIFI_VIEW`) n'est pas créée : chaque affichage est une entrée du journal d'audit, qui garde déjà qui, quand et depuis quelle adresse. L'application ne change pas le mot de passe sur le réseau lui-même : elle note l'accès, et la coupure rappelle de le changer. En développement, la clé est dérivée de la clé secrète de développement. Captures vérifiées (mobile et ordinateur, clair et sombre).
 - **Revue indépendante (5 nov.)** : aucun moyen d'afficher un mot de passe sans droit, sans confirmation ou sans trace. Corrigé : un enregistrement au moment d'un départ pouvait laisser un accès actif sur une chambre vide (l'enregistrement revérifie le séjour sous le verrou de la chambre, et la coupure prend le même verrou) ; la correction de chambre le jour de l'arrivée ne coupait pas la première ; un double clic pouvait afficher un mot de passe déjà remplacé (le formulaire indique l'accès qu'il a vu, et rien n'est enregistré si un autre est arrivé entre-temps) ; un mot de passe saisi revenait dans la page en cas d'erreur ; sans clé, erreur 500 (la production refuse maintenant de démarrer sans `DJANGO_WIFI_KEYS`, et les pages affichent un message) ; le jeton du formulaire est lié à la chambre ; le message du départ ne parle du wifi que s'il y en avait un. Mots de passe masqués dans les rapports d'erreur de Django. 405 tests.
+
+#### T15b Format du portail wifi et import de la liste (fait le 5 nov. 2026)
+- **Pourquoi** : le portail captif de la résidence utilise 6 caractères pour l'identifiant et 6 pour le mot de passe (par exemple `vre8th` / `72ptmk`). L'équipe tient déjà une liste identifiant, chambre, personne. Le format peut changer un jour (7, 8 ou 12 caractères).
+- **Docs** : [ModelAdmin](https://docs.djangoproject.com/en/6.1/ref/contrib/admin/), [validateurs](https://docs.djangoproject.com/en/6.1/ref/validators/), [module secrets](https://docs.python.org/3/library/secrets.html), [openpyxl en lecture seule](https://openpyxl.readthedocs.io/en/3.1/optimized.html).
+- [x] Page « Réglages wifi » dans l'administration (permission `manage_wifi_settings`, rôle Administration) : longueur de l'identifiant, longueur du mot de passe, caractères permis, nom du réseau. Par défaut 6 et 6, minuscules et chiffres sans l, o, 0 ni 1. Changer le format ne demande aucune modification du code
+- [x] Saisie libre : de 4 à 64 caractères sans espace, pour ne jamais bloquer l'équipe si le portail change. L'ancienne limite de 8 à 63 caractères aurait refusé les vrais mots de passe
+- [x] Génération au format réglé : identifiant, mot de passe, ou les deux, laissés vides dans le formulaire. Les valeurs générées s'affichent une seule fois. Un identifiant ne peut servir qu'à une chambre à la fois (contrainte)
+- [x] Import de la liste existante (CSV ou Excel), réservé aux administrateurs après confirmation par clé d'accès : aperçu ligne par ligne, puis enregistrement des lignes prêtes, tout ou rien. Colonnes : Identifiant, Mot de passe, Chambre (obligatoires), Résident (sert à vérifier), Valable jusqu'au (vide : un an). Modèle .csv à télécharger
+- **Notes** : les mots de passe du fichier sont chiffrés dès la lecture ; ils n'apparaissent ni dans l'aperçu ni en clair dans la session, et l'aperçu expire après 30 minutes. Chaque accès importé va au journal d'audit, au nom de la personne qui importe. Une chambre sans résident est refusée : il faut d'abord importer ou créer sa fiche. Un nombre lu par Excel (par exemple `012345` devenu `12345`) donne un avertissement. Au renouvellement, le formulaire reprend l'identifiant actuel ; on le vide pour en générer un autre. Le nom du réseau servira à l'écran « Mon wifi » (T16). Captures vérifiées (mobile et ordinateur, clair et sombre).
 
 #### T16 Écran « Mon wifi » du résident
 - **Maquette** : R6.
