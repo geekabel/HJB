@@ -160,6 +160,15 @@ class Campaign(models.Model):
         _check_texts(self)
 
 
+class Receipt(models.TextChoices):
+    """Delivery receipt of an SMS (card T24): sms.providers.base.DeliveryState."""
+
+    PENDING = "pending", "En route"
+    DELIVERED = "delivered", "Reçu"
+    UNDELIVERED = "undelivered", "Non reçu"
+    UNKNOWN = "unknown", "Inconnu"
+
+
 class Delivery(models.Model):
     """One message to one person (card T21): the first sending, or the reminder.
 
@@ -212,6 +221,14 @@ class Delivery(models.Model):
     # Sent to this person by name or to the room, decided at send time ("Pour
     # moi" in the inbox, card T23): a later change of room does not move it.
     personal = models.BooleanField("adressé à la personne", default=False)
+    # Delivery receipt of the SMS (card T24). Empty: the provider gives none.
+    sms_provider = models.CharField("fournisseur SMS", max_length=20, blank=True)
+    receipt = models.CharField(
+        "accusé de réception", max_length=12, choices=Receipt.choices, blank=True
+    )
+    receipt_detail = models.CharField("détail de l'accusé", max_length=200, blank=True)
+    receipt_at = models.DateTimeField("accusé reçu le", null=True, blank=True)
+    receipt_checked_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         verbose_name = "envoi"
@@ -222,7 +239,10 @@ class Delivery(models.Model):
                 fields=["campaign", "recipient", "kind"], name="one_delivery_per_person"
             )
         ]
-        indexes = [models.Index(fields=["campaign", "status"])]
+        indexes = [
+            models.Index(fields=["campaign", "status"]),
+            models.Index(fields=["receipt", "sms_provider"], name="delivery_receipt_idx"),
+        ]
 
     def __str__(self):
         return f"{self.campaign} · {self.recipient}"

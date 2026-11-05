@@ -34,7 +34,7 @@ from sms.segments import analyze
 from sms.service import MAX_SEGMENTS, send_sms
 
 from .audience import audience, rendered
-from .models import AttendanceReply, Campaign, Delivery, ReplyType
+from .models import AttendanceReply, Campaign, Delivery, Receipt, ReplyType
 from .placeholders import fill, missing_values, values_for
 from .replies import closes_at, reply_path
 from .replies import is_open as replies_open
@@ -514,6 +514,9 @@ def _send_sms(delivery, user):
     delivery.status = Delivery.Status.SENT
     delivery.sent_at = timezone.now()
     delivery.provider_message_id = result.message_id[:64]
+    delivery.sms_provider = result.provider[:20]
+    if result.tracked:
+        delivery.receipt = Receipt.PENDING
     delivery.segments = analyze(delivery.sms_text).segments
 
 

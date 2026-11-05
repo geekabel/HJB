@@ -223,6 +223,9 @@ def sms_setting(default):
 # until a provider is chosen (see prod.py).
 SMS = sms_setting("console")
 
+# Delivery receipts of OVHcloud (card T24): secret part of the callback address.
+SMS_RECEIPT_SECRET = os.environ.get("DJANGO_SMS_RECEIPT_SECRET", "")
+
 # Tests: no real SMS, see tools/test_runner.py.
 TEST_RUNNER = "tools.test_runner.HJBTestRunner"
 

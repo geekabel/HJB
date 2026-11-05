@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T24 | Statuts de livraison des SMS | E4 Messages | T21 |
 | T25 | Sondages anonymes | E5 Votes | T21 |
 | T26 | Disponibilités des éducateurs | E6 Rendez-vous | T04 |
 | T27 | Réservation d'un rendez-vous | E6 Rendez-vous | T26, T13 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T21 | Envoi programmé et relances | 5 nov. 2026 |
 | T22 | Réponse Présent ou Absent | 5 nov. 2026 |
 | T23 | Boîte de réception du résident | 5 nov. 2026 |
+| T24 | Statuts de livraison des SMS | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -407,9 +407,13 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : la carte de vote de la maquette arrive avec T25. Le nombre de requêtes ne dépend pas du nombre de messages (testé).
 - **Revue** : corrigé après la revue indépendante. Sur un filtre, « Tout marquer comme lu » et le nombre de non lus ne visent que cette liste. La liste est triée par l'heure de réception, celle qui est affichée. « Pour moi » est décidé à l'envoi (`Delivery.personal`, migration avec reprise des messages déjà envoyés) : un changement de chambre ne le change plus. Un message annulé ensuite n'ouvre plus. Lecteurs d'écran : le lien est le titre seul, la date complète est lue, le compteur est séparé du mot « Messages ». Le compteur affiche « 99+ » au plus. Le point « non lu » reste visible en mode contraste élevé. L'équipe qui ouvre `/messages/` est renvoyée vers son accueil.
 
-#### T24 Statuts de livraison des SMS
-- [ ] Réception des accusés du fournisseur
-- [ ] Liste des échecs sur la campagne
+#### T24 Statuts de livraison des SMS (fait le 5 nov. 2026)
+- **Docs** : [suivi d'état SMSGate](https://docs.sms-gate.app/features/status-tracking/) (noms des champs vérifiés dans le client officiel android-sms-gateway 4.3.3), [FAQ SMS OVHcloud](https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/faq-sms) et [utilisateurs SMS OVHcloud](https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/sms-users) (rappel, codes PTT), [mises à jour conditionnelles](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#update).
+- [x] Accusés de réception des deux fournisseurs, ramenés à quatre états : en route, reçu, non reçu, inconnu. SMSGate : le site demande l'état (`run_scheduled`, chaque SMS toutes les 5 minutes au plus, 20 par minute). OVHcloud : OVHcloud appelle `/sms/ovh/<secret>/` à chaque changement (codes PTT traduits en français)
+- [x] Un état final ne revient jamais à « en route ». Sans nouvelle après 48 h : « inconnu ». Un SMS envoyé par un autre fournisseur que celui du moment n'est pas mis à jour par erreur
+- [x] Page de suivi : bilan des accusés et liste des personnes à prévenir autrement (envoi en échec, SMS non reçu ou inconnu), avec la raison
+- [x] Contrôles : secret trop court refusé, avertissement au déploiement si OVHcloud est choisi sans secret
+- **Notes** : l'appel d'OVHcloud n'est pas signé, d'où le secret dans l'adresse (voir le README). L'identifiant envoyé au rappel par OVHcloud n'est pas documenté : à vérifier au premier essai réel. Les codes d'activation (T11, T12) ne sont pas suivis : ce ne sont pas des envois de message.
 
 ### E5 Votes
 

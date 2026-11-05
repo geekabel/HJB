@@ -119,7 +119,7 @@ En production avec SQLite, trois processus écrivent dans la base (le site, le *
 
 Trois commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
 
-- chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus et enregistre les départs prévus (le jour venu, à midi) ;
+- chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus, enregistre les départs prévus (le jour venu, à midi) et demande à SMSGate les accusés de réception des SMS (voir plus bas) ;
 - chaque jour vers 10 h, heure de Paris, `send_wifi_reminders` : rappel aux résidents 15 jours avant la fin de leur accès wifi ;
 - chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés ;
 - chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours.
@@ -152,6 +152,15 @@ python manage.py send_test_sms "06 12 34 56 78" "Bonjour, ceci est un essai."
 ```
 
 `python manage.py check` signale une option manquante. Pendant les tests, aucun vrai SMS ne part : le lanceur de tests remplace le fournisseur par une boîte en mémoire.
+
+### Accusés de réception
+
+La page de suivi d'un message dit, pour chaque SMS, s'il est « en route », « reçu », « non reçu » ou « inconnu », et liste les personnes à prévenir autrement. Sans nouvelle après 48 h, l'état passe à « inconnu ».
+
+- **SMSGate** : rien à régler. `run_scheduled` demande l'état des SMS en route, chacun toutes les 5 minutes au plus. Le site doit pouvoir joindre l'adresse `SMSGATE_URL`.
+- **OVHcloud** : OVHcloud appelle le site à chaque changement d'état. Choisir un secret long (`DJANGO_SMS_RECEIPT_SECRET`, voir [.env.example](.env.example)), puis, dans l'espace client OVHcloud, rubrique SMS, « Utilisateurs API », menu `...` de l'utilisateur, « Callback », saisir `https://<adresse du site>/sms/ovh/<secret>/` ([guide OVHcloud](https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/sms-users)). L'appel d'OVHcloud n'est pas signé : le secret dans l'adresse est la seule protection. Il apparaît dans les journaux du serveur web, comme les liens de réponse : garder ces journaux peu de temps. Sans secret, `check --deploy` le signale et les SMS n'attendent pas d'accusé.
+
+À vérifier au premier essai réel avec OVHcloud : que l'identifiant envoyé au rappel est bien celui rendu à l'envoi (la documentation ne le dit pas). Sinon, les SMS resteront « en route » puis « inconnu » après 48 h.
 
 ## Conventions
 

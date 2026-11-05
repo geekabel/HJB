@@ -7,10 +7,10 @@ import requests
 from django.test import SimpleTestCase
 from ovh import exceptions as ovh_exceptions
 
-from sms.providers.base import ConfigurationError, SendError
+from sms.providers.base import ConfigurationError, DeliveryState, SendError
 from sms.providers.console import ConsoleProvider
 from sms.providers.disabled import DisabledProvider
-from sms.providers.ovh import OvhProvider
+from sms.providers.ovh import OvhProvider, callback_receipt
 from sms.providers.smsgate import SmsGateProvider
 
 NUMBER = "+33612345678"
@@ -56,7 +56,12 @@ class SmsGateTests(SimpleTestCase):
         kwargs = post.call_args.kwargs
         self.assertEqual(
             kwargs["json"],
-            {"textMessage": {"text": "Bonjour"}, "phoneNumbers": [NUMBER], "simNumber": 2},
+            {
+                "textMessage": {"text": "Bonjour"},
+                "phoneNumbers": [NUMBER],
+                "withDeliveryReport": True,
+                "simNumber": 2,
+            },
         )
         self.assertEqual(kwargs["auth"], ("u", "p"))
         self.assertEqual(kwargs["timeout"], 10.0)
@@ -227,3 +232,77 @@ class OvhTests(SimpleTestCase):
             OvhProvider(service="s").missing_options(),
             ["application_key", "application_secret", "consumer_key"],
         )
+
+
+class ReceiptTests(SimpleTestCase):
+    """Delivery receipts (card T24)."""
+
+    def smsgate(self):
+        return SmsGateProvider(url="https://api.sms-gate.app", token="t")
+
+    @mock.patch("sms.providers.smsgate.requests.get")
+    def test_smsgate_states(self, get):
+        provider = self.smsgate()
+        self.assertTrue(provider.can_poll and provider.tracks_delivery())
+        cases = [
+            (
+                {"state": "Sent", "recipients": [{"phoneNumber": NUMBER, "state": "Delivered"}]},
+                DeliveryState.DELIVERED,
+                "",
+            ),
+            ({"state": "Processed", "recipients": []}, DeliveryState.PENDING, ""),
+            (
+                {
+                    "state": "Failed",
+                    "recipients": [{"state": "Failed", "error": "RESULT_ERROR_NO_SERVICE"}],
+                },
+                DeliveryState.UNDELIVERED,
+                "Le téléphone d'envoi signale un échec : RESULT_ERROR_NO_SERVICE.",
+            ),
+        ]
+        for body, state, detail in cases:
+            get.return_value = http_response(200, body)
+            receipt = provider.receipt("abc/1")
+            self.assertEqual((receipt.state, receipt.detail), (state, detail), body)
+        (url,) = get.call_args.args
+        self.assertEqual(url, "https://api.sms-gate.app/3rdparty/v1/messages/abc%2F1")
+        self.assertEqual(get.call_args.kwargs["headers"], {"Authorization": "Bearer t"})
+
+    @mock.patch("sms.providers.smsgate.requests.get")
+    def test_smsgate_errors(self, get):
+        provider = self.smsgate()
+        get.return_value = http_response(404, {})
+        self.assertEqual(provider.receipt("x").state, DeliveryState.UNKNOWN)
+        get.return_value = http_response(200, {"state": "Teleported"})
+        with self.assertRaises(SendError) as caught:
+            provider.receipt("x")
+        self.assertFalse(caught.exception.temporary)
+        get.return_value = http_response(503, None)
+        with self.assertRaises(SendError) as caught:
+            provider.receipt("x")
+        self.assertTrue(caught.exception.temporary)
+        get.side_effect = requests.ConnectTimeout()
+        with self.assertRaises(SendError) as caught:
+            provider.receipt("x")
+        self.assertTrue(caught.exception.temporary)
+
+    def test_ovh_codes(self):
+        self.assertEqual(callback_receipt("4").state, DeliveryState.DELIVERED)
+        self.assertEqual(callback_receipt("1").state, DeliveryState.PENDING)
+        self.assertEqual(callback_receipt("6").state, DeliveryState.UNKNOWN)
+        receipt = callback_receipt("23")
+        self.assertEqual(
+            (receipt.state, receipt.detail),
+            (DeliveryState.UNDELIVERED, "Numéro invalide, bloqué ou interdit."),
+        )
+        self.assertEqual(callback_receipt("999").detail, "Non reçu (code OVHcloud 999).")
+        self.assertIsNone(callback_receipt("abc"))
+        self.assertIsNone(callback_receipt(None))
+
+    def test_ovh_tracks_only_with_the_secret(self):
+        provider = OvhProvider()
+        self.assertFalse(provider.can_poll)
+        with self.settings(SMS_RECEIPT_SECRET=""):
+            self.assertFalse(provider.tracks_delivery())
+        with self.settings(SMS_RECEIPT_SECRET="x" * 40):
+            self.assertTrue(provider.tracks_delivery())

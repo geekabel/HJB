@@ -1,0 +1,5 @@
+{% comment %}State of an SMS with a delivery receipt (card T24). Variable: delivery.{% endcomment %}
+{% if delivery.receipt == "delivered" %}<span class="badge badge--success">SMS reçu</span>
+{% elif delivery.receipt == "pending" %}<span class="badge badge--info">SMS en route</span>
+{% elif delivery.receipt == "undelivered" %}<span class="badge badge--error">SMS non reçu</span> <span class="text-small">{{ delivery.receipt_detail }}</span>
+{% else %}<span class="badge badge--warning">SMS : réception inconnue</span> <span class="text-small">{{ delivery.receipt_detail }}</span>{% endif %}

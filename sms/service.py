@@ -6,6 +6,7 @@ e-mail settings):
     SMS = {"BACKEND": "sms.providers.ovh.OvhProvider", "OPTIONS": {...}}
 """
 
+import dataclasses
 import logging
 
 from django.conf import settings
@@ -70,6 +71,7 @@ def send_sms(number, text):
             error,
         )
         raise
+    result = dataclasses.replace(result, tracked=bool(provider.tracks_delivery()))
     logger.info(
         "SMS sent via %s to %s (%s, %d segment(s), id %s)",
         provider.name,

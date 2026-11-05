@@ -6,6 +6,7 @@ knows this interface: changing provider only changes the setting.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 class SmsError(Exception):
@@ -39,6 +40,25 @@ class SendError(SmsError):
 class SendResult:
     provider: str
     message_id: str  # id of the message at the provider, to follow its delivery
+    # A delivery receipt will come (card T24): set by send_sms().
+    tracked: bool = False
+
+
+class DeliveryState:
+    """Delivery receipt of an SMS (card T24), the same for every provider."""
+
+    PENDING = "pending"  # on its way: accepted, not yet on the phone
+    DELIVERED = "delivered"  # the phone received it
+    UNDELIVERED = "undelivered"  # it will not arrive
+    UNKNOWN = "unknown"  # the operator does not say
+    FINAL = (DELIVERED, UNDELIVERED, UNKNOWN)
+
+
+@dataclass(frozen=True)
+class Receipt:
+    state: str  # a DeliveryState value
+    detail: str = ""  # French, shown to the staff
+    at: datetime | None = None
 
 
 class SmsProvider:
@@ -57,4 +77,16 @@ class SmsProvider:
 
         Raise SendError if the SMS was not sent.
         """
+        raise NotImplementedError
+
+    # Delivery receipts (card T24). A provider either answers when asked
+    # (receipt(), "pull"), or calls the site itself ("push", OVHcloud).
+    can_poll = False
+
+    def tracks_delivery(self):
+        """True if a receipt will come for the SMS sent now."""
+        return False
+
+    def receipt(self, message_id):
+        """The Receipt of a sent SMS, asked to the provider. SmsError if it fails."""
         raise NotImplementedError

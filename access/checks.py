@@ -20,6 +20,7 @@ RESERVED_SEGMENTS = {
     "notifications",
     "messages",
     "r",
+    "sms",
     "manifest.webmanifest",
     "sw.js",
     "favicon.ico",
