@@ -72,7 +72,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
-| T19 | Notifications Web Push | E4 Messages | T18 |
 | T20 | Modèles de message et composeur | E4 Messages | T06, T10 |
 | T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
 | T22 | Réponse Présent ou Absent | E4 Messages | T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T15b | Format du portail wifi et import de la liste | 5 nov. 2026 |
 | T16 | Écran « Mon wifi » du résident | 5 nov. 2026 |
 | T18 | Application installable (PWA) | 5 nov. 2026 |
+| T19 | Notifications Web Push | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -350,11 +350,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : vérifié dans Chromium : aucune erreur d'installation, cache limité aux fichiers publics, page hors ligne avec sa mise en forme, la page wifi jamais en cache. Sur iPhone, l'installation ne se fait que par le menu Partager (pas de bouton possible). Pillow ne sert qu'à dessiner les icônes, en développement.
 - **Revue indépendante (5 nov.)** : aucun problème de données personnelles. Corrigé : la vérification de mise à jour du service worker renouvelait la session, si bien qu'un téléphone perdu qui reçoit des notifications (T19) serait resté connecté indéfiniment (les fichiers publics de l'application n'utilisent plus la session) ; les étapes pour iPhone suivent iOS 26 (« ⋯ » puis « Partager ») et rappellent de se reconnecter une fois dans l'application ; « Réessayer » recharge la page demandée ; la suggestion d'installation de Chrome n'est plus bloquée sur les autres pages ; requêtes HEAD acceptées, redirection temporaire pour `/favicon.ico`. 465 tests.
 
-#### T19 Notifications Web Push
-- **Docs** : MDN Push API, pywebpush (ou django-webpush si sa maintenance est confirmée).
-- [ ] Clés VAPID, modèle `AbonnementPush`
-- [ ] Demande d'autorisation après un geste de l'utilisateur
-- [ ] Nettoyage des abonnements expirés
+#### T19 Notifications Web Push (fait le 5 nov. 2026)
+- **Docs** : [Push API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Push_API), [PushManager.subscribe (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/PushManager/subscribe), [pywebpush](https://github.com/web-push-libs/pywebpush) 2.5.0, [Web Push sur iOS (WebKit)](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+- [x] Clé VAPID dans `DJANGO_VAPID_PRIVATE_KEY` (obligatoire en production, créée par `python manage.py vapid_key`), contact dans `DJANGO_VAPID_CONTACT`. En développement, clé dérivée de la clé secrète. Contrôles `push.E001` et `push.E002`
+- [x] Modèle `PushSubscription` (application `push`) : un appareil par navigateur, au plus 10 par personne. L'adresse du service d'envoi n'apparaît jamais dans une page, l'administration ou les journaux. Seuls les services connus (Google, Mozilla, Apple, Microsoft) sont acceptés, pour que le serveur n'envoie jamais de requête ailleurs
+- [x] Page « Notifications » (`/notifications/`) pour les résidents et l'équipe : l'autorisation est demandée seulement après un appui sur « Activer les notifications ». Sur iPhone hors application installée, la page renvoie vers « Installer l'application ». Liste des appareils, arrêt d'un appareil, notification d'essai (une par minute)
+- [x] Le service worker affiche le message et ouvre sa page au toucher, seulement une page du site
+- [x] Nettoyage : appareil supprimé quand le service d'envoi répond 404 ou 410, après 5 échecs d'affilée, à la déconnexion (l'appareil de cette session), quand une clé d'accès est supprimée (téléphone perdu, départ, nouvelle activation). Commande `prune_push_subscriptions` pour les comptes désactivés
+- **Notes** : sur un téléphone partagé, l'appareil reste à la personne qui a appuyé sur « Activer » : une autre personne qui se connecte ne reçoit rien tant qu'elle n'a pas activé elle-même. L'envoi part pendant la requête, appareil par appareil (10 secondes au plus chacun) : les envois en nombre passeront par une tâche de fond avec T21. Vérifié dans Chromium : affichage d'un message par le service worker (titre, texte, icône, page à ouvrir). L'abonnement réel ne peut pas être essayé ici (les services d'envoi ne sont pas joignables depuis l'environnement de travail) : à essayer sur un téléphone.
+- **Revue indépendante (5 nov.)** : corrigé : une adresse truquée (`https://pirate.example\\.fcm.googleapis.com/`) passait le contrôle des services connus, et l'envoi suivait les redirections (adresse vérifiée par un motif strict, redirections refusées) ; un appareil aux clés invalides arrêtait l'envoi à tous les autres (clés vérifiées à l'abonnement, toute erreur d'un appareil reste limitée à lui) ; sur un téléphone partagé, la personne précédente continuait de recevoir ses notifications après la fin de sa session (l'appareil est retiré dès qu'une autre personne s'y connecte) ; la déconnexion pouvait oublier l'appareil (le serveur demande maintenant à chaque nouvelle session) ; après un changement de clé VAPID, l'activation échouait toujours (l'ancien abonnement est retiré d'abord) ; une panne passagère d'un service d'envoi (429, 5xx, délai dépassé) ne compte plus comme un échec ; un appareil repris par une autre personne prend une nouvelle date ; clé de développement toujours valide. Note : la limite d'une notification d'essai par minute vaut par processus tant qu'aucun cache partagé n'est configuré (T38). 500 tests.
 
 #### T20 Modèles de message et composeur
 - **Maquette** : P2.

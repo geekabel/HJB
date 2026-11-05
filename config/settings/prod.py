@@ -100,6 +100,12 @@ WIFI_ENCRYPTION_KEYS = [
 ]
 
 
+# Web Push (T19). Required, like SECRET_KEY: without the key no notification
+# can leave. Changing it forces every device to turn notifications on again.
+VAPID_PRIVATE_KEY = os.environ["DJANGO_VAPID_PRIVATE_KEY"]
+VAPID_CONTACT = os.environ["DJANGO_VAPID_CONTACT"]
+
+
 # HTTPS
 # https://docs.djangoproject.com/en/6.1/topics/security/#ssl-https
 

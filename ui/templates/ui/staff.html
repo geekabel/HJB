@@ -2,7 +2,8 @@
 {% load icons %}
 {% comment %}
   Section template for the staff area (desktop, folds down on phones).
-  Variables: ``active_nav`` (dashboard, messages, reports, appointments, residents, audit).
+  Variables: ``active_nav`` (dashboard, messages, reports, appointments, residents, audit,
+  notifications).
   The "#" links will be replaced by the real pages (cards T20, T26, T31, T35).
 {% endcomment %}
 {% block body_class %}staff-page{% endblock %}
@@ -26,6 +27,9 @@
     {% endif %}
     {% if perms.accounts.view_audit_log %}
     <li><a href="{% url 'audit:list' %}"{% if active_nav == "audit" %} aria-current="page"{% endif %}>Journal d'audit</a></li>
+    {% endif %}
+    {% if user.is_authenticated %}
+    <li><a href="{% url 'push:settings' %}"{% if active_nav == "notifications" %} aria-current="page"{% endif %}>Mes notifications</a></li>
     {% endif %}
   </ul>
   {% if user.is_authenticated %}

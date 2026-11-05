@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "sms",
     "activation",
     "access",
+    "push",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
     # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
     "django_otp",
@@ -71,6 +72,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Public VAPID key for the once-per-session check of app.js (T19).
+                "push.context_processors.push",
             ],
         },
     },
@@ -235,3 +238,12 @@ OTP_WEBAUTHN_HELPER_CLASS = "access.webauthn.HJBWebAuthnHelper"
 # https://cryptography.io/en/latest/fernet/
 
 WIFI_ENCRYPTION_KEYS = []
+
+
+# Web Push notifications, card T19
+# The server signs each message with its VAPID key (push/vapid.py). The private
+# key never lives in the repository. The contact (mailto: or https://) lets a
+# push service reach the owner of the server in case of problem.
+
+VAPID_PRIVATE_KEY = ""
+VAPID_CONTACT = ""

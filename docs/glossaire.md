@@ -301,6 +301,16 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Script commun à toutes les pages | `ui/static/ui/js/app.js` (attributs `data-install-box`, `data-install-button`, `data-hide-when-installed`, `data-show-when-installed`) |
 | Icônes | `ui/static/ui/icons/`, dessinées par `tools/make_icons.py` |
 
+## Notifications (carte T19)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Abonnement push (« AbonnementPush » dans le plan) | `push.models.PushSubscription` (`user`, `endpoint`, `p256dh`, `auth`, `device`, `created_at`, `last_success_at`, `failures`) |
+| Envoi | `push.services.send_to_user()` (`SendResult` : `sent`, `failed`, `removed`), `save_subscription()`, `endpoint_allowed()`, `prune()` |
+| Clé VAPID | `push.vapid` (`vapid()`, `application_server_key()`, `new_private_key()`) ; réglages `VAPID_PRIVATE_KEY`, `VAPID_CONTACT` |
+| Pages | `push:settings` (`/notifications/`), `push:subscribe`, `push:unsubscribe`, `push:test`, `push:remove_device` |
+| Commandes | `vapid_key`, `prune_push_subscriptions` |
+
 ## Modèles prévus
 
 Les modèles des cartes à venir (wifi, messages, sondages, rendez-vous, signalements,

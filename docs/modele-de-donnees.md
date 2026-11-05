@@ -16,7 +16,8 @@ Le code est en anglais (carte T14b). Les noms des modèles, des champs et des va
 
 | Application | Contenu |
 |---|---|
-| `accounts` | Utilisateur, rôles, code d'activation, vérification du téléphone, abonnements aux notifications |
+| `accounts` | Utilisateur, rôles, code d'activation, vérification du téléphone |
+| `push` | Appareils abonnés aux notifications Web Push, envoi, clé VAPID |
 | `access` | Connexion par clé d'accès, confirmation avant une action sensible, durée des sessions. Les clés sont les modèles de la bibliothèque django-otp-webauthn |
 | `housing` | Étages, chambres, séjours, accès wifi (chaque affichage d'un mot de passe va dans le journal d'audit) |
 | `messaging` | Modèles de message, campagnes, envois, réponses de présence, notifications dans l'appli |
@@ -164,11 +165,13 @@ erDiagram
     PUSH_SUBSCRIPTION {
         int id PK
         int user_id FK
-        string endpoint UK
-        string p256dh_key
-        string auth_key
-        string browser
+        string endpoint UK "jamais affiché ni journalisé"
+        string p256dh
+        string auth
+        string device "par exemple Safari sur iPhone"
         datetime created_at
+        datetime last_success_at
+        int failures "supprimé à 5"
     }
     MESSAGE_TEMPLATE {
         int id PK
@@ -374,6 +377,13 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - Le format du portail captif (`WIFI_SETTINGS`, une seule ligne) se règle dans l'administration : longueurs et caractères des accès générés. Les accès saisis à la main restent libres, de 4 à 64 caractères sans espace.
 - La liste existante s'importe depuis un fichier CSV ou Excel, avec aperçu puis confirmation (administrateurs seulement).
 - Le résident voit l'accès de sa chambre sur `/wifi/`. Le mot de passe s'affiche après une confirmation par clé d'accès ; chaque affichage va au journal, comme pour l'équipe.
+
+## Notifications
+
+- Un appareil (`PUSH_SUBSCRIPTION`) par navigateur, au plus 10 par personne. Il appartient à la personne qui a appuyé sur « Activer les notifications ».
+- L'adresse du service d'envoi permet à n'importe qui d'envoyer à l'appareil : elle n'apparaît dans aucune page, ni dans l'administration ni dans les journaux. Seuls les services de Google, Mozilla, Apple et Microsoft sont acceptés.
+- Un appareil est supprimé quand le service d'envoi ne le connaît plus (404, 410), après 5 échecs d'affilée, à la déconnexion de sa session, et quand une clé d'accès du compte est supprimée (téléphone perdu, départ, nouvelle activation).
+- La clé VAPID du serveur (`DJANGO_VAPID_PRIVATE_KEY`) n'est jamais dans le dépôt. En changer oblige chaque appareil à réactiver les notifications.
 
 ## Règles métier portées par le modèle
 

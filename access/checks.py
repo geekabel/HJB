@@ -17,6 +17,7 @@ RESERVED_SEGMENTS = {
     "wifi",
     "hors-ligne",
     "installer",
+    "notifications",
     "manifest.webmanifest",
     "sw.js",
     "favicon.ico",

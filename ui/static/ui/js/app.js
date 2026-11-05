@@ -7,6 +7,10 @@
  *   Other browsers (Safari) keep the written steps.
  * - [data-hide-when-installed] and [data-show-when-installed] follow the
  *   display mode: "standalone" when opened from the home screen icon.
+ * - Notifications (card T19): once per session, tells the server that this
+ *   browser is the device of the session (so that a logout stops it, and the
+ *   previous person of a shared phone stops receiving here). It never adds a
+ *   device: that needs the "Activer" button (push.js).
  * Docs: https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event
  */
 (function () {
@@ -55,8 +59,63 @@
     });
   });
 
+  // Same bytes as the base64url public key of the server?
+  function sameServerKey(subscription, base64url) {
+    var current = subscription.options && subscription.options.applicationServerKey;
+    if (!current || !base64url) {
+      return false;
+    }
+    var padding = "=".repeat((4 - (base64url.length % 4)) % 4);
+    var expected = window.atob((base64url + padding).replace(/-/g, "+").replace(/_/g, "/"));
+    var bytes = new Uint8Array(current);
+    if (bytes.length !== expected.length) {
+      return false;
+    }
+    for (var i = 0; i < bytes.length; i += 1) {
+      if (bytes[i] !== expected.charCodeAt(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  window.hjbSameServerKey = sameServerKey;
+
+  // The server adds data-push-sync until this session has told it which device it is.
+  function syncPushDevice() {
+    var body = document.body;
+    var url = body.dataset.pushSync;
+    if (!url || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return;
+    }
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+    navigator.serviceWorker.ready
+      .then(function (registration) {
+        return registration.pushManager.getSubscription();
+      })
+      .then(function (subscription) {
+        // No device, or one made with an old server key: the settings page handles it.
+        if (!subscription || !sameServerKey(subscription, body.dataset.pushKey)) {
+          return;
+        }
+        var data = subscription.toJSON();
+        data.mode = "sync";
+        return fetch(url, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": body.dataset.csrf },
+          body: JSON.stringify(data),
+        });
+      })
+      .catch(function () {
+        // Not important: tried again on the next page.
+      });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     showInstallState();
+    syncPushDevice();
     document.querySelectorAll("[data-install-button]").forEach(function (button) {
       button.addEventListener("click", function () {
         if (!deferredPrompt) {

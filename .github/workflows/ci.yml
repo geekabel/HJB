@@ -56,6 +56,8 @@ jobs:
           # Throwaway keys generated on each run: no secret in the repository.
           export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
           export DJANGO_WIFI_KEYS="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          export DJANGO_VAPID_PRIVATE_KEY="$(python -c 'from push.vapid import new_private_key; print(new_private_key())')"
+          export DJANGO_VAPID_CONTACT="mailto:ci@example.org"
           python manage.py check --deploy
 
       - name: Tests (with page capture)
