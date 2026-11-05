@@ -313,6 +313,18 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Pages | `push:settings` (`/notifications/`), `push:subscribe`, `push:unsubscribe`, `push:test`, `push:remove_device` |
 | Commandes | `vapid_key`, `prune_push_subscriptions` |
 
+## Messages (carte T20)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Modèle de message | `messaging.models.MessageTemplate` (`type`, `name`, `title`, `body`, `sms_body`, `reply_expected`) |
+| Message (campagne) | `messaging.models.Campaign` (`type`, `title`, `body`, `sms_body`, `reply_type`, `event_date`, `start_time`, `end_time`, `everyone`, `floors`, `rooms`, `people`, `excluded`, `status`, `send_at`, `author`) |
+| Types | `MessageType` : `visit`, `maintenance`, `announcement`, `vote`, `custom` |
+| Champs du texte | `messaging.placeholders` (`FIELDS`, `fill()`, `values_for()`, `check_text()`, `missing_values()`) ; les noms restent en français : `{prénom}`, `{chambre}`, `{date}`, `{début}`, `{fin}` |
+| Destinataires et canal | `messaging.audience` (`audience()`, `Audience`, `Recipient`, canal `push`, `sms` ou `none`) |
+| Version SMS | `messaging.sms_text` (`to_gsm()`, `sms_text()`) |
+| Pages | `messaging:list`, `messaging:new`, `messaging:compose`, `messaging:delete`, `messaging:templates`, `messaging:template_new`, `messaging:template_edit`, `messaging:template_delete` |
+
 ## Modèles prévus
 
 Les modèles des cartes à venir (wifi, messages, sondages, rendez-vous, signalements,
