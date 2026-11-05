@@ -4,20 +4,24 @@
   session: the signed link is the proof. A GET only shows the page (SMS apps
   open links to make a preview); only the buttons (POST) record an answer.
 - message(): one message in the application, with the same buttons.
+- inbox_list(): the inbox, by kind; read_all() marks every message as read.
 """
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
+from access.session_policy import is_resident
 from accounts.models import User
 
-from . import replies
+from . import inbox, replies
 from .models import AttendanceReply, Campaign, Delivery
 
 THANKS = {
@@ -27,15 +31,15 @@ THANKS = {
 
 
 INVALID = "Choisissez « Présent » ou « Absent »."
+PER_PAGE = 20
 
 
-def _delivery(campaign, user, failed_too=False):
-    deliveries = Delivery.objects.filter(
+def _delivery(campaign, user):
+    # A failed delivery too: an SMS marked uncertain may have arrived, and the
+    # application shows every message received (card T23).
+    return Delivery.objects.filter(
         campaign=campaign, recipient=user, kind=Delivery.Kind.MESSAGE
-    )
-    if not failed_too:
-        deliveries = deliveries.exclude(status=Delivery.Status.FAILED)
-    return deliveries.first()
+    ).first()
 
 
 def _private(response):
@@ -56,9 +60,7 @@ def reply(request, token):
         raise Http404
     campaign = Campaign.objects.filter(pk=found[0]).first()
     resident = User.objects.filter(pk=found[1], is_active=True).first()
-    # A failed delivery too: an SMS marked uncertain may have arrived, and the
-    # signed link proves that we sent it to this person.
-    delivery = _delivery(campaign, resident, failed_too=True) if campaign and resident else None
+    delivery = _delivery(campaign, resident) if campaign and resident else None
     if delivery is None:
         raise Http404
     is_open = replies.is_open(campaign)
@@ -99,7 +101,8 @@ def reply(request, token):
 @require_http_methods(["GET", "POST"])
 def message(request, pk):
     campaign = get_object_or_404(Campaign, pk=pk)
-    delivery = _delivery(campaign, request.user)
+    # Same messages as the inbox (not a campaign cancelled afterwards).
+    delivery = inbox.received(request.user).filter(campaign=campaign).first()
     if delivery is None:
         raise Http404
     is_open = replies.is_open(campaign)
@@ -132,3 +135,49 @@ def message(request, pk):
     )
     add_never_cache_headers(response)
     return response
+
+
+@login_required
+@require_safe
+def inbox_list(request):
+    if not is_resident(request.user):
+        return redirect("home")  # the staff have their own pages
+    key = request.GET.get("show", "all")
+    if key not in inbox.FILTER_KEYS:
+        key = "all"
+    page = Paginator(inbox.inbox(request.user, key), PER_PAGE).get_page(request.GET.get("page"))
+    current = next(item for item in inbox.FILTERS if item.key == key)
+    unread = inbox.unread_count(request.user, key)
+    total = unread if key == "all" else inbox.unread_count(request.user)
+    response = render(
+        request,
+        "messaging/inbox.html",
+        {
+            "active_nav": "messages",
+            "filters": inbox.FILTERS,
+            "current": current,
+            "page_obj": page,
+            "items": inbox.items(request.user, page.object_list),
+            "unread": unread,
+            # Replaces the context processor: no second count for the bar.
+            "unread_messages": total,
+        },
+    )
+    add_never_cache_headers(response)
+    return response
+
+
+@login_required
+@require_POST
+def read_all(request):
+    key = request.POST.get("show", "all")
+    if key not in inbox.FILTER_KEYS:
+        key = "all"
+    count = inbox.mark_all_read(request.user, key)
+    if count:
+        s = "s" if count > 1 else ""
+        messages.success(request, f"{count} message{s} marqué{s} comme lu{s}.")
+    url = reverse("inbox:list")
+    if key != "all":
+        url += f"?show={key}"
+    return redirect(url)

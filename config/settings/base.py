@@ -77,6 +77,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 # Public VAPID key for the once-per-session check of app.js (T19).
                 "push.context_processors.push",
+                # Unread messages, on the Messages entry of the resident bar (T23).
+                "messaging.context_processors.unread",
             ],
         },
     },

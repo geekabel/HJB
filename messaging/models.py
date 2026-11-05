@@ -209,6 +209,9 @@ class Delivery(models.Model):
     claimed_at = models.DateTimeField("pris en charge le", null=True, blank=True)
     sent_at = models.DateTimeField("envoyé le", null=True, blank=True)
     read_at = models.DateTimeField("lu le", null=True, blank=True)
+    # Sent to this person by name or to the room, decided at send time ("Pour
+    # moi" in the inbox, card T23): a later change of room does not move it.
+    personal = models.BooleanField("adressé à la personne", default=False)
 
     class Meta:
         verbose_name = "envoi"

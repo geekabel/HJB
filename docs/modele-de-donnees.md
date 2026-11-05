@@ -225,7 +225,8 @@ erDiagram
         datetime next_attempt_at
         datetime claimed_at
         datetime sent_at
-        datetime read_at
+        datetime read_at "ouverture dans l'appli ou réponse (T23)"
+        bool personal "par son nom ou sa chambre (Pour moi)"
     }
     ATTENDANCE_REPLY {
         int id PK
