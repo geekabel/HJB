@@ -26,12 +26,16 @@ THANKS = {
 }
 
 
-def _delivery(campaign, user):
-    return (
-        Delivery.objects.filter(campaign=campaign, recipient=user, kind=Delivery.Kind.MESSAGE)
-        .exclude(status=Delivery.Status.FAILED)
-        .first()
+INVALID = "Choisissez « Présent » ou « Absent »."
+
+
+def _delivery(campaign, user, failed_too=False):
+    deliveries = Delivery.objects.filter(
+        campaign=campaign, recipient=user, kind=Delivery.Kind.MESSAGE
     )
+    if not failed_too:
+        deliveries = deliveries.exclude(status=Delivery.Status.FAILED)
+    return deliveries.first()
 
 
 def _private(response):
@@ -52,27 +56,27 @@ def reply(request, token):
         raise Http404
     campaign = Campaign.objects.filter(pk=found[0]).first()
     resident = User.objects.filter(pk=found[1], is_active=True).first()
-    delivery = _delivery(campaign, resident) if campaign and resident else None
+    # A failed delivery too: an SMS marked uncertain may have arrived, and the
+    # signed link proves that we sent it to this person.
+    delivery = _delivery(campaign, resident, failed_too=True) if campaign and resident else None
     if delivery is None:
         raise Http404
     is_open = replies.is_open(campaign)
-    thanks = ""
+    thanks = error = ""
+    status = 200
     if request.method == "POST":
         answer = request.POST.get("answer", "")
-        if not is_open or answer not in THANKS:
-            return _private(
-                render(
-                    request,
-                    "messaging/reply.html",
-                    {"campaign": campaign, "delivery": delivery, "closed": True},
-                    status=409 if not is_open else 400,
-                )
-            )
-        replies.record(campaign, resident, answer)
-        thanks = THANKS[answer]
+        if not is_open:
+            status = 409
+        elif answer not in THANKS:
+            status, error = 400, INVALID
+        else:
+            replies.record(campaign, resident, answer)
+            thanks = THANKS[answer]
+        # Only a tap counts as read: an SMS app opens the link (GET) for a preview.
+        if delivery.read_at is None:
+            Delivery.objects.filter(pk=delivery.pk).update(read_at=timezone.now())
     current = AttendanceReply.objects.filter(campaign=campaign, resident=resident).first()
-    if delivery.read_at is None:
-        Delivery.objects.filter(pk=delivery.pk).update(read_at=timezone.now())
     return _private(
         render(
             request,
@@ -84,7 +88,9 @@ def reply(request, token):
                 "closed": not is_open,
                 "closes_at": replies.closes_at(campaign),
                 "thanks": thanks,
+                "error": error,
             },
+            status=status,
         )
     )
 
@@ -99,11 +105,13 @@ def message(request, pk):
     is_open = replies.is_open(campaign)
     if request.method == "POST":
         answer = request.POST.get("answer", "")
-        if is_open and answer in THANKS:
+        if not is_open:
+            messages.warning(request, "Les réponses à ce message sont fermées.")
+        elif answer not in THANKS:
+            messages.warning(request, INVALID)
+        else:
             replies.record(campaign, request.user, answer)
             messages.success(request, THANKS[answer])
-        else:
-            messages.warning(request, "Les réponses à ce message sont fermées.")
         return redirect("inbox:message", pk=campaign.pk)
     if delivery.read_at is None:
         Delivery.objects.filter(pk=delivery.pk).update(read_at=timezone.now())

@@ -36,8 +36,8 @@ from sms.service import MAX_SEGMENTS, send_sms
 from .audience import audience, rendered
 from .models import AttendanceReply, Campaign, Delivery, ReplyType
 from .placeholders import fill, missing_values, values_for
+from .replies import closes_at, reply_path
 from .replies import is_open as replies_open
-from .replies import reply_path
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,13 @@ def problems(campaign, send_at):
             found.append(
                 "La relance (le jour J à 8 h) doit venir au moins une heure après l'envoi."
             )
+    if (
+        campaign.reply_type == ReplyType.ATTENDANCE
+        and campaign.event_date
+        and closes_at(campaign) <= send_at + MIN_REMINDER_GAP
+    ):
+        # The answers close at the end of the event day: the link would be useless.
+        found.append("La date du message est passée ou trop proche : plus de réponse possible.")
     if campaign.reply_type == ReplyType.ATTENDANCE and not settings.SITE_URL:
         found.append(
             "L'adresse du site n'est pas réglée (DJANGO_SITE_URL) : pas de lien de réponse."

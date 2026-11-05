@@ -96,14 +96,16 @@ function answer(notification, choice) {
   if (!reply) {
     return Promise.resolve();
   }
+  // No network (in the metro, for example): say it, the person must not
+  // believe that the answer was saved.
   return fetch(reply.href, {
     method: "POST",
     credentials: "omit",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: "answer=" + encodeURIComponent(choice),
   })
-    .then((response) => {
-      const done = response.ok;
+    .then((response) => response.ok, () => false)
+    .then((done) => {
       return self.registration.showNotification(done ? "Réponse enregistrée" : "Réponse non enregistrée", {
         body: done
           ? (choice === "present" ? "Vous serez présent. Merci !" : "Vous serez absent. Merci de l'avoir dit.")
@@ -114,7 +116,7 @@ function answer(notification, choice) {
         data: { url: notification.data.url },
       });
     })
-    .catch(() => undefined);
+    .catch(() => undefined); // the notification itself could not be shown
 }
 
 self.addEventListener("notificationclick", (event) => {

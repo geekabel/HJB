@@ -92,6 +92,15 @@ class TokenTests(ReplyTestCase):
         with override_settings(SECRET_KEY="yet-another-secret-key-for-this-test-xxxxxxxxxxxxxxxxx"):
             self.assertIsNone(replies.read_token(token))
 
+    @override_settings(SECRET_KEY="old-secret-key-for-this-test-only-xxxxxxxxxxxxxxxxxxxxxxx")
+    def test_old_links_survive_a_key_change(self):
+        token = replies.make_token(12, 345)
+        with override_settings(
+            SECRET_KEY="new-secret-key-for-this-test-only-xxxxxxxxxxxxxxxxxxxxxxx",
+            SECRET_KEY_FALLBACKS=["old-secret-key-for-this-test-only-xxxxxxxxxxxxxxxxxxxxxxx"],
+        ):
+            self.assertEqual(replies.read_token(token), (12, 345))
+
 
 class SendingTests(ReplyTestCase):
     def test_sms_ends_with_the_personal_link(self):
@@ -139,6 +148,24 @@ class SendingTests(ReplyTestCase):
             sending.problems(campaign, timezone.now()),
         )
 
+    def test_event_day_already_over(self):
+        today = timezone.localdate()
+        campaign = Campaign.objects.create(
+            title="V",
+            body="B",
+            everyone=True,
+            author=self.nadia,
+            reply_type=ReplyType.ATTENDANCE,
+            event_date=today - timedelta(days=1),
+        )
+        message = "La date du message est passée ou trop proche : plus de réponse possible."
+        self.assertIn(message, sending.problems(campaign, timezone.now()))
+        late = timezone.make_aware(datetime.combine(today, time(23, 30)))
+        campaign.event_date = today
+        self.assertIn(message, sending.problems(campaign, late))
+        campaign.event_date = today + timedelta(days=1)
+        self.assertNotIn(message, sending.problems(campaign, late))
+
     def test_reminder_skips_those_who_answered_by_the_link(self):
         event = timezone.localdate() + timedelta(days=2)
         campaign = self.sent_campaign(remind=True, event_date=event)
@@ -164,6 +191,7 @@ class ReplyPageTests(ReplyTestCase):
         self.assertEqual(response["Referrer-Policy"], "no-referrer")
         self.assertIn("no-store", response["Cache-Control"])
         self.assertFalse(AttendanceReply.objects.exists())  # a preview never answers
+        self.assertIsNone(campaign.deliveries.get(recipient=self.yanis).read_at)  # nor reads
         response = client.post(url, {"answer": "present"})
         save_page("messaging-reply-done", response)
         self.assertContains(response, "C&#x27;est noté : vous serez présent.")
@@ -185,10 +213,21 @@ class ReplyPageTests(ReplyTestCase):
             self.assertContains(self.client.get(url), "Les réponses à ce message sont fermées.")
         self.assertFalse(AttendanceReply.objects.exists())
 
+    def test_uncertain_sms_still_answers(self):
+        campaign = self.sent_campaign()
+        campaign.deliveries.filter(recipient=self.yanis).update(
+            status=Delivery.Status.FAILED, error="Envoi incertain : le SMS est peut-être parti."
+        )
+        response = Client().post(self.link(campaign, self.yanis), {"answer": "present"})
+        self.assertContains(response, "vous serez présent")
+        self.assertEqual(replies.counts(campaign)["present"], 1)
+
     def test_refused(self):
         campaign = self.sent_campaign()
         url = self.link(campaign, self.yanis)
-        self.assertEqual(self.client.post(url, {"answer": "maybe"}).status_code, 400)
+        response = self.client.post(url, {"answer": "maybe"})
+        self.assertContains(response, "Choisissez « Présent » ou « Absent ».", status_code=400)
+        self.assertNotContains(response, "fermées", status_code=400)
         self.assertEqual(self.client.get("/r/1-2-forgedsignatur/").status_code, 404)
         other = replies.reply_path(campaign.pk, self.nadia.pk)  # genuine, but not a recipient
         self.assertEqual(self.client.get(other).status_code, 404)
@@ -206,7 +245,8 @@ class ReplyPageTests(ReplyTestCase):
         self.assertContains(response, "Bonjour Inès")
         response = self.client.post(url, {"answer": "present"}, follow=True)
         self.assertContains(response, "vous serez présent")
-        self.assertContains(response, 'aria-pressed="true"')
+        self.assertContains(response, "Votre réponse : <strong>Présent</strong>")
+        self.assertNotContains(response, "aria-pressed")
         # Someone else's message: not found.
         other = self.sent_campaign(everyone=False, people=[self.yanis])
         log_in_verified(self.client, self.ines)

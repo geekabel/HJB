@@ -35,8 +35,8 @@ def _base36(number):
             return text
 
 
-def _signature(campaign_id, user_id):
-    mac = salted_hmac(SALT, f"{campaign_id}:{user_id}", algorithm="sha256").digest()
+def _signature(campaign_id, user_id, secret=None):
+    mac = salted_hmac(SALT, f"{campaign_id}:{user_id}", secret=secret, algorithm="sha256").digest()
     return base64.urlsafe_b64encode(mac[:SIGNATURE_BYTES]).decode()
 
 
@@ -53,9 +53,12 @@ def read_token(token):
         campaign_id, user_id = int(parts[0], 36), int(parts[1], 36)
     except ValueError:
         return None
-    if not constant_time_compare(parts[2], _signature(campaign_id, user_id)):
-        return None
-    return campaign_id, user_id
+    # The old keys still open the links sent before a key change, as Django's
+    # Signer does (https://docs.djangoproject.com/en/6.1/ref/settings/#secret-key-fallbacks).
+    for secret in (settings.SECRET_KEY, *settings.SECRET_KEY_FALLBACKS):
+        if constant_time_compare(parts[2], _signature(campaign_id, user_id, secret)):
+            return campaign_id, user_id
+    return None
 
 
 def reply_path(campaign_id, user_id):
@@ -101,7 +104,11 @@ def record(campaign, resident, answer):
 
 
 def counts(campaign):
-    """Answers of the people who got the message: present, absent, no answer."""
+    """Answers to the message: present, absent, no answer.
+
+    Every answer counts, even from a person whose SMS is marked uncertain (the
+    link proves it arrived). "No answer" only counts the messages surely sent.
+    """
     from .models import Delivery
 
     reached = set(

@@ -394,6 +394,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Réponse en un geste : boutons « Présent » et « Absent » sur la page du message dans l'appli (`/messages/<n>/`), et directement sur la notification là où le navigateur les affiche (Chrome, Edge, Firefox ; pas sur iPhone, où un toucher ouvre la page du message)
 - [x] Décompte pour l'équipe sur la page de suivi : présents, absents, sans réponse, et la réponse de chacun
 - **Notes** : réponse modifiable jusqu'au soir du jour indiqué dans le message (sept jours sans date). Le lien compte dans la longueur du SMS : il est dans l'aperçu et dans le coût. Réglage `DJANGO_SITE_URL` (par défaut la première adresse des clés d'accès). La relance (T21) ne va plus à ceux qui ont répondu.
+- **Revue** : corrigé après la revue indépendante. Le lien marche aussi quand le SMS est marqué « envoi incertain ». Un message dont le jour est passé (ou finit moins d'une heure après l'envoi) ne peut plus être programmé. Les anciens liens survivent à un changement de clé secrète (`SECRET_KEY_FALLBACKS`). Seul un bouton marque le message comme lu, pas l'aperçu. Sans réseau, un bouton de notification affiche « Réponse non enregistrée ». Le lien ajoute environ 90 caractères au SMS : un message court tient souvent en 2 SMS (choix à faire plus tard).
 
 #### T23 Boîte de réception du résident
 - **Maquette** : R2.
