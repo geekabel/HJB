@@ -72,6 +72,25 @@ Le dépôt est public. Un second workflow lance [gitleaks](https://github.com/gi
 
 Les serveurs WSGI et ASGI utilisent `config.settings.prod` par défaut.
 
+## Envoi de SMS
+
+Le fournisseur se choisit avec `DJANGO_SMS_FOURNISSEUR` (voir [.env.example](.env.example)) :
+
+| Valeur | Usage |
+|---|---|
+| *(vide)* | En production : aucun SMS ne part, et rien n'est écrit dans les journaux |
+| `console` | Par défaut en développement. Le SMS s'affiche dans la console, rien n'est envoyé. Jamais en production : numéros et codes finiraient dans les journaux |
+| `smsgate` | Essais réels avec un téléphone Android et l'application [SMSGate](https://docs.sms-gate.app) |
+| `ovh` | Production, avec l'[API SMS d'OVHcloud](https://docs.ovhcloud.com/fr/guides/web-cloud/messaging/sms/sending-via-api-c.md) |
+
+Pour vérifier un réglage, envoyer un SMS d'essai :
+
+```sh
+python manage.py envoyer_sms_essai "06 12 34 56 78" "Bonjour, ceci est un essai."
+```
+
+`python manage.py check` signale une option manquante. Pendant les tests, aucun vrai SMS ne part : le lanceur de tests remplace le fournisseur par une boîte en mémoire.
+
 ## Conventions
 
 - Une branche locale `feat/tXX-nom-court` par tâche, fusionnée dans `develop`.

@@ -54,6 +54,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | Connexion | Code d'activation remis à l'accueil, code SMS, puis clé d'accès (passkey) | Le numéro de chambre n'est pas un secret |
 | Front | Gabarits Django, CSS natif, JavaScript léger | Moins de dépendances, validation W3C plus simple |
 | Import Excel | openpyxl en lecture seule, avec defusedxml | Lit les .xlsx sans Excel ; defusedxml bloque les fichiers XML piégés |
+| API OVHcloud | Bibliothèque officielle python-ovh | Conseillée par OVHcloud : elle signe les requêtes ; pas de cryptographie maison |
 
 ## Tableau
 
@@ -67,7 +68,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T10 | Couche fournisseur SMS | E4 Messages | T01 |
 | T11 | Code d'activation | E2 Connexion | T07 |
 | T12 | Vérification du téléphone par code SMS | E2 Connexion | T10, T11 |
 | T13 | Connexion par clé d'accès (passkey) | E2 Connexion | T12 |
@@ -117,6 +117,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T07 | Liste et fiche des résidents (équipe) | 5 nov. 2026 |
 | T08 | Import CSV et Excel des résidents | 5 nov. 2026 |
 | T09 | Départ d'un résident | 5 nov. 2026 |
+| T10 | Couche fournisseur SMS | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -226,13 +227,16 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E2 Connexion
 
-#### T10 Couche fournisseur SMS
-- **Docs** : doc de chaque fournisseur (SMSGate, API OVHcloud).
-- [ ] Interface `FournisseurSms.envoyer(numero, texte)` et réglage du fournisseur actif
-- [ ] Fournisseur « console » pour le développement et les tests
-- [ ] Fournisseur SMSGate (téléphone Android) pour les essais réels
-- [ ] Fournisseur OVHcloud pour la production
-- [ ] Compteur de caractères et de segments (GSM-7 : 160 ou 153, UCS-2 : 70 ou 67)
+#### T10 Couche fournisseur SMS (fait le 5 nov. 2026)
+- **Docs** : [SMSGate](https://docs.sms-gate.app), [API SMS OVHcloud](https://docs.ovhcloud.com/fr/guides/web-cloud/messaging/sms/sending-via-api-c.md), [python-ovh](https://github.com/ovh/python-ovh), [contrôles Django](https://docs.djangoproject.com/en/6.1/topics/checks/), [lanceur de tests](https://docs.djangoproject.com/en/6.1/topics/testing/advanced/#defining-a-test-runner).
+- [x] Interface `FournisseurSms.envoyer(numero, texte)` et point d'entrée unique `envoyer_sms()` ; fournisseur actif choisi par `DJANGO_SMS_FOURNISSEUR` (application `sms`)
+- [x] Fournisseur « console » pour le développement, et « mémoire » pour les tests : le lanceur de tests l'impose, aucun test ne peut envoyer un vrai SMS
+- [x] Fournisseur SMSGate (téléphone Android) : mode local (identifiant et mot de passe) ou nuage (jeton)
+- [x] Fournisseur OVHcloud pour la production, avec la bibliothèque officielle python-ovh (signature des requêtes)
+- [x] Compteur de caractères et de segments (GSM-7 : 160 ou 153, UCS-2 : 70 ou 67), avec la table d'extension GSM, les emoji et la liste des caractères qui imposent l'UCS-2
+- [x] Erreurs classées « temporaire » ou non, pour les relances de T21 ; contrôle `manage.py check` des options manquantes ; commande `envoyer_sms_essai`
+- **Notes** : les journaux ne contiennent jamais le numéro complet ni le texte (un code de connexion y passerait). Un message est limité à 6 SMS. OVHcloud : `noStopClause` est activé, car nos messages sont des informations de service ; sans lui, OVHcloud bloque l'envoi entre 20 h et 8 h. Expéditeur : le numéro court d'OVHcloud par défaut (il permet de répondre), ou un nom déclaré. En français, « ê â î ô û ç » et l'apostrophe typographique font passer le message en UCS-2 (70 caractères) : T20 l'affichera à la rédaction. Aucun identifiant dans le dépôt : tout vient de l'environnement.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Avec `--parallel` en mode « spawn » (macOS, Windows, Python 3.14), les processus de test relisaient le fournisseur réel : le lanceur l'impose maintenant dans chaque processus (vérifié avec `DJANGO_SMS_FOURNISSEUR=ovh`). Un délai de réponse dépassé ou une acceptation sans identifiant sont « incertains » : le SMS est peut-être parti, donc pas de relance automatique (risque de doublon). OVHcloud 429 est temporaire. Un numéro de forme correcte mais inexistant ou fixe est refusé avant l'envoi. En production, sans `DJANGO_SMS_FOURNISSEUR`, aucun SMS ne part et rien n'est écrit dans les journaux (fournisseur « aucun »). 39 tests, sans aucun appel réseau.
 
 #### T11 Code d'activation
 - **Maquettes** : P5 (bouton), R0.

@@ -64,6 +64,8 @@ class AffichageTests(SimpleTestCase):
             "+41791234567": ("+41 79 123 45 67", "+41 •• ••• •• 67"),
             "": ("", ""),
         }
+        # Numéro illisible pour phonenumbers : masqué quand même, sans erreur.
+        self.assertEqual(masquer_telephone("+999999999"), "+99•••••99")
         for e164, (affiche, masque) in cas.items():
             with self.subTest(e164=e164):
                 self.assertEqual(afficher_telephone(e164), affiche)

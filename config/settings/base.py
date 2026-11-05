@@ -9,9 +9,11 @@ https://docs.djangoproject.com/en/6.1/topics/settings/
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 from django.contrib.messages import constants as niveaux
+from django.core.exceptions import ImproperlyConfigured
 
 # Racine du dépôt : config/settings/base.py -> trois niveaux au-dessus.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -32,6 +34,7 @@ INSTALLED_APPS = [
     "journal",
     "logement",
     "residents",
+    "sms",
 ]
 
 MIDDLEWARE = [
@@ -133,3 +136,56 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+
+# SMS : fournisseur interchangeable (application sms, carte T10).
+# DJANGO_SMS_FOURNISSEUR : console (rien n'est envoyé), smsgate, ovh ou aucun.
+# Les identifiants viennent toujours de l'environnement (voir .env.example).
+
+FOURNISSEURS_SMS = {
+    "aucun": ("sms.fournisseurs.aucun.FournisseurAucun", {}),
+    "console": ("sms.fournisseurs.console.FournisseurConsole", {}),
+    "smsgate": (
+        "sms.fournisseurs.smsgate.FournisseurSmsGate",
+        {
+            "url": "SMSGATE_URL",
+            "jeton": "SMSGATE_JETON",
+            "identifiant": "SMSGATE_IDENTIFIANT",
+            "mot_de_passe": "SMSGATE_MOT_DE_PASSE",
+            "sim": "SMSGATE_SIM",
+        },
+    ),
+    "ovh": (
+        "sms.fournisseurs.ovh.FournisseurOvh",
+        {
+            "endpoint": "OVH_ENDPOINT",
+            "service": "OVH_SMS_SERVICE",
+            "application_key": "OVH_APPLICATION_KEY",
+            "application_secret": "OVH_APPLICATION_SECRET",
+            "consumer_key": "OVH_CONSUMER_KEY",
+            "expediteur": "OVH_SMS_EXPEDITEUR",
+        },
+    ),
+}
+
+
+def reglage_sms(par_defaut):
+    """Réglage SMS lu dans l'environnement. ``par_defaut`` : console ou aucun."""
+    choix = os.environ.get("DJANGO_SMS_FOURNISSEUR") or par_defaut
+    if choix not in FOURNISSEURS_SMS:
+        raise ImproperlyConfigured(
+            f"DJANGO_SMS_FOURNISSEUR={choix!r} : valeurs possibles {', '.join(FOURNISSEURS_SMS)}."
+        )
+    classe, variables = FOURNISSEURS_SMS[choix]
+    return {
+        "BACKEND": classe,
+        "OPTIONS": {cle: os.environ.get(variable, "") for cle, variable in variables.items()},
+    }
+
+
+# En développement, la console affiche les SMS. La production refuse d'envoyer
+# tant qu'aucun fournisseur n'est choisi (voir prod.py).
+SMS = reglage_sms("console")
+
+# Tests : aucun vrai SMS, voir outils/lanceur_tests.py.
+TEST_RUNNER = "outils.lanceur_tests.LanceurTests"
