@@ -8,6 +8,7 @@ Administration). Creation, change, import and departure:
 import logging
 import secrets
 import time
+from datetime import timedelta
 
 import segno
 from django.contrib import messages
@@ -36,9 +37,17 @@ from accounts.activation_codes import (
 from accounts.models import ACCOUNT_STATE_FILTERS, AccountState, User
 from accounts.roles import Role
 from housing import wifi
-from housing.models import Floor, Stay, WifiAccess, WifiSettings
+from housing.models import (
+    WIFI_REMINDER_DAYS,
+    WIFI_RENEWAL_WARNING_DAYS,
+    Floor,
+    Stay,
+    WifiAccess,
+    WifiSettings,
+)
 from housing.services import current_stay
 from housing.wifi_crypto import WifiDecryptionError
+from push.models import PushSubscription
 
 from .bulk_import import (
     HEADERS,
@@ -167,6 +176,48 @@ def resident_list(request):
             "account": account,
             "filters_active": bool(search or floor or account),
             "query_string": filters.urlencode(),
+            "renewal_count": WifiAccess.objects.to_renew().count(),
+        },
+    )
+
+
+@login_required
+@permission_required("accounts.view_residents", raise_exception=True)
+def wifi_renewals(request):
+    """Wifi accesses to renew: ending within 30 days, or already ended (card T17)."""
+    devices = PushSubscription.objects.filter(user=OuterRef("resident"))
+    current = Stay.objects.current().select_related("resident").annotate(has_device=Exists(devices))
+    accesses = (
+        WifiAccess.objects.to_renew()
+        .select_related("room")
+        .prefetch_related(Prefetch("room__stays", queryset=current, to_attr="current_stays"))
+        .order_by("expires_on", "room__number")
+    )
+    for access in accesses:
+        stay = access.room.current_stays[0] if access.room.current_stays else None
+        access.resident = stay.resident if stay else None
+        # What the staff can do about the reminder: tell the resident in person if needed.
+        if access.reminder_sent_at:
+            access.reminder_state = "sent"
+        elif access.is_expired:
+            access.reminder_state = "expired"
+        elif access.days_left > WIFI_REMINDER_DAYS:
+            access.reminder_state = "planned"
+            access.reminder_on = access.expires_on - timedelta(days=WIFI_REMINDER_DAYS)
+        elif stay and not stay.resident.wifi_expiry_reminder:
+            access.reminder_state = "off"
+        elif stay and not stay.has_device:
+            access.reminder_state = "no_device"
+        else:
+            access.reminder_state = "pending"
+    return render(
+        request,
+        "residents/wifi_renewals.html",
+        {
+            "active_nav": "residents",
+            "accesses": accesses,
+            "warning_days": WIFI_RENEWAL_WARNING_DAYS,
+            "reminder_days": WIFI_REMINDER_DAYS,
         },
     )
 

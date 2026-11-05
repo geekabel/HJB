@@ -6,6 +6,8 @@ A "current" stay has no departure date.
 Constraints: https://docs.djangoproject.com/en/6.1/ref/models/constraints/
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -245,11 +247,20 @@ class WifiSettings(models.Model):
 WIFI_VALIDITY_DAYS = 365
 # Below this many days, staff see "renew soon" in the lists (card T15).
 WIFI_RENEWAL_WARNING_DAYS = 30
+# The resident gets a notification this many days before the end (card T17).
+WIFI_REMINDER_DAYS = 15
 
 
 class WifiAccessQuerySet(models.QuerySet):
     def active(self):
         return self.filter(active=True)
+
+    def to_renew(self, today=None):
+        """Active accesses that end within WIFI_RENEWAL_WARNING_DAYS, or already ended."""
+        today = today or timezone.localdate()
+        return self.active().filter(
+            expires_on__lte=today + timedelta(days=WIFI_RENEWAL_WARNING_DAYS)
+        )
 
 
 class WifiAccess(models.Model):
@@ -282,6 +293,12 @@ class WifiAccess(models.Model):
     )
     active = models.BooleanField("actif", default=True)
     ended_at = models.DateTimeField("coupé le", null=True, blank=True)
+    reminder_sent_at = models.DateTimeField(
+        "rappel envoyé le",
+        null=True,
+        blank=True,
+        help_text="Notification au résident avant la fin de l'accès (carte T17).",
+    )
     end_reason = models.CharField(
         "raison de la coupure", max_length=20, choices=EndReason.choices, blank=True
     )

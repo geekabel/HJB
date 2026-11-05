@@ -17,6 +17,7 @@ urlpatterns = [
     path("import/", views.import_file, name="import"),
     path("import/apercu/", views.import_preview, name="import_preview"),
     path("import/modele.csv", views.import_template, name="import_template"),
+    path("wifi/renouvellements/", views.wifi_renewals, name="wifi_renewals"),
     path("wifi/import/", wifi_import_views.wifi_import_file, name="wifi_import"),
     path("wifi/import/apercu/", wifi_import_views.wifi_import_preview, name="wifi_import_preview"),
     path(

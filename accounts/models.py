@@ -71,6 +71,11 @@ class User(AbstractUser):
         help_text="Confirmé par code SMS. S'il diffère du numéro actuel, rien n'est vérifié.",
     )
     phone_verified_at = models.DateTimeField("téléphone vérifié le", null=True, blank=True)
+    wifi_expiry_reminder = models.BooleanField(
+        "rappel avant la fin de l'accès wifi",
+        default=True,
+        help_text="Notification 15 jours avant la fin de l'accès wifi de la chambre (carte T17).",
+    )
 
     objects = HJBUserManager()
 
