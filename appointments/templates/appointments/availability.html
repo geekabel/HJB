@@ -56,5 +56,51 @@
     </section>
   </aside>
 </form>
+
+<div class="profile">
+  <section class="card stack" aria-labelledby="meetings-title">
+    <h2 id="meetings-title" class="card__title">Prochains rendez-vous</h2>
+    {% if meetings %}
+    <ul class="plain-list stack">
+      {% for meeting in meetings %}
+      <li class="stack stack--tight">
+        <strong><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}–{{ meeting.end|time:"H:i" }}</time></strong>
+        <span>{{ meeting.resident.get_full_name|default:meeting.resident.get_username }}{% if meeting.room %} · chambre {{ meeting.room }}{% endif %}</span>
+        <span class="text-muted text-small">Motif : {{ meeting.get_reason_display }}{% if meeting.holiday %} · jour férié ({{ meeting.holiday }}){% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Le motif n'est montré qu'à vous.</span></p>
+    {% else %}
+    <p class="text-muted">Aucun rendez-vous à venir.</p>
+    {% endif %}
+  </section>
+
+  <section class="card stack" aria-labelledby="absences-title">
+    <h2 id="absences-title" class="card__title">Absences</h2>
+    <p class="text-small">Congés, formation : personne ne peut réserver ces jours-là. Les jours fériés sont fermés d'office.</p>
+    {% if absences %}
+    <ul class="plain-list stack stack--tight">
+      {% for absence in absences %}
+      <li class="row row--between">
+        <span>{% if absence.first_day == absence.last_day %}Le {{ absence.first_day|date:"l j F" }}{% else %}Du {{ absence.first_day|date:"j F" }} au {{ absence.last_day|date:"j F" }}{% endif %}</span>
+        <form method="post" action="{% url 'appointments:delete_absence' absence.pk %}">
+          {% csrf_token %}
+          <button class="button button--quiet" type="submit">Retirer<span class="visually-hidden"> l'absence du {{ absence.first_day|date:"j F" }}</span></button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <form class="stack" method="post" action="{% url 'appointments:add_absence' %}">
+      {% csrf_token %}
+      <div class="grid-auto">
+        {{ absence_form.first_day.as_field_group }}
+        {{ absence_form.last_day.as_field_group }}
+      </div>
+      <button class="button button--secondary" type="submit">{% icon "plus" %}Ajouter l'absence</button>
+    </form>
+  </section>
+</div>
 <script src="{% static 'appointments/grid.js' %}" defer></script>
 {% endblock %}

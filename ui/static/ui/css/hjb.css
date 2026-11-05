@@ -1689,6 +1689,88 @@
     background: var(--action-soft);
   }
 
+  /* Booking a meeting, resident side (card T27, mockup R5) */
+  .rdv__step {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    font-weight: 700;
+  }
+
+  .rdv-people,
+  .rdv-days {
+    display: grid;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rdv-people {
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  }
+
+  .rdv-days {
+    grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr));
+  }
+
+  .rdv-person,
+  .rdv-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .rdv-person {
+    min-height: 6rem;
+    font-size: var(--t-small);
+  }
+
+  .rdv-day {
+    min-height: 4rem;
+  }
+
+  .rdv-person[aria-current="true"],
+  .rdv-day[aria-current="true"] {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    font-weight: 700;
+  }
+
+  .rdv-person__initial {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-weight: 700;
+  }
+
+  .rdv-person__initial--any {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .rdv-times {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: var(--s-2);
+  }
+
+  .rdv-times .choices {
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;
