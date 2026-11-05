@@ -10,6 +10,7 @@ class Action(models.TextChoices):
     CODE_ACTIVATION_GENERE = "CODE_ACTIVATION_GENERE", "Code d'activation généré"
     CODE_WIFI_AFFICHE = "CODE_WIFI_AFFICHE", "Mot de passe wifi affiché"
     DEPART_RESIDENT = "DEPART_RESIDENT", "Départ d'un résident"
+    RETOUR_RESIDENT = "RETOUR_RESIDENT", "Retour d'un ancien résident"
 
 
 class EntreeJournalNonModifiable(Exception):
@@ -78,6 +79,18 @@ class EntreeJournal(models.Model):
                 f"Avant : {libelles(self.details.get('avant', []))}. "
                 f"Après : {libelles(self.details.get('apres', []))}."
             )
+        if self.action == Action.RETOUR_RESIDENT:
+            from datetime import date
+
+            jour = date.fromisoformat(self.details["arrivee"])
+            return f"Chambre {self.details.get('chambre', '?')}, retour le {jour:%d/%m/%Y}."
+        if self.action == Action.CODE_ACTIVATION_GENERE and "expire_le" in self.details:
+            from datetime import datetime
+
+            from django.utils import timezone
+
+            fin = timezone.localtime(datetime.fromisoformat(self.details["expire_le"]))
+            return f"Valable jusqu'au {fin:%d/%m/%Y à %H:%M}."
         if self.action == Action.DEPART_RESIDENT:
             from datetime import date
 

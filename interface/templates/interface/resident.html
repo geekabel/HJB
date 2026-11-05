@@ -21,6 +21,7 @@
   {% block contenu %}{% endblock %}
 </main>
 
+{% block navigation %}
 <nav class="nav-resident" aria-label="Navigation principale">
   <ul>
     <li><a href="#"{% if actif == "accueil" %} aria-current="page"{% endif %}>{% icone "maison" %}Accueil</a></li>
@@ -30,4 +31,5 @@
     <li><a href="#"{% if actif == "compte" %} aria-current="page"{% endif %}>{% icone "personne" %}Mon compte</a></li>
   </ul>
 </nav>
+{% endblock navigation %}
 {% endblock %}

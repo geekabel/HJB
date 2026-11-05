@@ -94,6 +94,34 @@
       </dl>
     </section>
 
+    {% if perms.comptes.generer_code_activation %}
+    {% with code=activation.0 etat=activation.1 %}
+    <section class="carte pile" aria-labelledby="titre-activation">
+      <h2 id="titre-activation">Activation du compte</h2>
+      {% if not resident.is_active %}
+      <p class="texte-doux">Compte désactivé.{% if perms.comptes.gerer_residents %} Si la personne revient, enregistrez d'abord son retour.{% endif %}</p>
+      {% if perms.comptes.gerer_residents %}<a class="bouton bouton--discret" href="{% url 'residents:retour' resident.pk %}">Enregistrer un retour</a>{% endif %}
+      {% else %}
+      {% if etat == "actif" %}
+      <p><span class="badge badge--attention">Code en attente</span></p>
+      <p class="texte-doux">Valable jusqu'au <time datetime="{{ code.expire_le|date:'Y-m-d\TH:i:sO' }}">{{ code.expire_le|date:"j F Y à H:i" }}</time>{% if code.cree_par %}, remis par {{ code.cree_par.get_full_name|default:code.cree_par.get_username }}{% endif %}. Un nouveau code annule celui-ci.</p>
+      {% elif etat == "utilise" %}
+      <p class="texte-doux">Dernier code utilisé le <time datetime="{{ code.utilise_le|date:'Y-m-d\TH:i:sO' }}">{{ code.utilise_le|date:"j F Y à H:i" }}</time>.</p>
+      {% elif etat == "expire" %}
+      <p class="texte-doux">Le dernier code a expiré sans être utilisé.</p>
+      {% else %}
+      <p class="texte-doux">Aucun code remis pour l'instant.</p>
+      {% endif %}
+      <p class="texte-doux texte-petit">À générer quand la personne est devant vous, après avoir vérifié son identité.</p>
+      <form method="post" action="{% url 'residents:code_activation' resident.pk %}">
+        {% csrf_token %}
+        <button class="bouton" type="submit">{% if code %}Générer un nouveau code{% else %}Générer un code d'activation{% endif %}</button>
+      </form>
+      {% endif %}
+    </section>
+    {% endwith %}
+    {% endif %}
+
     {% if formulaire and resident.is_active %}
     <section class="carte pile" aria-labelledby="titre-depart">
       <h2 id="titre-depart">Départ</h2>

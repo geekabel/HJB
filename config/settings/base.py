@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "logement",
     "residents",
     "sms",
+    "activation",
 ]
 
 MIDDLEWARE = [

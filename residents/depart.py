@@ -17,6 +17,7 @@ from django.db import transaction
 from django.dispatch import Signal
 from django.utils import timezone
 
+from comptes.models import CodeActivation
 from journal.models import Action
 from journal.service import journaliser
 from logement.services import sejour_en_cours
@@ -94,6 +95,10 @@ def enregistrer_depart(resident, le, *, requete=None):
             sejour.full_clean()
             sejour.save(update_fields=["depart"])
 
+        # Un code d'activation encore valide ne doit plus servir.
+        CodeActivation.objects.valides().filter(utilisateur=resident).update(
+            annule_le=timezone.now()
+        )
         resident.is_active = False
         # Change aussi l'empreinte de session : toute session restante devient invalide.
         resident.set_unusable_password()
@@ -109,6 +114,31 @@ def enregistrer_depart(resident, le, *, requete=None):
                 "depart": le.isoformat(),
                 "sessions_fermees": sessions,
             },
+            requete=requete,
+        )
+    return sejour
+
+
+def enregistrer_retour(resident, chambre, le, *, requete=None):
+    """Retour d'un ancien résident : compte réactivé et nouveau séjour. Tout ou rien.
+
+    La personne devra ensuite recevoir un nouveau code d'activation à l'accueil.
+    """
+    from logement.services import affecter_chambre
+
+    with transaction.atomic():
+        resident = type(resident).objects.select_for_update().get(pk=resident.pk)
+        if not est_parti(resident):
+            raise ValidationError("Cette personne n'est pas partie.", code="pas_parti")
+        if le > timezone.localdate():
+            raise ValidationError("La date ne peut pas être dans le futur.", code="retour_futur")
+        resident.is_active = True
+        resident.save(update_fields=["is_active"])
+        sejour = affecter_chambre(resident, chambre, le)
+        journaliser(
+            Action.RETOUR_RESIDENT,
+            cible=resident,
+            details={"chambre": chambre.numero, "arrivee": le.isoformat()},
             requete=requete,
         )
     return sejour

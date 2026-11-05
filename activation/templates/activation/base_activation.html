@@ -1,0 +1,26 @@
+{% extends "interface/resident.html" %}
+{% load icones %}
+{% comment %}
+  Pages d'activation : pas encore connecté, donc pas de barre de navigation.
+  Variable : ``etape`` (1 code, 2 téléphone, 3 clé d'accès).
+{% endcomment %}
+{% block navigation %}{% endblock %}
+{% block contenu %}
+<ol class="etapes" aria-label="Étapes de l'activation">
+  <li class="etapes__etape{% if etape >= 1 %} etapes__etape--atteinte{% endif %}"{% if etape == 1 %} aria-current="step"{% endif %}>1. Code reçu{% if etape > 1 %}<span class="visuellement-cache"> (fait)</span>{% endif %}</li>
+  <li class="etapes__etape{% if etape >= 2 %} etapes__etape--atteinte{% endif %}"{% if etape == 2 %} aria-current="step"{% endif %}>2. Téléphone{% if etape > 2 %}<span class="visuellement-cache"> (fait)</span>{% endif %}</li>
+  <li class="etapes__etape{% if etape >= 3 %} etapes__etape--atteinte{% endif %}"{% if etape == 3 %} aria-current="step"{% endif %}>3. Clé d'accès</li>
+</ol>
+
+{% if messages %}
+<div class="pile" role="status">
+  {% for message in messages %}
+  <div class="alerte alerte--{{ message.level_tag }}">{% if message.level_tag == "succes" %}{% icone "coche" %}{% else %}{% icone "info" %}{% endif %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% block etape %}{% endblock %}
+
+<p class="alerte alerte--attention">{% icone "cadenas" %}<span>Votre numéro de chambre ne sert jamais à vous connecter : il est connu de vos voisins. Le compte est lié à vous, pas à la chambre.</span></p>
+{% endblock %}

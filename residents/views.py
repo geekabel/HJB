@@ -8,6 +8,7 @@ Administration). Création, modification, import et départ :
 import secrets
 import time
 
+import segno
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -16,15 +17,25 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_GET
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
+from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_GET, require_POST
 
+from comptes.activation import (
+    DUREE_VALIDITE,
+    envoyer_code_par_sms,
+    etat_activation,
+    generer_code,
+)
 from comptes.models import FILTRE_ETAT_COMPTE, EtatCompte, User
 from comptes.roles import Role
 from logement.models import Etage, Sejour
 from logement.services import sejour_en_cours
 
-from .depart import enregistrer_depart, est_parti
-from .forms import FormulaireDepart, FormulaireImport, FormulaireResident
+from .depart import enregistrer_depart, enregistrer_retour, est_parti
+from .forms import FormulaireDepart, FormulaireImport, FormulaireResident, FormulaireRetour
 from .importation import (
     EN_TETES,
     ErreurFichier,
@@ -193,6 +204,7 @@ def fiche(request, pk):
             "resident": resident,
             "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
+            "activation": etat_activation(resident),
             "dernier_depart": resident.sejours.filter(depart__isnull=False)
             .order_by("-depart")
             .values_list("depart", flat=True)
@@ -232,6 +244,69 @@ def depart(request, pk):
         "residents/depart.html",
         {"actif": "residents", "resident": resident, "sejour": sejour, "formulaire": formulaire},
     )
+
+
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def retour(request, pk):
+    """Retour d'un ancien résident : choisir sa chambre, puis lui remettre un code."""
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if not est_parti(resident):
+        return redirect("residents:fiche", pk=resident.pk)
+    formulaire = FormulaireRetour(request.POST or None)
+    if request.method == "POST" and formulaire.is_valid():
+        donnees = formulaire.cleaned_data
+        try:
+            enregistrer_retour(resident, donnees["chambre"], donnees["arrivee"], requete=request)
+        except (ValidationError, IntegrityError) as erreur:
+            messages_erreur = getattr(erreur, "messages", ["Cette chambre vient d'être prise."])
+            formulaire.add_error(None, messages_erreur)
+        else:
+            messages.success(
+                request,
+                "Le retour est enregistré et le compte réactivé. "
+                "Générez un code d'activation pour la personne.",
+            )
+            return redirect("residents:fiche", pk=resident.pk)
+    return render(
+        request,
+        "residents/retour.html",
+        {"actif": "residents", "resident": resident, "formulaire": formulaire},
+    )
+
+
+@require_POST
+@login_required
+@permission_required("comptes.generer_code_activation", raise_exception=True)
+def code_activation(request, pk):
+    """Génère un code et l'affiche une seule fois, en page imprimable.
+
+    Réponse à un POST, jamais mise en cache : le code ne peut pas être
+    réaffiché (on ne garde que son empreinte).
+    """
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if not resident.is_active:
+        messages.info(request, "Ce compte est désactivé : enregistrez d'abord le retour.")
+        return redirect("residents:fiche", pk=resident.pk)
+    code = generer_code(resident, par=request.user, requete=request)
+    lien = request.build_absolute_uri(reverse("activation:saisie")) + "#" + code
+    qr = segno.make_qr(lien, error="m").svg_inline(
+        scale=4, title=f"Code QR pour activer le compte de {resident.get_full_name()}"
+    )
+    reponse = render(
+        request,
+        "residents/code_activation.html",
+        {
+            "actif": "residents",
+            "resident": resident,
+            "code": code,
+            "adresse": request.build_absolute_uri(reverse("activation:saisie")),
+            "expire_le": timezone.now() + DUREE_VALIDITE,
+            "qr": mark_safe(qr),  # SVG produit par segno à partir de notre propre lien
+        },
+    )
+    add_never_cache_headers(reponse)
+    return reponse
 
 
 # --- Import CSV et Excel (carte T08) ------------------------------------------
@@ -280,7 +355,7 @@ def _import_en_cours(request):
 
 
 def _confirmer(request, import_en_cours, lignes):
-    """Crée les fiches. Renvoie le nombre créé, ou None avec un message d'erreur."""
+    """Crée les fiches. Renvoie la liste créée, ou None avec un message d'erreur."""
     try:
         with transaction.atomic():
             trace = ImportResidents.objects.create(
@@ -288,7 +363,8 @@ def _confirmer(request, import_en_cours, lignes):
                 importe_par=request.user,
                 fichier=import_en_cours["fichier"],
             )
-            trace.nombre = importer(lignes)
+            creees = importer(lignes)
+            trace.nombre = len(creees)
             trace.save(update_fields=["nombre"])
     except ValidationError as erreur:
         messages.warning(request, f"Rien n'a été importé. {' '.join(erreur.messages)}")
@@ -296,15 +372,39 @@ def _confirmer(request, import_en_cours, lignes):
         if ImportResidents.objects.filter(jeton=import_en_cours["jeton"]).exists():
             messages.info(request, "Cet import a déjà été fait.")
             del request.session[CLE_SESSION_IMPORT]
-            return 0
+            return []
         messages.warning(
             request,
             "Rien n'a été importé : une chambre ou un numéro vient d'être pris. "
             "Vérifiez l'aperçu à jour.",
         )
     else:
-        return trace.nombre
+        return creees
     return None
+
+
+def _envoyer_codes(request, residents):
+    """Option de l'import : un code d'activation par SMS aux nouveaux qui ont un numéro."""
+    adresse = request.build_absolute_uri(reverse("activation:saisie"))
+    avec_numero = [r for r in residents if r.telephone]
+    envoyes = sum(
+        envoyer_code_par_sms(r, adresse, par=request.user, requete=request) for r in avec_numero
+    )
+    if envoyes:
+        s = "s" if envoyes > 1 else ""
+        messages.success(request, f"{envoyes} code{s} d'activation envoyé{s} par SMS.")
+    if envoyes < len(avec_numero):
+        messages.warning(
+            request,
+            f"{len(avec_numero) - envoyes} SMS n'ont pas pu partir : "
+            "remettez ces codes à l'accueil.",
+        )
+    if len(avec_numero) < len(residents):
+        messages.info(
+            request,
+            f"{len(residents) - len(avec_numero)} résident(s) sans numéro : "
+            "code à remettre à l'accueil.",
+        )
 
 
 @login_required
@@ -334,8 +434,11 @@ def import_apercu(request):
             if creees is not None:
                 request.session.pop(CLE_SESSION_IMPORT, None)
                 if creees:
-                    s = "s" if creees > 1 else ""
-                    messages.success(request, f"{creees} résident{s} importé{s}.")
+                    s = "s" if len(creees) > 1 else ""
+                    messages.success(request, f"{len(creees)} résident{s} importé{s}.")
+                    peut_generer = request.user.has_perm("comptes.generer_code_activation")
+                    if request.POST.get("envoyer_codes") == "oui" and peut_generer:
+                        _envoyer_codes(request, creees)
                 return redirect("residents:liste")
             lignes = depuis_session(import_en_cours["lignes"])
             pretes = [ligne.numero for ligne in lignes if ligne.prete]
