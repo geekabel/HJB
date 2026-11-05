@@ -64,8 +64,28 @@ class RecordTests(WifiPagesTestCase):
         self.log_in(self.front_desk)
         response, _ = self.form_page()
         save_page("residents-wifi-access", response)
-        self.assertContains(response, 'value="ch312-ines"')
         self.assertContains(response, f'value="{wifi.default_expiry():%Y-%m-%d}"')
+        # No access yet: the username is empty, to type or to generate.
+        self.assertNotContains(response, 'name="username" value=')
+        self.assertContains(response, "6 caractères pour l'identifiant, 6 pour le mot de passe")
+
+    def test_form_of_a_renewal_keeps_the_username(self):
+        self.record()
+        self.log_in(self.front_desk)
+        response, _ = self.form_page()
+        self.assertContains(response, 'value="ch312-ines"')
+
+    def test_record_the_portal_format(self):
+        # The real format of the residence portal: 6 and 6 characters.
+        self.log_in(self.front_desk)
+        _, token = self.form_page()
+        data = {"token": token, "username": "vre8th", "password": "72ptmk"}
+        data["expires_on"] = f"{wifi.default_expiry():%Y-%m-%d}"
+        response = self.client.post(self.url("wifi_access"), data)
+        self.assertEqual(response.status_code, 302)
+        access = WifiAccess.objects.get()
+        self.assertEqual(access.username, "vre8th")
+        self.assertEqual(wifi_crypto.decrypt(access.encrypted_password), "72ptmk")
 
     def test_record_a_typed_password(self):
         self.log_in(self.front_desk)
@@ -100,16 +120,44 @@ class RecordTests(WifiPagesTestCase):
             "expires_on": f"{wifi.default_expiry():%Y-%m-%d}",
         }
         response = self.client.post(self.url("wifi_access"), data)
-        save_page("residents-wifi-generated", response)
         access = WifiAccess.objects.get()
         self.assertTrue(access.generated)
+        self.assertEqual(access.username, "ch312-ines")
         password = wifi_crypto.decrypt(access.encrypted_password)
+        self.assertEqual(len(password), 6)
         self.assertContains(response, password)
+        self.assertContains(response, "Ce mot de passe ne s'affichera qu'une fois")
         self.assertIn("no-store", response["Cache-Control"])
         # Reloading the page sends the same form again: nothing new is generated.
         response = self.client.post(self.url("wifi_access"), data, follow=True)
         self.assertContains(response, "Ce formulaire a déjà servi")
         self.assertEqual(WifiAccess.objects.count(), 1)
+
+    def test_generate_both(self):
+        self.log_in(self.front_desk)
+        _, token = self.form_page()
+        data = {"token": token, "username": "", "password": ""}
+        data["expires_on"] = f"{wifi.default_expiry():%Y-%m-%d}"
+        response = self.client.post(self.url("wifi_access"), data)
+        save_page("residents-wifi-generated", response)
+        access = WifiAccess.objects.get()
+        self.assertEqual(len(access.username), 6)
+        self.assertContains(response, access.username)
+        self.assertContains(response, wifi_crypto.decrypt(access.encrypted_password))
+        self.assertContains(response, "l'identifiant et le mot de passe")
+
+    def test_generate_the_username_only(self):
+        self.log_in(self.front_desk)
+        _, token = self.form_page()
+        data = {"token": token, "username": "", "password": "72ptmk"}
+        data["expires_on"] = f"{wifi.default_expiry():%Y-%m-%d}"
+        response = self.client.post(self.url("wifi_access"), data)
+        access = WifiAccess.objects.get()
+        self.assertTrue(access.generated is False)
+        self.assertContains(response, access.username)
+        # The typed password is never shown back.
+        self.assertNotContains(response, "72ptmk")
+        self.assertContains(response, "Recopiez maintenant l'identifiant sur")
 
     def test_invalid_input(self):
         self.log_in(self.front_desk)
@@ -119,13 +167,13 @@ class RecordTests(WifiPagesTestCase):
             {
                 "token": token,
                 "username": "ch312-ines",
-                "password": "court",
+                "password": "abc",
                 "expires_on": f"{timezone.localdate():%Y-%m-%d}",
             },
         )
-        self.assertContains(response, "de 8 à 63 caractères")
+        self.assertContains(response, "Il faut de 4 à 64 caractères.")
         # The typed password is never sent back in the page, which is never cached.
-        self.assertNotContains(response, 'value="court"')
+        self.assertNotContains(response, 'value="abc"')
         self.assertIn("no-store", response["Cache-Control"])
         self.assertContains(response, "La date doit être dans le futur.")
         self.assertFalse(WifiAccess.objects.exists())

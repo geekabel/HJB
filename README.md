@@ -87,6 +87,8 @@ Tout le monde se connecte avec une clé d'accès (passkey) : Face ID, empreinte 
 
 Les mots de passe wifi des chambres sont chiffrés (Fernet). En production, `DJANGO_WIFI_KEYS` est obligatoire : sans lui, l'application refuse de démarrer (voir [.env.example](.env.example)). Gardez une copie de la clé hors du serveur : sans elle, les mots de passe enregistrés sont perdus. Pour changer de clé, mettez la nouvelle en premier dans `DJANGO_WIFI_KEYS`, lancez `python manage.py rotate_wifi_keys`, puis retirez l'ancienne. En développement, une clé est dérivée de la clé secrète de développement.
 
+Le format des identifiants et mots de passe générés (6 et 6 caractères par défaut, comme le portail de la résidence) se change dans l'administration, page « Réglages wifi ». La liste déjà tenue par l'équipe s'importe depuis la liste des résidents, bouton « Importer la liste wifi ».
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :

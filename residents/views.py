@@ -36,7 +36,7 @@ from accounts.activation_codes import (
 from accounts.models import ACCOUNT_STATE_FILTERS, AccountState, User
 from accounts.roles import Role
 from housing import wifi
-from housing.models import Floor, Stay, WifiAccess
+from housing.models import Floor, Stay, WifiAccess, WifiSettings
 from housing.services import current_stay
 from housing.wifi_crypto import WifiDecryptionError
 
@@ -445,8 +445,9 @@ def wifi_access(request, pk):
     current = wifi.current_access(stay.room)
     form = WifiAccessForm(
         request.POST or None,
+        # Renewal: same username by default (to clear for a generated one).
         initial={
-            "username": current.username if current else wifi.suggest_username(stay.room, resident),
+            "username": current.username if current else "",
             "expires_on": wifi.default_expiry(),
         },
     )
@@ -465,14 +466,17 @@ def wifi_access(request, pk):
             # since (double click, two people), nothing is recorded.
             seen = request.POST.get("replaces", "")
             replaces = stay.room.wifi_accesses.filter(pk=seen).first() if seen.isdigit() else None
+            username = form.cleaned_data["username"]
             password = form.cleaned_data["password"]
-            generated = not password
+            username_generated, generated = not username, not password
+            if username_generated:
+                username = wifi.generate_username()
             if generated:
                 password = wifi.generate_password()
             try:
                 access = wifi.set_access(
                     stay.room,
-                    username=form.cleaned_data["username"],
+                    username=username,
                     password=password,
                     expires_on=form.cleaned_data["expires_on"],
                     stay=stay,
@@ -488,7 +492,7 @@ def wifi_access(request, pk):
                 logger.exception("Wifi encryption is not configured")
                 messages.warning(request, WIFI_NOT_CONFIGURED)
                 return redirect("residents:detail", pk=resident.pk)
-            if not generated:
+            if not (generated or username_generated):
                 messages.success(
                     request,
                     f"L'accès wifi de la chambre {stay.room.number} est enregistré, valable "
@@ -505,6 +509,8 @@ def wifi_access(request, pk):
                         "resident": resident,
                         "access": access,
                         "password": password,
+                        "username_generated": username_generated,
+                        "password_generated": generated,
                     },
                 )
             )
@@ -519,6 +525,7 @@ def wifi_access(request, pk):
                 "current": current,
                 "form": form,
                 "token": _wifi_token(request, resident, stay),
+                "wifi_settings": WifiSettings.load(),
             },
         )
     )

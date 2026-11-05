@@ -1,0 +1,105 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Importer la liste wifi{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:list' %}">{% icon "back" %}Tous les résidents</a>
+
+<header class="stack stack--tight">
+  <h1>Importer la liste wifi</h1>
+  <p class="text-muted">La liste que tient déjà l'équipe : identifiant, mot de passe et chambre. Vous verrez chaque ligne avant de confirmer.</p>
+</header>
+
+{% if rows %}
+<section class="card card--framed stack" aria-labelledby="preview-title">
+  <div class="page-header">
+    <h2 id="preview-title">Aperçu · {{ file_name }}</h2>
+    <p><strong>{{ rows|length }}</strong> ligne{{ rows|length|pluralize }} · <strong class="text-action">{{ ready_count }} prête{{ ready_count|pluralize }}</strong>{% if unchanged_count %} · {{ unchanged_count }} déjà à jour{% endif %} · <strong class="text-warning">{{ to_fix_count }} à corriger</strong></p>
+  </div>
+
+  {% if other_preview %}
+  <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>Un autre fichier a été envoyé depuis.</strong> Voici son aperçu. Rien n'a été enregistré.</p></div>
+  {% endif %}
+  {% if state_changed %}
+  <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>La situation a changé depuis l'aperçu.</strong> Un départ ou un autre accès a été enregistré entre-temps. Vérifiez la liste à jour ci-dessous avant de confirmer.</p></div>
+  {% endif %}
+  {% if unchanged_count %}
+  <div class="alert alert--info">{% icon "info" %}<p>Les lignes « Déjà à jour » ont le même identifiant et le même mot de passe que l'accès actuel. Elles ne changent rien : ni l'historique, ni la date de fin.</p></div>
+  {% endif %}
+  {% if to_fix_count %}
+  <div class="alert alert--info">{% icon "info" %}<p>Les lignes à corriger ne seront pas enregistrées. Corrigez-les dans le fichier puis envoyez-le de nouveau, ou enregistrez d'abord les lignes prêtes.</p></div>
+  {% endif %}
+
+  <div class="table-scroll" role="region" aria-labelledby="preview-caption" tabindex="0">
+    <table class="table">
+      <caption id="preview-caption" class="visually-hidden">Lignes du fichier, leur état et les corrections à faire. Les mots de passe ne sont pas affichés.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Ligne</th>
+          <th scope="col">Chambre</th>
+          <th scope="col">État</th>
+          <th scope="col">Résident</th>
+          <th scope="col">Identifiant</th>
+          <th scope="col">Valable jusqu'au</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="table__number">{{ row.number }}</td>
+          <th scope="row" class="table__row-header">{{ row.room|default:"–" }}</th>
+          <td class="table__state">
+            <div class="stack stack--tight">
+              {% if row.ready %}<span class="badge badge--info">Prête</span>{% elif row.unchanged %}<span class="badge badge--neutral">Déjà à jour</span>{% else %}<span class="badge badge--warning">À corriger</span>{% endif %}
+              {% for error in row.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}
+              {% for warning in row.warnings %}<span class="text-muted text-small">{{ warning }}</span>{% endfor %}
+            </div>
+          </td>
+          <td>{{ row.occupant|default:"–" }}</td>
+          <td class="table__number">{{ row.username|default:"–" }}</td>
+          <td class="table__number">{% if row.auto_expiry %}Dans un an{% elif row.expiry_date %}<time datetime="{{ row.expires_on }}">{{ row.expiry_date|date:"j F Y" }}</time>{% else %}{{ row.expires_on|default:"–" }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form class="stack" method="post" action="{% url 'residents:wifi_import_preview' %}">
+    {% csrf_token %}
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="state" value="{{ state }}">
+    <div class="row">
+      {% if ready_count %}
+      <button class="button" type="submit" name="action" value="import">Enregistrer {% if ready_count > 1 %}les {{ ready_count }} lignes prêtes{% else %}la ligne prête{% endif %}</button>
+      {% endif %}
+      <button class="button button--quiet" type="submit" name="action" value="cancel">Annuler l'import</button>
+    </div>
+  </form>
+</section>
+
+{% else %}
+<div class="profile">
+  <form class="card stack" method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <h2>Envoyer le fichier</h2>
+    {{ form.file.as_field_group }}
+    <div class="row">
+      <button class="button" type="submit">{% icon "send" %}Voir l'aperçu</button>
+    </div>
+    <p class="text-muted text-small">Les mots de passe sont chiffrés dès la lecture. Ils n'apparaissent pas dans l'aperçu. Supprimez ensuite le fichier de votre ordinateur s'il n'a plus d'usage.</p>
+  </form>
+
+  <section class="card stack" aria-labelledby="columns-title">
+    <h2 id="columns-title">Colonnes attendues</h2>
+    <p class="text-muted">La première ligne donne le titre de chaque colonne. L'ordre n'a pas d'importance.</p>
+    <dl class="details">
+      <dt>Identifiant</dt><dd>Obligatoire, par exemple vre8th</dd>
+      <dt>Mot de passe</dt><dd>Obligatoire, par exemple 72ptmk</dd>
+      <dt>Chambre</dt><dd>Obligatoire, numéro d'une chambre occupée</dd>
+      <dt>Résident</dt><dd>Facultatif. Sert à vérifier que c'est la bonne personne</dd>
+      <dt>Valable jusqu'au</dt><dd>Date, par exemple 01/09/2027. Vide : dans un an</dd>
+    </dl>
+    <p><a href="{% url 'residents:wifi_import_template' %}" download>Télécharger un modèle vide (.csv)</a></p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

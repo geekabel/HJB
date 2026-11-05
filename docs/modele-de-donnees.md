@@ -101,7 +101,7 @@ erDiagram
     WIFI_ACCESS {
         int id PK
         int room_id FK
-        string username
+        string username "un seul accès actif par identifiant"
         text encrypted_password "Fernet, jamais en clair"
         bool generated "mot de passe généré par l'application"
         date created_on
@@ -110,6 +110,13 @@ erDiagram
         bool active "un seul actif par chambre"
         datetime ended_at
         string end_reason "renewed, departure, move"
+    }
+    WIFI_SETTINGS {
+        int id PK "toujours 1"
+        string network_name "nom du réseau (SSID)"
+        int username_length "6 par défaut"
+        int password_length "6 par défaut"
+        string alphabet "caractères des accès générés"
     }
     ACTIVATION_CODE {
         int id PK
@@ -329,6 +336,7 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 | `manage_residents` | oui | | | oui | |
 | `issue_activation_codes` | oui | | | oui | |
 | `view_wifi_password` | | | | oui | |
+| `manage_wifi_settings` | | | | oui | |
 | `send_messages` | oui | oui | oui | oui | |
 | `manage_reports` | oui | | oui | oui | |
 | `manage_appointments` | | oui | | oui | |
@@ -363,6 +371,8 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - Le mot de passe est chiffré avec Fernet (bibliothèque cryptography). Les clés sont dans `DJANGO_WIFI_KEYS`, jamais dans le dépôt ; `python manage.py rotate_wifi_keys` chiffre de nouveau avec une nouvelle clé.
 - La fin d'un séjour (départ, changement de chambre) coupe l'accès de la chambre : il faut le changer sur le réseau.
 - Pas de table des consultations : chaque affichage d'un mot de passe est une entrée du journal d'audit (`wifi_password_shown`).
+- Le format du portail captif (`WIFI_SETTINGS`, une seule ligne) se règle dans l'administration : longueurs et caractères des accès générés. Les accès saisis à la main restent libres, de 4 à 64 caractères sans espace.
+- La liste existante s'importe depuis un fichier CSV ou Excel, avec aperçu puis confirmation (administrateurs seulement).
 
 ## Règles métier portées par le modèle
 
@@ -374,6 +384,7 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 | Pas deux séjours qui se croisent, pour une chambre ou une personne | Validation de `Stay` (`clean`), le jour de relève est permis |
 | Pas de nouveau séjour dans une chambre fermée | Validation de `Stay` (`clean`) |
 | Un seul accès wifi actif par chambre | Contrainte unique conditionnelle sur `WifiAccess(room)` quand `active` est vrai |
+| Un identifiant wifi ne sert qu'à une chambre à la fois | Contrainte unique conditionnelle sur `WifiAccess(username)` quand `active` est vrai |
 | Un seul vote par sondage et par résident | Contrainte unique sur `Participation(poll, resident)` |
 | Un envoi par personne et par canal | Contrainte unique sur `Delivery(campaign, recipient, channel)`, ce qui rend un nouvel essai sans risque de doublon |
 | Pas deux rendez-vous au même moment pour un éducateur | Contrainte unique sur `Appointment(educator, start)` et vérification du chevauchement dans une transaction |
