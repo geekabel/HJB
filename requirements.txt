@@ -5,3 +5,7 @@ phonenumbers==9.0.41
 # contre les attaques XML (doc openpyxl).
 openpyxl==3.1.5
 defusedxml==0.7.1
+# SMS (carte T10) : bibliothèque officielle OVHcloud (signature des requêtes)
+# et requests, utilisé directement pour SMSGate.
+ovh==1.2.0
+requests==2.34.2
