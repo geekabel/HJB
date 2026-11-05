@@ -13,7 +13,7 @@ import secrets
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.views.decorators.debug import sensitive_variables
 
@@ -79,6 +79,7 @@ def end_access(room, reason):
         )
 
 
+USERNAME_TAKEN = "Cet identifiant wifi sert déjà à une autre chambre."
 ACCESS_CHANGED = (
     "L'accès wifi de cette chambre vient d'être modifié par une autre demande. "
     "Vérifiez la fiche avant de recommencer."
@@ -106,7 +107,7 @@ def set_access(
     - ``replaces``: the access the person saw on the form (None: none). If
       another access was recorded since (double click, two staff members),
       nothing is recorded.
-    Raises ValidationError (codes "no_current_stay", "access_changed").
+    Raises ValidationError (codes "no_current_stay", "access_changed", "username_taken").
     """
     with transaction.atomic():
         # Row lock on the room: two recordings at the same time pass one after the other.
@@ -128,7 +129,13 @@ def set_access(
             created_by=by,
         )
         access.full_clean()
-        access.save()
+        try:
+            # Savepoint: the same username saved for another room at the same moment
+            # (each request only locks its own room) becomes a clear error, not a 500.
+            with transaction.atomic():
+                access.save()
+        except IntegrityError as error:
+            raise ValidationError(USERNAME_TAKEN, code="username_taken") from error
         log_action(
             Action.WIFI_ACCESS_SET,
             actor=by,

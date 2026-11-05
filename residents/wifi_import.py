@@ -9,6 +9,7 @@ encodings, .xlsx checks). Between the preview and the confirmation, the
 passwords stay encrypted in the session, never in clear.
 """
 
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import date
 
@@ -18,15 +19,16 @@ from django.utils import timezone
 from django.views.decorators.debug import sensitive_variables
 
 from housing import wifi, wifi_crypto
-from housing.models import Room, Stay, WifiAccess
+from housing.models import Room, Stay, WifiAccess, WifiSettings
 
 from .bulk_import import FileError, _date, _key, _text
 
 # Expected column -> accepted headers (compared without accents, spaces or case).
 # The headers stay in French: users type them in their files.
 HEADERS = {
-    "username": ["identifiant", "login", "utilisateur", "nomdutilisateur", "username"],
-    "password": ["motdepasse", "mdp", "pass", "password", "code"],
+    # No "code" nor "utilisateur": a door code or a person's name would be taken silently.
+    "username": ["identifiant", "login", "nomdutilisateur", "username"],
+    "password": ["motdepasse", "mdp", "pass", "password"],
     "room": ["chambre", "nchambre", "numerodechambre", "numerochambre"],
     "resident": ["resident", "residente", "nom", "personne", "occupant", "nomprenom"],
     "expires_on": [
@@ -62,10 +64,11 @@ class WifiRow:
     occupant: str = ""
     stay_pk: int | None = None
     replaces_pk: int | None = None
+    unchanged: bool = False  # same username and password as the current access
 
     @property
     def ready(self):
-        return not self.errors
+        return not self.errors and not self.unchanged
 
     @property
     def expiry_date(self):
@@ -82,31 +85,72 @@ class WifiRow:
         return f"{self.number}:{self.stay_pk or 0}:{self.replaces_pk or 0}"
 
 
+def _label(key):
+    return TEMPLATE_HEADERS[list(HEADERS).index(key)]
+
+
 def _columns(header):
     columns = {}
     for index, title in enumerate(header):
         key = KEY_BY_HEADER.get(_key(title))
-        if key and key not in columns:
-            columns[key] = index
-    missing = [key for key in REQUIRED if key not in columns]
+        if key is None:
+            continue
+        if key in columns:
+            raise FileError(
+                f"Deux colonnes peuvent être « {_label(key)} » : « {header[columns[key]]} » "
+                f"et « {title} ». Gardez-en une seule."
+            )
+        columns[key] = index
+    missing = [f"« {_label(key)} »" for key in REQUIRED if key not in columns]
     if missing:
-        names = " et ".join(f"« {TEMPLATE_HEADERS[list(HEADERS).index(c)]} »" for c in missing)
+        names = missing[0] if len(missing) == 1 else f"{', '.join(missing[:-1])} et {missing[-1]}"
         raise FileError(
             f"La première ligne doit contenir les titres des colonnes. Il manque {names}."
         )
     return columns
 
 
-NUMBER_CELL = "Excel a lu « {value} » comme un nombre. Vérifiez qu'il n'a pas retiré un 0 au début."
+# A value that Excel turned into a number in scientific notation ("2,34E+58").
+SCIENTIFIC = re.compile(r"^\d+([.,]\d+)?E[+-]?\d+$", re.IGNORECASE)
+MANGLED = (
+    "{label} a été transformé en nombre par Excel. Mettez la colonne au format Texte, "
+    "puis recopiez les valeurs."
+)
+# The password value never goes into a message: messages are shown and kept in the session.
+NUMBER_CELL = "{label} a été lu comme un nombre. Vérifiez qu'Excel n'a pas retiré un 0 au début."
 
 
-@sensitive_variables("password")
+def _credential_problems(label, raw, text, settings_row):
+    """Return (errors, warnings) for a username or password cell. Never quote the value."""
+    if not text:
+        return [f"{label} manque."], []
+    is_number = isinstance(raw, int | float) and not isinstance(raw, bool)
+    # Excel keeps 15 digits: a larger or decimal number is no longer the typed value.
+    if isinstance(raw, float) and (not raw.is_integer() or abs(raw) >= 1e15):
+        return [MANGLED.format(label=label)], []
+    if SCIENTIFIC.match(text):
+        return [MANGLED.format(label=label)], []
+    if error := wifi.check_credential(text):
+        return [f"{label} : {error[0].lower()}{error[1:]}"], []
+    warnings = [NUMBER_CELL.format(label=label)] if is_number else []
+    length = (
+        settings_row.username_length if label == "L'identifiant" else settings_row.password_length
+    )
+    if len(text) != length or not set(text) <= set(settings_row.alphabet):
+        warnings.append(
+            f"{label} ne suit pas le format du portail ({length} caractères). Vérifiez-le."
+        )
+    return [], warnings
+
+
+@sensitive_variables()
 def analyze(rows):
     """Analyze the rows read by bulk_import.read_file(). Return a list of WifiRow.
 
     Raises ImproperlyConfigured if the wifi encryption keys are missing.
     """
     columns = _columns(rows[0][1])
+    settings_row = WifiSettings.load()
     result = []
     for number, cells in rows[1:]:
 
@@ -123,15 +167,13 @@ def analyze(rows):
         password = _text(value("password"))
         if password:
             row.encrypted_password = wifi_crypto.encrypt(password)
-        for key in ("username", "password"):
-            raw = value(key)
-            if isinstance(raw, int | float) and not isinstance(raw, bool):
-                row.format_warnings.append(NUMBER_CELL.format(value=_text(raw)))
-        for label, text in (("L'identifiant", row.username), ("Le mot de passe", password)):
-            if not text:
-                row.format_errors.append(f"{label} manque.")
-            elif error := wifi.check_credential(text):
-                row.format_errors.append(f"{label} : {error}")
+        for label, raw, text in (
+            ("L'identifiant", value("username"), row.username),
+            ("Le mot de passe", value("password"), password),
+        ):
+            errors, warnings = _credential_problems(label, raw, text, settings_row)
+            row.format_errors += errors
+            row.format_warnings += warnings
         raw_expiry = value("expires_on")
         if _text(raw_expiry):
             day = _date(raw_expiry)
@@ -186,6 +228,7 @@ def _check(rows):
         row.warnings = list(row.format_warnings)
         row.occupant = ""
         row.stay_pk = row.replaces_pk = None
+        row.unchanged = False
 
         if row.username:
             if row.username in seen_usernames:
@@ -228,7 +271,24 @@ def _check(rows):
         current = active.get(room.pk)
         if current:
             row.replaces_pk = current.pk
-            row.warnings.append(f"Remplace l'accès actuel ({current.username}).")
+            if not row.errors and _same_access(row, current):
+                # Sending the same list again changes nothing (history, expiry).
+                row.unchanged = True
+                row.warnings = []
+            else:
+                row.warnings.append(f"Remplace l'accès actuel ({current.username}).")
+
+
+@sensitive_variables()
+def _same_access(row, access):
+    if row.username != access.username:
+        return False
+    try:
+        return wifi_crypto.decrypt(row.encrypted_password) == wifi_crypto.decrypt(
+            access.encrypted_password
+        )
+    except wifi_crypto.WifiDecryptionError:
+        return False
 
 
 # --- Storage between the preview and the confirmation ----------------------
@@ -248,7 +308,7 @@ def from_session(data):
 # --- Import ----------------------------------------------------------------
 
 
-@sensitive_variables("password")
+@sensitive_variables()
 @transaction.atomic
 def run_import(rows, *, by, request=None):
     """Record the access of each ready row. All or nothing.
@@ -287,6 +347,9 @@ def run_import(rows, *, by, request=None):
                 request=request,
             )
         except ValidationError as error:
-            raise ValidationError(f"Ligne {row.number} : {' '.join(error.messages)}") from error
+            raise ValidationError(
+                f"Ligne {row.number} : {' '.join(error.messages)}",
+                code=getattr(error, "code", None),
+            ) from error
         count += 1
     return count

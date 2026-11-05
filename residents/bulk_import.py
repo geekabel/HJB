@@ -154,7 +154,7 @@ def read_file(file):
     if not name.endswith(EXTENSIONS):
         raise FileError("Le fichier doit être un .csv ou un .xlsx.")
     if file.size > MAX_SIZE:
-        raise FileError("Le fichier dépasse 2 Mo. Une liste de résidents est bien plus petite.")
+        raise FileError("Le fichier dépasse 2 Mo. Une liste de cette sorte est bien plus petite.")
     cells = _csv_cells(file.read()) if name.endswith(".csv") else _xlsx_cells(file)
     too_long = f"Le fichier dépasse {MAX_ROWS} lignes. Découpez-le en plusieurs fichiers."
     rows = []

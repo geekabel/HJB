@@ -13,7 +13,7 @@
 <section class="card card--framed stack" aria-labelledby="preview-title">
   <div class="page-header">
     <h2 id="preview-title">Aperçu · {{ file_name }}</h2>
-    <p><strong>{{ rows|length }}</strong> ligne{{ rows|length|pluralize }} · <strong class="text-action">{{ ready_count }} prête{{ ready_count|pluralize }}</strong> · <strong class="text-warning">{{ to_fix_count }} à corriger</strong></p>
+    <p><strong>{{ rows|length }}</strong> ligne{{ rows|length|pluralize }} · <strong class="text-action">{{ ready_count }} prête{{ ready_count|pluralize }}</strong>{% if unchanged_count %} · {{ unchanged_count }} déjà à jour{% endif %} · <strong class="text-warning">{{ to_fix_count }} à corriger</strong></p>
   </div>
 
   {% if other_preview %}
@@ -21,6 +21,9 @@
   {% endif %}
   {% if state_changed %}
   <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>La situation a changé depuis l'aperçu.</strong> Un départ ou un autre accès a été enregistré entre-temps. Vérifiez la liste à jour ci-dessous avant de confirmer.</p></div>
+  {% endif %}
+  {% if unchanged_count %}
+  <div class="alert alert--info">{% icon "info" %}<p>Les lignes « Déjà à jour » ont le même identifiant et le même mot de passe que l'accès actuel. Elles ne changent rien : ni l'historique, ni la date de fin.</p></div>
   {% endif %}
   {% if to_fix_count %}
   <div class="alert alert--info">{% icon "info" %}<p>Les lignes à corriger ne seront pas enregistrées. Corrigez-les dans le fichier puis envoyez-le de nouveau, ou enregistrez d'abord les lignes prêtes.</p></div>
@@ -46,7 +49,7 @@
           <th scope="row" class="table__row-header">{{ row.room|default:"–" }}</th>
           <td class="table__state">
             <div class="stack stack--tight">
-              {% if row.ready %}<span class="badge badge--info">Prête</span>{% else %}<span class="badge badge--warning">À corriger</span>{% endif %}
+              {% if row.ready %}<span class="badge badge--info">Prête</span>{% elif row.unchanged %}<span class="badge badge--neutral">Déjà à jour</span>{% else %}<span class="badge badge--warning">À corriger</span>{% endif %}
               {% for error in row.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}
               {% for warning in row.warnings %}<span class="text-muted text-small">{{ warning }}</span>{% endfor %}
             </div>

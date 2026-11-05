@@ -27,6 +27,8 @@ from .wifi_import import TEMPLATE_HEADERS, analyze, from_session, run_import, to
 logger = logging.getLogger(__name__)
 
 SESSION_KEY = "wifi_import"
+# The file holds every password: front desk rights plus the right to show a password.
+PERMISSIONS = ("accounts.manage_residents", "accounts.view_wifi_password")
 PREVIEW_DURATION = 30 * 60  # seconds: the passwords do not stay longer, even encrypted
 
 
@@ -46,7 +48,7 @@ def _pending(request):
 
 
 @login_required
-@permission_required("accounts.view_wifi_password", raise_exception=True)
+@permission_required(PERMISSIONS, raise_exception=True)
 @recent_confirmation_required
 def wifi_import_file(request):
     """Step 1: upload the file. Only the analyzed rows stay in the session."""
@@ -74,7 +76,7 @@ def wifi_import_file(request):
 
 
 @login_required
-@permission_required("accounts.view_wifi_password", raise_exception=True)
+@permission_required(PERMISSIONS, raise_exception=True)
 @recent_confirmation_required
 def wifi_import_preview(request):
     """Step 2: row by row preview, then recording of the ready rows."""
@@ -100,6 +102,15 @@ def wifi_import_preview(request):
             try:
                 count = run_import(rows, by=request.user, request=request)
             except ValidationError as error:
+                if error.code == "access_changed":
+                    # Often a second click: the first one may have recorded everything.
+                    messages.warning(
+                        request,
+                        "Rien n'a été enregistré par cet envoi : un accès a changé entre-temps, "
+                        "peut-être par un premier clic. Vérifiez la liste des résidents avant "
+                        "d'envoyer de nouveau le fichier.",
+                    )
+                    return redirect("residents:list")
                 messages.warning(
                     request,
                     f"Rien n'a été enregistré. {' '.join(error.messages)} "
@@ -115,6 +126,7 @@ def wifi_import_preview(request):
             return redirect("residents:list")
 
     ready_count = sum(row.ready for row in rows)
+    unchanged_count = sum(row.unchanged for row in rows)
     return _page(
         request,
         {
@@ -123,7 +135,8 @@ def wifi_import_preview(request):
             "rows": rows,
             "state": state,
             "ready_count": ready_count,
-            "to_fix_count": len(rows) - ready_count,
+            "unchanged_count": unchanged_count,
+            "to_fix_count": len(rows) - ready_count - unchanged_count,
             "state_changed": state_changed,
             "other_preview": other_preview,
         },
@@ -132,7 +145,7 @@ def wifi_import_preview(request):
 
 @require_GET
 @login_required
-@permission_required("accounts.view_wifi_password", raise_exception=True)
+@permission_required(PERMISSIONS, raise_exception=True)
 def wifi_import_template(request):
     """Template file: the column titles, as a CSV that Excel can read (BOM and ";")."""
     response = HttpResponse(content_type="text/csv; charset=utf-8")

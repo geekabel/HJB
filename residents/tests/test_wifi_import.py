@@ -131,12 +131,17 @@ class ImportTests(WifiImportTestCase):
         sheet = workbook.active
         sheet.append(["Chambre", "Identifiant", "Mot de passe"])
         sheet.append([312, "vre8th", 123456])  # a password typed as a number
+        sheet.append([118, "k3pzqa", 2.34e58])  # turned into a number by Excel
         content = io.BytesIO()
         workbook.save(content)
         self.log_in()
         response = self.upload(SimpleUploadedFile("wifi.xlsx", content.getvalue()))
         self.assertEqual(response.context["ready_count"], 1)
-        self.assertContains(response, "Excel a lu « 123456 » comme un nombre")
+        self.assertContains(response, "Le mot de passe a été lu comme un nombre.")
+        self.assertContains(response, "Le mot de passe a été transformé en nombre par Excel.")
+        # Review of T15b: the value of a password never appears, even in a message.
+        self.assertNotContains(response, "123456")
+        self.assertNotIn("123456", str(dict(self.client.session)))
         self.confirm(response)
         access = WifiAccess.objects.get()
         self.assertEqual(wifi_crypto.decrypt(access.encrypted_password), "123456")
@@ -171,7 +176,7 @@ class ImportTests(WifiImportTestCase):
         )
         self.assertEqual(rows[4].errors[0], "Cet identifiant sert déjà à la chambre 304.")
         self.assertIn("n'a pas de résident en ce moment", rows[4].errors[1])
-        self.assertIn("Le mot de passe : Il faut de 4 à 64 caractères.", rows[5].errors)
+        self.assertIn("Le mot de passe : il faut de 4 à 64 caractères.", rows[5].errors)
         self.assertIn("La date de fin doit être dans le futur.", rows[5].errors)
         self.assertIn("Même chambre que la ligne 2.", rows[6].errors)
         self.assertIn("« demain » n'est pas une date", rows[7].errors[0])
@@ -257,3 +262,74 @@ class ConfirmationTests(WifiImportTestCase):
         response = self.client.get(reverse("residents:wifi_import_preview"), follow=True)
         self.assertRedirects(response, reverse("residents:wifi_import"))
         self.assertContains(response, "L&#x27;aperçu a expiré.")
+
+
+class ImportReviewTests(WifiImportTestCase):
+    """Cases found by the independent review of T15b."""
+
+    def test_two_columns_for_one_field(self):
+        self.log_in()
+        response = self.upload(
+            csv_file("Chambre;Mot de passe;Identifiant;MDP", "312;72ptmk;vre8th;autre1")
+        )
+        self.assertContains(response, "Deux colonnes peuvent être « Mot de passe »")
+
+    def test_door_code_and_person_columns_are_not_taken(self):
+        self.log_in()
+        response = self.upload(csv_file("Chambre;Utilisateur;Code", "312;Ines;4821"))
+        self.assertContains(response, "Il manque « Identifiant » et « Mot de passe ».")
+        response = self.upload(csv_file("Nom;Prénom", "Martin;Inès"))
+        self.assertContains(response, "Il manque « Identifiant », « Mot de passe » et « Chambre ».")
+
+    def test_scientific_text_from_a_saved_csv(self):
+        self.log_in()
+        response = self.upload(csv_file("Identifiant;Mot de passe;Chambre", "vre8th;2,34E+58;312"))
+        self.assertEqual(response.context["ready_count"], 0)
+        self.assertContains(response, "transformé en nombre par Excel")
+
+    def test_other_format_is_a_warning(self):
+        self.log_in()
+        response = self.upload(
+            csv_file("Identifiant;Mot de passe;Chambre", "ch312-ines;Soleil-2026!;312")
+        )
+        self.assertEqual(response.context["ready_count"], 1)
+        self.assertContains(response, "L&#x27;identifiant ne suit pas le format du portail")
+        self.assertContains(response, "Le mot de passe ne suit pas le format du portail")
+
+    def test_same_list_again_changes_nothing(self):
+        self.log_in()
+        line = "vre8th;72ptmk;312"
+        response = self.upload(csv_file("Identifiant;Mot de passe;Chambre", line))
+        self.confirm(response)
+        access = WifiAccess.objects.get()
+        response = self.upload(
+            csv_file("Identifiant;Mot de passe;Chambre", line, "k3pzqa;h7mwrd;304")
+        )
+        save_page("residents-wifi-import-unchanged", response)
+        self.assertEqual(response.context["ready_count"], 1)
+        self.assertEqual(response.context["unchanged_count"], 1)
+        self.assertContains(response, "Déjà à jour")
+        self.confirm(response)
+        self.assertEqual(WifiAccess.objects.count(), 2)
+        access.refresh_from_db()
+        self.assertTrue(access.active)
+        # A new password for the same username is a change.
+        response = self.upload(csv_file("Identifiant;Mot de passe;Chambre", "vre8th;nouv01;312"))
+        self.assertEqual(response.context["ready_count"], 1)
+
+    def test_second_click_does_not_say_nothing_happened(self):
+        from unittest import mock
+
+        from django.core.exceptions import ValidationError
+
+        self.log_in()
+        response = self.upload(csv_file("Identifiant;Mot de passe;Chambre", "vre8th;72ptmk;312"))
+        error = ValidationError(wifi.ACCESS_CHANGED, code="access_changed")
+        with mock.patch("housing.wifi.set_access", side_effect=error):
+            response = self.confirm(response)
+        self.assertRedirects(response, reverse("residents:list"))
+        self.assertContains(response, "peut-être par un premier clic")
+
+    def test_front_desk_with_only_one_of_the_rights(self):
+        self.log_in(self.front_desk)
+        self.assertEqual(self.client.get(reverse("residents:wifi_import")).status_code, 403)

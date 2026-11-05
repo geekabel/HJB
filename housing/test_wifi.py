@@ -126,6 +126,26 @@ class ServiceTests(WifiTestCase):
             ):
                 settings_row.full_clean()
 
+    def test_same_username_at_the_same_moment(self):
+        # Review of T15b: two rooms, the same username, two requests at once. The check
+        # of full_clean() passes for both; the database constraint refuses the second.
+        from unittest import mock
+
+        self.record(username="vre8th")
+        with (
+            mock.patch.object(WifiAccess, "full_clean"),
+            self.assertRaises(ValidationError) as error,
+        ):
+            self.record(room=self.r304, username="vre8th")
+        self.assertEqual(error.exception.code, "username_taken")
+        self.assertEqual(WifiAccess.objects.filter(active=True).count(), 1)
+
+    def test_alphabet_without_accents(self):
+        settings_row = WifiSettings.load()
+        settings_row.alphabet = "abcdefghijé"
+        with self.assertRaisesMessage(ValidationError, "sans accent"):
+            settings_row.full_clean()
+
     def test_one_active_access_per_username(self):
         self.record(username="vre8th")
         with self.assertRaises(ValidationError):

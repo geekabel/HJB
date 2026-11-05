@@ -189,7 +189,7 @@ class WifiSettings(models.Model):
         "nom du réseau",
         max_length=64,
         blank=True,
-        help_text="Nom du wifi que voient les résidents (SSID). Affiché sur leur écran wifi.",
+        help_text="Nom du wifi que voient les résidents (SSID).",
     )
     username_length = models.PositiveSmallIntegerField(
         "longueur de l'identifiant",
@@ -228,6 +228,11 @@ class WifiSettings(models.Model):
     def clean(self):
         if any(c.isspace() for c in self.alphabet):
             raise ValidationError({"alphabet": "Les espaces ne sont pas permis."})
+        # Printable ASCII only: many captive portals refuse accents.
+        if any(not "!" <= c <= "~" for c in self.alphabet):
+            raise ValidationError(
+                {"alphabet": "Lettres sans accent, chiffres et signes seulement."}
+            )
         if len(set(self.alphabet)) < 10:
             raise ValidationError({"alphabet": "Il faut au moins 10 caractères différents."})
 
