@@ -12,10 +12,10 @@ from django.views.decorators.http import require_http_methods, require_POST
 from accounts.roles import Role
 from housing.models import Stay
 
-from . import availability
+from . import availability, direct
 from .forms import AbsenceForm, SettingsForm
 from .holidays import holiday_name
-from .models import Absence, Appointment, Availability
+from .models import Absence, Appointment, Availability, Conversation
 
 PERMISSION = "accounts.manage_appointments"
 
@@ -87,6 +87,10 @@ def my_availability(request):
                 educator=educator, last_day__gte=timezone.localdate()
             ),
             "absence_form": AbsenceForm(),
+            "conversations": direct.with_unread(
+                Conversation.objects.filter(educator=educator).select_related("resident"),
+                educator,
+            )[:5],
         },
     )
     # Names, rooms and reasons: never kept by the browser or a proxy.
@@ -147,3 +151,63 @@ def delete_absence(request, pk):
     get_object_or_404(Absence, pk=pk, educator=request.user).delete()
     messages.success(request, "Absence retirée.")
     return redirect("appointments:availability")
+
+
+def _private(response):
+    add_never_cache_headers(response)
+    return response
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def conversations(request):
+    """Direct messages of the educator who is logged in (card T28)."""
+    found = direct.with_unread(
+        Conversation.objects.filter(educator=request.user).select_related("resident"),
+        request.user,
+    )
+    return _private(
+        render(
+            request,
+            "appointments/conversations.html",
+            {"active_nav": "appointments", "conversations": found},
+        )
+    )
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def conversation(request, pk):
+    # Only the educator of the conversation: the rest of the staff gets a 404.
+    found = get_object_or_404(
+        Conversation.objects.select_related("resident"), pk=pk, educator=request.user
+    )
+    text = ""
+    if request.method == "POST":
+        text = request.POST.get("text", "")
+        try:
+            direct.send(found, request.user, text)
+        except direct.MessageRefused as refused:
+            messages.warning(request, str(refused))
+        else:
+            messages.success(request, "Réponse envoyée.")
+            return redirect("appointments:conversation", pk=found.pk)
+    direct.mark_read(found, request.user)
+    stays = Stay.objects.current().filter(resident=found.resident).select_related("room")
+    stay = stays.first()
+    return _private(
+        render(
+            request,
+            "appointments/conversation.html",
+            {
+                "active_nav": "appointments",
+                "conversation": found,
+                "room": stay.room.number if stay else "",
+                "thread": found.messages.select_related("author"),
+                "text": text,
+                "max_length": direct.MAX_LENGTH,
+                "reply_hours": availability.settings_of(request.user).reply_hours,
+            },
+        )
+    )

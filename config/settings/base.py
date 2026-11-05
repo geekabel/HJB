@@ -83,6 +83,8 @@ TEMPLATES = [
                 "push.context_processors.push",
                 # Unread messages, on the Messages entry of the resident bar (T23).
                 "messaging.context_processors.unread",
+                # Unread direct messages, on the Rendez-vous entries (T28).
+                "appointments.context_processors.unread",
             ],
         },
     },

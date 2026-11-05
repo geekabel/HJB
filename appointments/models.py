@@ -5,6 +5,8 @@ week) and sets the length of a meeting and how late a resident can book
 (EducatorSettings).
 T27: a resident books a meeting (Appointment); an educator closes days
 (Absence); French public holidays are closed too (holidays.py).
+T28: a resident and an educator write to each other (Conversation,
+DirectMessage); the educator shows when they usually answer (reply_hours).
 """
 
 from django.conf import settings
@@ -29,6 +31,12 @@ class EducatorSettings(models.Model):
     )
     notice = models.CharField(
         "réserver au plus tard", max_length=12, choices=Notice.choices, default=Notice.TWO_HOURS
+    )
+    reply_hours = models.CharField(
+        "heures de réponse aux messages",
+        max_length=100,
+        default="du lundi au vendredi, de 9 h à 17 h",
+        help_text="Montré aux résidents avant qu'ils vous écrivent.",
     )
 
     class Meta:
@@ -174,3 +182,59 @@ class Absence(models.Model):
 
     def __str__(self):
         return f"{self.educator} · {self.first_day} → {self.last_day}"
+
+
+class Conversation(models.Model):
+    """Direct messages between one resident and one educator (card T28).
+
+    Only these two people read it: not the rest of the staff, not the admin.
+    """
+
+    resident = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversations",
+        verbose_name="résident",
+    )
+    educator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversations_as_educator",
+        verbose_name="éducateur",
+    )
+    updated_at = models.DateTimeField("dernier message le", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "conversation"
+        verbose_name_plural = "conversations"
+        ordering = ["-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["resident", "educator"], name="one_conversation_per_pair"
+            )
+        ]
+
+    def __str__(self):
+        # Neutral: the admin lists cascaded objects with it.
+        return f"Conversation n°{self.pk}"
+
+
+class DirectMessage(models.Model):
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+", verbose_name="auteur"
+    )
+    text = models.TextField("message", max_length=2000)
+    sent_at = models.DateTimeField("envoyé le", auto_now_add=True)
+    read_at = models.DateTimeField("lu le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "message direct"
+        verbose_name_plural = "messages directs"
+        ordering = ["sent_at", "pk"]
+        indexes = [models.Index(fields=["conversation", "read_at"])]
+
+    def __str__(self):
+        return f"Message n°{self.pk}"

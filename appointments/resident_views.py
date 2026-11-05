@@ -18,7 +18,8 @@ from django.views.decorators.http import require_http_methods, require_safe
 
 from access.session_policy import is_resident
 
-from . import booking
+from . import booking, direct
+from .availability import settings_of
 from .models import Appointment, EducatorSettings
 
 ANY = "libre"
@@ -124,6 +125,9 @@ def book(request):
                 "length": length,
                 "reasons": Appointment.Reason.choices,
                 "upcoming": booking.upcoming(request.user),
+                "conversations": direct.with_unread(
+                    request.user.conversations.select_related("educator"), request.user
+                ),
             },
         )
     )
@@ -140,5 +144,41 @@ def detail(request, pk):
             request,
             "appointments/detail.html",
             {"active_nav": "appointments", "meeting": meeting},
+        )
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def write(request, educator_pk):
+    """Direct messages with one educator (card T28)."""
+    if not is_resident(request.user):
+        return redirect("home")
+    educator = get_object_or_404(direct.educators(), pk=educator_pk)
+    conversation = direct.conversation_of(request.user, educator)
+    text = ""
+    if request.method == "POST":
+        text = request.POST.get("text", "")
+        try:
+            direct.send(conversation, request.user, text, resident=request.user, educator=educator)
+        except direct.MessageRefused as refused:
+            messages.warning(request, str(refused))
+        else:
+            messages.success(request, "Message envoyé.")
+            return redirect("rdv:write", educator_pk=educator.pk)
+    if conversation is not None:
+        direct.mark_read(conversation, request.user)
+    return _page(
+        render(
+            request,
+            "appointments/write.html",
+            {
+                "active_nav": "appointments",
+                "educator": educator,
+                "reply_hours": settings_of(educator).reply_hours,
+                "thread": conversation.messages.select_related("author") if conversation else [],
+                "text": text,
+                "max_length": direct.MAX_LENGTH,
+            },
         )
     )

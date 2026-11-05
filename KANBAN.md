@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T28 | Messages directs avec un éducateur | E6 Rendez-vous | T13 |
 | T29 | Rappels et annulation de rendez-vous | E6 Rendez-vous | T27, T19 |
 | T30 | Signaler un problème | E7 Signalements | T13 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T25 | Sondages anonymes | 5 nov. 2026 |
 | T26 | Disponibilités des éducateurs | 5 nov. 2026 |
 | T27 | Réservation d'un rendez-vous | 5 nov. 2026 |
+| T28 | Messages directs avec un éducateur | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -455,9 +455,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : l'annulation et les rappels viennent avec T29, « Plutôt écrire à … » avec T28 (messages directs). Les rendez-vous ne s'affichent pas encore dans la grille de la semaine (liste à côté).
 - **Revue** : corrigé après la revue indépendante, qui a reproduit trois failles de concurrence sur PostgreSQL. Toutes les vérifications ont maintenant lieu dans la transaction, après les verrous (le résident d'abord, puis les éducateurs, toujours dans le même ordre) : plus de troisième rendez-vous, plus de deux rendez-vous à la même heure, plus de réservation sur un créneau fermé ou pendant une absence ajoutée au même moment. « Le premier libre » essaie l'éducateur suivant si le premier vient d'être pris. Un éducateur inconnu n'est plus remplacé en silence. Le départ d'un résident annule ses rendez-vous à venir. Page de l'équipe jamais gardée en cache, nom neutre dans l'administration (« Rendez-vous n°… »), dates d'absence limitées. Fenêtre de 14 jours exacte, tous les jours affichés. Accessibilité : vraies sections, titre pour « Quelle heure ? », jour complet lu. Le lundi de Pentecôte reste fermé : l'équipe ne travaille pas ce jour-là (confirmé par Godwin le 5 nov.). Pâques vérifié contre `dateutil` de 1583 à 9999.
 
-#### T28 Messages directs avec un éducateur
-- [ ] Conversation résident et éducateur, non lus
-- [ ] Heures de réponse affichées
+#### T28 Messages directs avec un éducateur (fait le 5 nov. 2026)
+- **Maquettes** : R5 (« Plutôt écrire à Samia »), P4 (carte « Messages directs »).
+- **Docs** : [tâches de fond](https://docs.djangoproject.com/en/6.1/topics/tasks/), [`transaction.on_commit`](https://docs.djangoproject.com/en/6.1/topics/db/transactions/#performing-actions-after-commit), [agrégation conditionnelle](https://docs.djangoproject.com/en/6.1/ref/models/conditional-expressions/#conditional-aggregation).
+- [x] Une conversation par résident et par éducateur. Le résident écrit depuis la page des rendez-vous (« Plutôt écrire à … », liste « Mes messages ») ; l'éducateur répond depuis son espace (« Messages directs »). Seules ces deux personnes la lisent : pas le reste de l'équipe, pas l'administration
+- [x] Non lus de chaque côté : compteur sur l'entrée « Rendez-vous » de la barre du résident et du menu de l'équipe, et sur chaque conversation. Un message devient lu quand l'autre ouvre la conversation
+- [x] Heures de réponse : réglage de l'éducateur (« du lundi au vendredi, de 9 h à 17 h » par défaut), montré au résident avant d'écrire
+- [x] Notification à l'autre personne (tâche de fond, sans bloquer la page), qui dit qui a écrit mais jamais le texte : elle peut s'afficher sur un écran verrouillé
+- [x] Limites : 2 000 caractères par message, 30 messages par personne et par conversation en 24 h
+- **Notes** : le résident écrit à n'importe quel éducateur actif, même sans créneau ouvert. L'éducateur répond dans les conversations ouvertes par les résidents. La conservation des messages sera réglée avec le RGPD (T36).
 
 #### T29 Rappels et annulation de rendez-vous
 - [ ] Rappel la veille et une heure avant

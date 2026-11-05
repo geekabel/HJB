@@ -7,4 +7,5 @@ app_name = "rdv"
 urlpatterns = [
     path("", resident_views.book, name="book"),
     path("<int:pk>/", resident_views.detail, name="detail"),
+    path("ecrire/<int:educator_pk>/", resident_views.write, name="write"),
 ]
