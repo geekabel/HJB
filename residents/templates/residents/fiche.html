@@ -107,11 +107,14 @@
       <p><span class="badge badge--attention">Code en attente</span></p>
       <p class="texte-doux">Valable jusqu'au <time datetime="{{ code.expire_le|date:'Y-m-d\TH:i:sO' }}">{{ code.expire_le|date:"j F Y à H:i" }}</time>{% if code.cree_par %}, remis par {{ code.cree_par.get_full_name|default:code.cree_par.get_username }}{% endif %}. Un nouveau code annule celui-ci.</p>
       {% elif etat == "utilise" %}
-      <p class="texte-doux">Dernier code utilisé le <time datetime="{{ code.utilise_le|date:'Y-m-d\TH:i:sO' }}">{{ code.utilise_le|date:"j F Y à H:i" }}</time>.{% if not resident.telephone_est_verifie %} L'activation n'est pas allée jusqu'au bout : si la personne le demande, générez un nouveau code.{% endif %}</p>
+      <p class="texte-doux">Dernier code utilisé le <time datetime="{{ code.utilise_le|date:'Y-m-d\TH:i:sO' }}">{{ code.utilise_le|date:"j F Y à H:i" }}</time>.{% if not cle_acces or cle_acces.created_at < code.utilise_le %} L'activation n'est pas allée jusqu'au bout : si la personne le demande, générez un nouveau code.{% endif %}</p>
       {% elif etat == "expire" %}
       <p class="texte-doux">Le dernier code a expiré sans être utilisé.</p>
       {% else %}
       <p class="texte-doux">Aucun code remis pour l'instant.</p>
+      {% endif %}
+      {% if cle_acces %}
+      <p class="texte-doux">Clé d'accès créée le <time datetime="{{ cle_acces.created_at|date:'Y-m-d\TH:i:sO' }}">{{ cle_acces.created_at|date:"j F Y" }}</time>. Téléphone perdu ou changé : un nouveau code permet d'en créer une autre, qui remplace celle-ci.</p>
       {% endif %}
       <p class="texte-doux texte-petit">À générer quand la personne est devant vous, après avoir vérifié son identité.</p>
       <form method="post" action="{% url 'residents:code_activation' resident.pk %}">

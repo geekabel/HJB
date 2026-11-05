@@ -51,6 +51,20 @@ def noter(request, cle, valeur):
     request.session[CLE] = donnees  # réaffecté pour que la session soit enregistrée
 
 
+def retirer(request, cle):
+    """Retire une valeur du parcours et enregistre la session tout de suite.
+
+    Sert à l'état de la création de clé : même si la suite échoue, il ne
+    peut pas resservir (pas de rejeu).
+    """
+    donnees = request.session.get(CLE) or {}
+    valeur = donnees.pop(cle, None)
+    if CLE in request.session:
+        request.session[CLE] = donnees
+    request.session.save()
+    return valeur
+
+
 def etape_faite(request, cle):
     return bool(request.session.get(CLE, {}).get(cle))
 

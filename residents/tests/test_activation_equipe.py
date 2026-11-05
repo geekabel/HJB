@@ -110,6 +110,20 @@ class CodeActivationTests(EquipeTestCase):
         self.assertContains(reponse, "remis par Nadia B.")
         self.assertContains(reponse, "Générer un nouveau code")
 
+    def test_cle_d_acces_sur_la_fiche(self):
+        """Carte T13 : l'accueil voit si l'activation est allée jusqu'à la clé."""
+        from connexion.tests.authentificateur import Authentificateur
+
+        url = reverse("residents:fiche", args=[self.awa.pk])
+        self.generer()
+        CodeActivation.objects.update(utilise_le=timezone.now())  # code saisi, puis abandon
+        self.assertContains(self.client.get(url), "pas allée jusqu'au bout")
+
+        Authentificateur().enregistrer(self.awa)
+        reponse = self.client.get(url)
+        self.assertNotContains(reponse, "pas allée jusqu")
+        self.assertContains(reponse, "Clé d'accès créée le <time")
+
     def test_jamais_en_get(self):
         self.assertEqual(self.client.get(self.url_code()).status_code, 405)
 

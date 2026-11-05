@@ -18,8 +18,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from connexion import views as connexion_views
+
 urlpatterns = [
+    path("", connexion_views.accueil, name="accueil"),
     path("admin/", admin.site.urls),
+    # Connexion par clé d'accès (carte T13).
+    path("connexion/", include("connexion.urls")),
     # Espace résident : activation du compte (cartes T11 à T13).
     path("activer/", include("activation.urls")),
     # Guide de style, réservé à l'équipe.

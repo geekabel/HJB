@@ -86,6 +86,12 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
+
+  /* L'attribut hidden l'emporte sur les display des composants (couche plus
+     ancienne : son !important passe avant ceux des couches suivantes). */
+  [hidden]:not([hidden="until-found"]) {
+    display: none !important;
+  }
 }
 
 /* ------------------------------------------------------------------ */

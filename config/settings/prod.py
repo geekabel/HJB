@@ -74,6 +74,16 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 SMS = reglage_sms("aucun")  # noqa: F405
 
 
+# Clés d'accès (T13) : le domaine du site, par exemple « residence.example.fr »,
+# et ses origines en https. Sans eux, `check` signale une erreur (otp_webauthn.E010, E030).
+# Attention : changer de domaine rend toutes les clés d'accès inutilisables.
+
+OTP_WEBAUTHN_RP_ID = os.environ.get("DJANGO_WEBAUTHN_RP_ID", "")
+OTP_WEBAUTHN_ALLOWED_ORIGINS = _liste("DJANGO_WEBAUTHN_ORIGINES")
+# L'administration n'affiche pas les clés publiques.
+OTP_ADMIN_HIDE_SENSITIVE_DATA = True
+
+
 # HTTPS
 # https://docs.djangoproject.com/en/6.1/topics/security/#ssl-https
 

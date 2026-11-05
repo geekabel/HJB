@@ -23,7 +23,7 @@ from journal.service import journaliser
 from logement.services import sejour_en_cours
 
 # Envoyé pendant la transaction du départ, avec resident, sejour (ou None) et le.
-# Les cartes T13 (clés d'accès) et T15 (wifi) s'y branchent pour couper leurs accès :
+# Les cartes T13 (clés d'accès, connexion/signaux.py) et T15 (wifi) s'y branchent :
 # si l'un d'eux échoue, le départ entier est annulé.
 depart_enregistre = Signal()
 
@@ -104,18 +104,21 @@ def enregistrer_depart(resident, le, *, requete=None):
         resident.set_unusable_password()
         resident.save(update_fields=["is_active", "password"])
 
-        depart_enregistre.send(sender=resident.__class__, resident=resident, sejour=sejour, le=le)
-        sessions = fermer_sessions(cles)
-        journaliser(
-            Action.DEPART_RESIDENT,
-            cible=resident,
-            details={
-                "chambre": sejour.chambre.numero if sejour else "",
-                "depart": le.isoformat(),
-                "sessions_fermees": sessions,
-            },
-            requete=requete,
+        # Chaque récepteur peut renvoyer un dict, ajouté aux détails du journal
+        # (par exemple le nombre de clés d'accès supprimées).
+        reponses = depart_enregistre.send(
+            sender=resident.__class__, resident=resident, sejour=sejour, le=le
         )
+        sessions = fermer_sessions(cles)
+        details = {
+            "chambre": sejour.chambre.numero if sejour else "",
+            "depart": le.isoformat(),
+            "sessions_fermees": sessions,
+        }
+        for _recepteur, reponse in reponses:
+            if isinstance(reponse, dict):
+                details.update(reponse)
+        journaliser(Action.DEPART_RESIDENT, cible=resident, details=details, requete=requete)
     return sejour
 
 

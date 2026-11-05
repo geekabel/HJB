@@ -21,7 +21,7 @@ class GuideDeStyleTests(TestCase):
         # Anonyme : renvoyé vers la connexion.
         reponse = self.client.get(url)
         self.assertEqual(reponse.status_code, 302)
-        self.assertIn(reverse("admin:login"), reponse["Location"])
+        self.assertIn(reverse("connexion:connexion"), reponse["Location"])
         # Résident connecté, modérateur ou non : accès refusé, sans boucle de connexion.
         for compte in (self.resident, self.moderateur):
             with self.subTest(compte=compte.username):

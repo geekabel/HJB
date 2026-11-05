@@ -1,0 +1,36 @@
+{% extends "interface/resident.html" %}
+{% load icones %}
+{% block titre %}Accueil{% endblock %}
+{% block contenu %}
+{% if messages %}
+<div class="pile" role="status">
+  {% for message in messages %}
+  <div class="alerte alerte--{{ message.level_tag }}">{% icone "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<header class="pile pile--serree">
+  <h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
+  <p class="texte-doux">Vous êtes connecté. Les messages, les rendez-vous et les signalements arrivent bientôt ici.</p>
+</header>
+
+<section class="carte pile" aria-labelledby="titre-cles">
+  <h2 id="titre-cles" class="carte__titre">Ma clé d'accès</h2>
+  {% if cles %}
+  <ul class="liste-simple">
+    {% for cle in cles %}
+    <li>Créée le <time datetime="{{ cle.created_at|date:'Y-m-d\TH:i:sO' }}">{{ cle.created_at|date:"j F Y" }}</time>{% if cle.last_used_at %}, utilisée le <time datetime="{{ cle.last_used_at|date:'Y-m-d\TH:i:sO' }}">{{ cle.last_used_at|date:"j F Y à H:i" }}</time>{% endif %}.</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="texte-doux">Aucune clé d'accès.</p>
+  {% endif %}
+  <p class="texte-doux texte-petit">Téléphone perdu ou changé ? Passez à l'accueil : un nouveau code remplacera cette clé.</p>
+</section>
+
+<form method="post" action="{% url 'connexion:deconnexion' %}">
+  {% csrf_token %}
+  <button class="bouton bouton--discret" type="submit">Me déconnecter</button>
+</form>
+{% endblock %}

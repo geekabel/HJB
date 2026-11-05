@@ -11,6 +11,7 @@ class Action(models.TextChoices):
     CODE_WIFI_AFFICHE = "CODE_WIFI_AFFICHE", "Mot de passe wifi affiché"
     DEPART_RESIDENT = "DEPART_RESIDENT", "Départ d'un résident"
     RETOUR_RESIDENT = "RETOUR_RESIDENT", "Retour d'un ancien résident"
+    CLE_ACCES_CREEE = "CLE_ACCES_CREEE", "Clé d'accès créée"
 
 
 class EntreeJournalNonModifiable(Exception):
@@ -106,5 +107,15 @@ class EntreeJournal(models.Model):
             if sessions:
                 s = "s" if sessions > 1 else ""
                 texte += f" {sessions} session{s} fermée{s}."
-            return texte
+            cles = self.details.get("cles_retirees", 0)
+            if cles:
+                s = "s" if cles > 1 else ""
+                texte += f" {cles} clé{s} d'accès supprimée{s}."
+            return texte.strip()
+        if self.action == Action.CLE_ACCES_CREEE:
+            anciennes = self.details.get("anciennes_retirees", 0)
+            if not anciennes:
+                return "Première clé d'accès."
+            s = "s" if anciennes > 1 else ""
+            return f"Remplace {anciennes} ancienne{s} clé{s}, désormais inutilisable{s}."
         return " · ".join(f"{cle} : {valeur}" for cle, valeur in self.details.items())

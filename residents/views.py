@@ -23,6 +23,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
+from django_otp_webauthn.utils import get_credential_model
 
 from comptes.activation import (
     DUREE_VALIDITE,
@@ -211,6 +212,13 @@ def fiche(request, pk):
             "jeton_code": jeton_code_activation(request, resident)
             if request.user.has_perm("comptes.generer_code_activation")
             else "",
+            # Dernière clé d'accès : montrée avec l'activation, à l'Accueil et à l'Administration.
+            "cle_acces": get_credential_model()
+            .objects.filter(user=resident)
+            .order_by("-created_at")
+            .first()
+            if request.user.has_perm("comptes.generer_code_activation")
+            else None,
             "dernier_depart": resident.sejours.filter(depart__isnull=False)
             .order_by("-depart")
             .values_list("depart", flat=True)
