@@ -22,6 +22,8 @@
       <dt>Type</dt><dd>{{ campaign.get_type_display }}</dd>
       <dt>Envoi</dt><dd>{% if send_at %}<time datetime="{{ send_at|date:'Y-m-d\TH:i:sO' }}">{{ send_at|date:"l j F à H:i" }}</time>{% else %}tout de suite{% endif %}</dd>
       {% if campaign.reply_type == "attendance" %}<dt>Réponse</dt><dd>« Présent » ou « Absent »</dd>{% endif %}
+      {% if poll %}<dt>Vote</dt><dd>{% for option in poll.options.all %}{{ option.label }}{% if not forloop.last %} · {% endif %}{% empty %}aucun choix{% endfor %}</dd>
+      <dt>Clôture</dt><dd>{% if poll.closes_at %}<time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>{% else %}non indiquée{% endif %}</dd>{% endif %}
       {% if remind_at %}<dt>Relance</dt><dd><time datetime="{{ remind_at|date:'Y-m-d\TH:i:sO' }}">{{ remind_at|date:"l j F à H:i" }}</time>, pour ceux qui n'ont pas répondu</dd>{% endif %}
     </dl>
   </section>

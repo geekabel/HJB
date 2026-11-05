@@ -26,6 +26,8 @@ from django.utils import timezone
 
 from audit.models import Action
 from audit.service import log_action
+from polls.models import Participation, Poll
+from polls.services import MIN_OPTIONS, REMINDER_BEFORE_CLOSING, poll_of
 from push.models import PushSubscription
 from push.services import send_to_user
 from push.vapid import vapid
@@ -34,7 +36,7 @@ from sms.segments import analyze
 from sms.service import MAX_SEGMENTS, send_sms
 
 from .audience import audience, rendered
-from .models import AttendanceReply, Campaign, Delivery, Receipt, ReplyType
+from .models import AttendanceReply, Campaign, Delivery, MessageType, Receipt, ReplyType
 from .placeholders import fill, missing_values, values_for
 from .receipts import apply_early
 from .replies import closes_at, reply_path
@@ -53,15 +55,59 @@ MAX_PUSH_ATTEMPTS = 3
 TOO_LATE = timedelta(hours=12)  # a message this late is not sent any more
 REMINDER_TOO_LATE = timedelta(hours=4)  # the reminder of 8:00, not after noon
 MIN_REMINDER_GAP = timedelta(hours=1)
+# A vote reminder goes between these hours, never at night (card T25).
+VOTE_REMINDER_EARLIEST = time(9, 0)
+VOTE_REMINDER_LATEST = time(20, 0)
 
 
 # --- Checks and scheduling -------------------------------------------------
 
 
 def reminder_time(campaign):
-    if not (campaign.remind and campaign.event_date):
+    """The day of the event at 8:00; for a vote, 24 h before its closing (T25)."""
+    if not campaign.remind:
+        return None
+    if campaign.type == MessageType.VOTE:
+        poll = poll_of(campaign)
+        if poll is None or poll.closes_at is None:
+            return None
+        return _daytime(poll.closes_at - REMINDER_BEFORE_CLOSING)
+    if not campaign.event_date:
         return None
     return timezone.make_aware(datetime.combine(campaign.event_date, REMINDER_HOUR))
+
+
+def _daytime(moment):
+    """The same moment, or earlier, between 9:00 and 20:00: never at night."""
+    local = timezone.localtime(moment)
+    if local.time() > VOTE_REMINDER_LATEST:
+        return timezone.make_aware(datetime.combine(local.date(), VOTE_REMINDER_LATEST))
+    if local.time() < VOTE_REMINDER_EARLIEST:
+        day = local.date() - timedelta(days=1)
+        return timezone.make_aware(datetime.combine(day, VOTE_REMINDER_LATEST))
+    return moment
+
+
+def _vote_problems(campaign, send_at):
+    poll = poll_of(campaign)
+    found = []
+    if poll is None or poll.options.count() < MIN_OPTIONS:
+        found.append(f"Proposez au moins {MIN_OPTIONS} choix pour le vote.")
+    if poll is None or poll.closes_at is None:
+        found.append("Indiquez la date et l'heure de clôture du vote.")
+    elif poll.closes_at <= send_at + MIN_REMINDER_GAP:
+        found.append("La clôture du vote doit venir au moins une heure après l'envoi.")
+    if campaign.reply_type == ReplyType.ATTENDANCE:
+        found.append("Un vote ne demande pas « Présent » ou « Absent » : retirez cette réponse.")
+    if campaign.remind and reminder_time(campaign) is not None:
+        if reminder_time(campaign) < send_at + MIN_REMINDER_GAP:
+            found.append(
+                "La relance (24 h avant la clôture) doit venir au moins une heure après "
+                "l'envoi : avancez l'envoi ou repoussez la clôture."
+            )
+    if not settings.SITE_URL:
+        found.append("L'adresse du site n'est pas réglée (DJANGO_SITE_URL) : pas de lien de vote.")
+    return found
 
 
 def problems(campaign, send_at):
@@ -83,7 +129,9 @@ def problems(campaign, send_at):
             found.append(f"La version SMS est trop longue ({longest.segments} SMS).")
     if send_at < timezone.now() - timedelta(minutes=1):
         found.append("L'heure d'envoi est passée.")
-    if campaign.remind:
+    if campaign.type == MessageType.VOTE:
+        found.extend(_vote_problems(campaign, send_at))
+    elif campaign.remind:
         if campaign.reply_type != ReplyType.ATTENDANCE:
             found.append("La relance demande une réponse « Présent » ou « Absent ».")
         elif not campaign.event_date:
@@ -138,6 +186,9 @@ def schedule(campaign, *, send_at, by, request=None):
         )
         if not updated:
             raise ValidationError("Ce message n'est plus un brouillon.")
+        if campaign.type != MessageType.VOTE:
+            # Kept in the draft after a change of type (card T25): not sent.
+            Poll.objects.filter(campaign=campaign).delete()
         campaign.refresh_from_db()
         targets = audience(campaign)
         log_action(
@@ -311,11 +362,32 @@ def record_planned_departures(now=None):
 # --- The task ---------------------------------------------------------------
 
 
+def _vote_already_closed(campaign, now):
+    """A vote whose sending comes too late (worker stopped for hours): cancelled."""
+    poll = poll_of(campaign) if campaign.type == MessageType.VOTE else None
+    if poll is None or poll.closes_at is None or poll.closes_at > now + MIN_REMINDER_GAP:
+        return False
+    # Only a sending that has not started: one under way goes on.
+    if not Campaign.objects.filter(pk=campaign.pk, status=Campaign.Status.SCHEDULED).update(
+        status=Campaign.Status.CANCELLED, send_at=None, remind_at=None
+    ):
+        return False
+    log_action(
+        Action.MESSAGE_CANCELLED,
+        target=campaign,
+        details={"reason": "Vote clos ou presque à l'heure de l'envoi : rien n'est parti."},
+    )
+    logger.warning("Vote %s cancelled: closed before its sending", campaign.pk)
+    return True
+
+
 def deliver(campaign_id, kind=Delivery.Kind.MESSAGE):
     """Send the message (or the reminder) of a campaign. Safe to run twice."""
     now = timezone.now()
     campaign = Campaign.objects.filter(pk=campaign_id).first()
     if campaign is None:
+        return
+    if kind == Delivery.Kind.MESSAGE and _vote_already_closed(campaign, now):
         return
     if kind == Delivery.Kind.MESSAGE:
         # The start and the list of deliveries go together: a campaign is never
@@ -356,7 +428,7 @@ def _create_deliveries(campaign, kind):
     rows = []
     for recipient in audience(campaign).recipients:
         values = values_for(campaign, recipient.user, recipient.room)
-        body, sms = rendered(campaign, recipient)
+        body, sms = rendered(campaign, recipient, live=True)
         rows.append(
             Delivery(
                 campaign=campaign,
@@ -374,10 +446,17 @@ def _create_deliveries(campaign, kind):
     Delivery.objects.bulk_create(rows, ignore_conflicts=True)
 
 
+def _answered(campaign):
+    """People who answered: they get no reminder."""
+    if campaign.type == MessageType.VOTE:
+        return Participation.objects.filter(poll__campaign=campaign).values_list(
+            "resident_id", flat=True
+        )
+    return AttendanceReply.objects.filter(campaign=campaign).values_list("resident_id", flat=True)
+
+
 def _create_reminders(campaign):
-    answered = AttendanceReply.objects.filter(campaign=campaign).values_list(
-        "resident_id", flat=True
-    )
+    answered = _answered(campaign)
     first = list(
         campaign.deliveries.filter(
             kind=Delivery.Kind.MESSAGE, status=Delivery.Status.SENT, recipient__is_active=True

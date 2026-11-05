@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T25 | Sondages anonymes | E5 Votes | T21 |
 | T26 | Disponibilités des éducateurs | E6 Rendez-vous | T04 |
 | T27 | Réservation d'un rendez-vous | E6 Rendez-vous | T26, T13 |
 | T28 | Messages directs avec un éducateur | E6 Rendez-vous | T13 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T22 | Réponse Présent ou Absent | 5 nov. 2026 |
 | T23 | Boîte de réception du résident | 5 nov. 2026 |
 | T24 | Statuts de livraison des SMS | 5 nov. 2026 |
+| T25 | Sondages anonymes | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -418,11 +418,17 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E5 Votes
 
-#### T25 Sondages anonymes
-- **Maquette** : R2.
-- [ ] Tables `Participation` et `Vote` séparées : on sait qui a voté, pas pour quoi
-- [ ] Date de clôture, résultats pour l'équipe
-- [ ] Rappel aux seuls non-votants
+#### T25 Sondages anonymes (fait le 5 nov. 2026)
+- **Maquette** : R2 (carte « Vote »).
+- **Docs** : [expressions F (compteur sans relecture)](https://docs.djangoproject.com/en/6.1/ref/models/expressions/#f-expressions), [`select_for_update`](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#select-for-update), [transactions](https://docs.djangoproject.com/en/6.1/topics/db/transactions/), [`JSONField`](https://docs.djangoproject.com/en/6.1/ref/models/fields/#jsonfield), [élément `meter` (MDN)](https://developer.mozilla.org/fr/docs/Web/HTML/Element/meter).
+- [x] Nouvelle application `polls`. Un message « Vote, avis » porte un vote : la question est le titre, 2 à 6 choix, une clôture, un commentaire facultatif. Les champs du vote s'affichent dans le composeur quand on choisit ce type (CSS seul)
+- [x] On sait qui a voté (`Participation`, le jour seulement), jamais pour quoi. Plus fort que la table `Vote` prévue : aucune ligne par vote, un compteur par choix, donc ni heure ni ordre à rapprocher. Commentaires sans nom, sans date, placés au hasard
+- [x] Vote dans l'appli (page du message) ou par le lien personnel du SMS (« Votez ici : … »), sans connexion, comme T22. Un seul vote, qui ne se change pas. L'ouverture du lien ne vote pas
+- [x] Boîte de réception : « Vote attendu », « Vous avez voté », la clôture ou « vote clos »
+- [x] Clôture, résultats pour l'équipe sur la page de suivi : votants, barres, commentaires. Affichés seulement après la clôture et à partir de 3 votants
+- [x] Relance aux seuls non-votants, 24 h avant la clôture
+- **Notes** : la carte de vote de la maquette s'ouvre depuis la boîte de réception (page du message) au lieu d'y être dépliée. Limite écrite dans le README : quelqu'un qui copie la base après chaque vote peut retrouver un choix ; cela demande un accès au serveur.
+- **Revue** : corrigé après la revue indépendante. Faille grave corrigée (elle touchait aussi T22) : l'aperçu du composeur et le test d'envoi contenaient le vrai lien personnel d'un résident ; un membre de l'équipe pouvait voter ou répondre à sa place. Ils contiennent maintenant un lien de même longueur qui ne marche pas (testé). Un vote écrit toutes les lignes du sondage d'un coup (la base ne garde pas la trace du choix modifié) ; « lu » ne garde que le jour pour un vote par lien. Brouillon de vote incomplet enregistrable, vote gardé si l'on change de type par erreur (retiré à l'envoi), choix figés dès le premier vote. Relance entre 9 h et 20 h. Vote dont l'envoi arrive après la clôture : annulé. Pourcentages qui font 100. Accessibilité : la question est la légende, message de confirmation, commentaire gardé après une erreur. Champs du vote visibles même sans `:has`. Texte d'anonymat plus juste ; limites détaillées dans le README.
 
 ### E6 Rendez-vous
 

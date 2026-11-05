@@ -104,18 +104,23 @@ def audience(campaign, *, floors=None, rooms=None, people=None, excluded=None, e
     return Audience(recipients)
 
 
-def rendered(campaign, recipient):
+def rendered(campaign, recipient, *, live=False):
     """(full text, SMS text) for one recipient.
 
     A message that asks for an answer ends its SMS with the personal reply link
     (card T22): it counts in the length, so it is in the previews and costs too.
+    Only the real sending passes ``live=True``: previews and test sends get a
+    link of the same length that never works (no staff member can answer or
+    vote in a resident's name).
     """
-    from .models import ReplyType
-    from .replies import sms_suffix
+    from .models import MessageType, ReplyType
+    from .replies import sms_suffix, vote_sms_suffix
 
     values = values_for(campaign, recipient.user, recipient.room)
     sms = sms_text(fill(campaign.sms_body or campaign.body, values))
-    if campaign.reply_type == ReplyType.ATTENDANCE:
-        user_id = recipient.user.pk if recipient.user else 0
-        sms += sms_suffix(campaign.pk or 0, user_id or 0)
+    user_id = (recipient.user.pk if recipient.user else 0) or 0
+    if campaign.type == MessageType.VOTE:
+        sms += vote_sms_suffix(campaign.pk or 0, user_id, live)  # card T25
+    elif campaign.reply_type == ReplyType.ATTENDANCE:
+        sms += sms_suffix(campaign.pk or 0, user_id, live)
     return fill(campaign.body, values), sms

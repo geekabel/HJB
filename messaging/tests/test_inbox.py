@@ -12,6 +12,8 @@ from django.utils import timezone
 from accounts.roles import Role
 from accounts.tests.helpers import log_in_verified, make_user
 from housing.models import Floor, Room, Stay
+from polls.models import Poll
+from polls.services import set_options
 from push.models import PushSubscription
 from push.services import SendResult
 from sms.providers.base import SendResult as SmsResult
@@ -68,6 +70,11 @@ class InboxTestCase(TestCase):
         campaign.people.add(*people)
         campaign.rooms.add(*rooms)
         campaign.floors.add(*floors)
+        if type == MessageType.VOTE:  # a vote needs its poll (card T25)
+            poll = Poll.objects.create(
+                campaign=campaign, closes_at=timezone.now() + timedelta(days=2)
+            )
+            set_options(poll, ["Oui", "Non"])
         with self.captureOnCommitCallbacks(execute=True):
             sending.schedule(campaign, send_at=timezone.now(), by=self.nadia)
         campaign.refresh_from_db()

@@ -11,6 +11,9 @@ from django.db.models import F
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
+from polls.models import Participation, Poll
+from polls.services import is_open as polls_open
+
 from . import replies
 from .models import AttendanceReply, Campaign, Delivery, MessageType, ReplyType
 
@@ -86,6 +89,10 @@ class Item:
     short_type: str
     answer: str  # "present", "absent" or ""
     waiting: bool  # a "Présent" or "Absent" answer is expected
+    poll: object = None  # a vote (card T25)
+    poll_open: bool = False
+    voted: bool = False
+    vote_waiting: bool = False
 
     @property
     def campaign(self):
@@ -112,18 +119,34 @@ def items(user, deliveries):
             resident=user, campaign_id__in=[d.campaign_id for d in deliveries]
         ).values_list("campaign_id", "answer")
     )
+    ids = [d.campaign_id for d in deliveries]
+    poll_of = {poll.campaign_id: poll for poll in Poll.objects.filter(campaign_id__in=ids)}
+    voted = set(
+        Participation.objects.filter(resident=user, poll__campaign_id__in=ids).values_list(
+            "poll__campaign_id", flat=True
+        )
+    )
     now = timezone.now()
     rows = []
     for delivery in deliveries:
         campaign = delivery.campaign
         answer = answers.get(campaign.pk, "")
         asks = campaign.reply_type == ReplyType.ATTENDANCE
+        poll = poll_of.get(campaign.pk)
+        if poll is not None:
+            poll.campaign = campaign  # already loaded: no query in is_open()
         rows.append(
             Item(
                 delivery=delivery,
                 short_type=SHORT_TYPES.get(campaign.type, "Message"),
                 answer=answer if asks else "",
                 waiting=asks and not answer and replies.is_open(campaign, now),
+                poll=poll,
+                poll_open=poll is not None and polls_open(poll, now),
+                voted=campaign.pk in voted,
+                vote_waiting=poll is not None
+                and campaign.pk not in voted
+                and polls_open(poll, now),
             )
         )
     return rows

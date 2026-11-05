@@ -21,6 +21,9 @@ from django.utils.crypto import constant_time_compare, salted_hmac
 from .models import AttendanceReply, Campaign, ReplyType
 
 SALT = "messaging.replies.link"
+# Previews and test sends (composer, "M'envoyer un test"): a link of the same
+# length that never works, so the staff never see a resident's real link.
+PREVIEW_SALT = "messaging.replies.preview"
 SIGNATURE_BYTES = 9  # 72 bits, 12 characters
 OPEN_WITHOUT_DATE = timedelta(days=7)
 DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -35,13 +38,14 @@ def _base36(number):
             return text
 
 
-def _signature(campaign_id, user_id, secret=None):
-    mac = salted_hmac(SALT, f"{campaign_id}:{user_id}", secret=secret, algorithm="sha256").digest()
+def _signature(campaign_id, user_id, secret=None, salt=SALT):
+    mac = salted_hmac(salt, f"{campaign_id}:{user_id}", secret=secret, algorithm="sha256").digest()
     return base64.urlsafe_b64encode(mac[:SIGNATURE_BYTES]).decode()
 
 
-def make_token(campaign_id, user_id):
-    return f"{_base36(campaign_id)}-{_base36(user_id)}-{_signature(campaign_id, user_id)}"
+def make_token(campaign_id, user_id, salt=SALT):
+    signature = _signature(campaign_id, user_id, salt=salt)
+    return f"{_base36(campaign_id)}-{_base36(user_id)}-{signature}"
 
 
 def read_token(token):
@@ -65,13 +69,20 @@ def reply_path(campaign_id, user_id):
     return reverse("reply", args=[make_token(campaign_id, user_id)])
 
 
-def reply_url(campaign_id, user_id):
-    return settings.SITE_URL.rstrip("/") + reply_path(campaign_id, user_id)
+def reply_url(campaign_id, user_id, live=True):
+    """``live=False``: a preview link, of the same length, that never works."""
+    token = make_token(campaign_id, user_id, salt=SALT if live else PREVIEW_SALT)
+    return settings.SITE_URL.rstrip("/") + reverse("reply", args=[token])
 
 
-def sms_suffix(campaign_id, user_id):
+def sms_suffix(campaign_id, user_id, live=True):
     """Added to the SMS of a message that asks for an answer."""
-    return f" Présent ou absent ? Répondez : {reply_url(campaign_id, user_id)}"
+    return f" Présent ou absent ? Répondez : {reply_url(campaign_id, user_id, live)}"
+
+
+def vote_sms_suffix(campaign_id, user_id, live=True):
+    """Added to the SMS of a vote (card T25): the same personal link."""
+    return f" Votez ici : {reply_url(campaign_id, user_id, live)}"
 
 
 def closes_at(campaign):

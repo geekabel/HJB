@@ -1414,6 +1414,23 @@
     flex: 1 1 16rem;
   }
 
+  /* Vote fields of the composer (card T25): hidden when another type is
+     chosen. Without :has (old browser), they simply stay visible. */
+  .compose:has(input[name="type"]:checked:not([value="vote"])) .compose__poll {
+    display: none;
+  }
+
+  .vote__question {
+    font-weight: 700;
+  }
+
+  /* Results of a vote (card T25) */
+  .poll-result__meter {
+    display: block;
+    width: 100%;
+    height: 0.75rem;
+  }
+
   /* Answer "Présent" / "Absent" (card T22): two big buttons side by side */
   .answer {
     display: grid;

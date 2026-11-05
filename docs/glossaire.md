@@ -335,6 +335,17 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Classes CSS | `chips`, `inbox` (`__item`, `__item--unread`, `__top`, `__title`, `__when`, `__kind`, `__excerpt`, `__status`, `__answer`), `inbox-tools`, `button--text` (action discrète en forme de lien) |
 | Départ prévu | `Stay.planned_departure`, `residents.departure.plan_departure()`, `cancel_planned_departure()`, `messaging.sending.record_planned_departures()` |
 
+## Votes (carte T25)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Vote (sondage) | `polls.models.Poll` (`campaign`, `closes_at`, `allow_comment`, `comments`) ; la question est `Campaign.title` |
+| Choix proposé | `polls.models.Option` (`label`, `position`, `votes`) |
+| A voté | `polls.models.Participation` (`resident`, `voted_on`) |
+| Voter, résultats | `polls.services` (`vote()`, `VoteRefused`, `is_open()`, `is_closed()`, `has_voted()`, `results()`, `set_options()`, `poll_of()`, `MIN_VOTERS_FOR_RESULTS`, `REMINDER_BEFORE_CLOSING`) ; `polls.forms.PollForm` (préfixe `poll`) |
+| Lien de vote du SMS | même lien que la réponse présent ou absent : `messaging.replies.vote_sms_suffix()` (« Votez ici : … ») |
+| Gabarits, classes CSS | `polls/_vote.html`, `polls/_results.html` ; `compose__poll`, `poll-result`, `poll-result__meter` |
+
 ## Modèles prévus
 
 Les modèles des cartes à venir (wifi, messages, sondages, rendez-vous, signalements,

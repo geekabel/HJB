@@ -2,7 +2,7 @@ from django import forms
 
 from housing.models import Floor
 
-from .models import Campaign, MessageTemplate, ReplyType
+from .models import Campaign, MessageTemplate, MessageType, ReplyType
 
 TEXTAREA = {"rows": 8, "spellcheck": "true"}
 
@@ -74,7 +74,10 @@ class CampaignForm(forms.ModelForm):
         }
         labels = {
             "send_at": "Date et heure de l'envoi",
-            "remind": "Relancer le jour J à 8 h ceux qui n'ont pas répondu",
+            "remind": (
+                "Relancer ceux qui n'ont pas répondu : le jour J à 8 h "
+                "(pour un vote : 24 h avant la clôture)"
+            ),
         }
         help_texts = {
             "title": "Titre de la notification.",
@@ -103,8 +106,15 @@ class CampaignForm(forms.ModelForm):
                     "Choisissez « Programmer » pour envoyer à cette date, ou videz le champ.",
                 )
             data["send_at"] = None
-        if data.get("remind") and not data.get("ask_reply"):
-            self.add_error("remind", "La relance demande une réponse « Présent » ou « Absent ».")
+        is_vote = data.get("type") == MessageType.VOTE
+        if is_vote and data.get("ask_reply"):
+            self.add_error(
+                "ask_reply", "Un vote ne demande pas « Présent » ou « Absent » : décochez."
+            )
+        if data.get("remind") and not data.get("ask_reply") and not is_vote:
+            self.add_error(
+                "remind", "La relance demande une réponse « Présent » ou « Absent », ou un vote."
+            )
         return data
 
     def save(self, commit=True):

@@ -9,7 +9,7 @@ Le code est en anglais (carte T14b). Les noms des modèles, des champs et des va
 1. **Le compte appartient à la personne, pas à la chambre.** La chambre est une information du séjour. Un séjour relie une personne à une chambre entre deux dates. On garde l'historique des occupants.
 2. **Modèle utilisateur personnalisé dès le départ.** La documentation de Django recommande de le créer avant la première migration, car le changer plus tard est complexe. Tous les liens vers un utilisateur passent par `settings.AUTH_USER_MODEL`.
 3. **On ne stocke jamais un secret en clair.** Le code d'activation et le code SMS sont hachés. Le mot de passe wifi est chiffré, car il doit pouvoir être réaffiché.
-4. **Les votes restent anonymes.** On note qui a voté (pour empêcher un double vote) dans une table, et le choix dans une autre table, sans lien vers la personne.
+4. **Les votes restent anonymes.** On note qui a voté (pour empêcher un double vote et relancer les autres), jamais le choix. Aucune ligne n'est créée par vote : chaque choix garde un compteur, donc il n'y a ni heure ni ordre de vote à rapprocher des participations. Les commentaires n'ont ni auteur, ni date, ni ordre. La participation ne garde que le jour (carte T25).
 5. **Les envois sont traçables.** Chaque message envoyé à une personne, sur un canal, laisse une ligne avec son statut.
 
 ## Applications Django
@@ -21,7 +21,7 @@ Le code est en anglais (carte T14b). Les noms des modèles, des champs et des va
 | `access` | Connexion par clé d'accès, confirmation avant une action sensible, durée des sessions. Les clés sont les modèles de la bibliothèque django-otp-webauthn |
 | `housing` | Étages, chambres, séjours, accès wifi (chaque affichage d'un mot de passe va dans le journal d'audit) |
 | `messaging` | Modèles de message, campagnes, envois, réponses de présence, notifications dans l'appli |
-| `polls` | Sondages, options, participations, votes |
+| `polls` | Votes : sondage, choix avec leur compteur, participations |
 | `appointments` | Disponibilités, rendez-vous, réglages des éducateurs, messages directs |
 | `reports` | Signalements, photos, historique des événements |
 | `audit` | Journal d'audit des actions sensibles |
@@ -56,7 +56,6 @@ erDiagram
     POLL ||--o{ POLL_OPTION : "propose"
     POLL ||--o{ PARTICIPATION : "enregistre"
     USER ||--o{ PARTICIPATION : "a voté"
-    POLL_OPTION ||--o{ VOTE : "reçoit"
 
     USER ||--o{ AVAILABILITY : "ouvre"
     USER ||--o{ APPOINTMENT : "réserve ou reçoit"
@@ -250,27 +249,23 @@ erDiagram
     }
     POLL {
         int id PK
-        int campaign_id FK
-        string question
+        int campaign_id FK "la question est le titre du message"
         datetime closes_at
-        bool comment_allowed
+        bool allow_comment
+        json comments "sans auteur, sans date, ordre au hasard"
     }
     POLL_OPTION {
         int id PK
         int poll_id FK
         string label
         int position
+        int votes "compteur : pas de ligne par vote"
     }
     PARTICIPATION {
         int id PK
         int poll_id FK
         int resident_id FK
-        datetime voted_at
-    }
-    VOTE {
-        int id PK
-        int option_id FK
-        text comment "pas de lien vers la personne"
+        date voted_on "le jour seulement"
     }
     AVAILABILITY {
         int id PK
