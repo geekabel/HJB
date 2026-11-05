@@ -9,13 +9,24 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_GET
 
 from comptes.models import FILTRE_ETAT_COMPTE, EtatCompte, User
 from comptes.roles import Role
 from logement.models import Etage, Sejour
 
-from .forms import FormulaireResident
+from .forms import FormulaireImport, FormulaireResident
+from .importation import (
+    EN_TETES,
+    ErreurFichier,
+    analyser,
+    depuis_session,
+    importer,
+    lire_fichier,
+    vers_session,
+)
 
 RESIDENTS_PAR_PAGE = 50
 SANS_CHAMBRE = "sans"
@@ -142,3 +153,91 @@ def fiche(request, pk):
             "sejours": resident.sejours.select_related("chambre__etage"),
         },
     )
+
+
+# --- Import CSV et Excel (carte T08) ------------------------------------------
+
+CLE_SESSION_IMPORT = "import_residents"
+TITRES_MODELE = ["Prénom", "Nom", "Téléphone", "Chambre", "Arrivée", "E-mail"]
+
+
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def import_fichier(request):
+    """Étape 1 : envoi du fichier. Il est lu puis oublié : seules les lignes
+    analysées sont gardées dans la session, jusqu'à la confirmation."""
+    formulaire = FormulaireImport(request.POST or None, request.FILES or None)
+    if request.method == "POST" and formulaire.is_valid():
+        fichier = formulaire.cleaned_data["fichier"]
+        try:
+            lignes = analyser(lire_fichier(fichier))
+        except ErreurFichier as erreur:
+            formulaire.add_error("fichier", str(erreur))
+        else:
+            request.session[CLE_SESSION_IMPORT] = {
+                "fichier": fichier.name[:100],
+                "lignes": vers_session(lignes),
+            }
+            return redirect("residents:import_apercu")
+    return render(
+        request,
+        "residents/import.html",
+        {"actif": "residents", "formulaire": formulaire, "en_tetes": EN_TETES},
+    )
+
+
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def import_apercu(request):
+    """Étape 2 : aperçu ligne par ligne, puis import des lignes prêtes."""
+    import_en_cours = request.session.get(CLE_SESSION_IMPORT)
+    if not import_en_cours:
+        return redirect("residents:import")
+    lignes = depuis_session(import_en_cours["lignes"])
+    pretes = [ligne.numero for ligne in lignes if ligne.prete]
+    situation_changee = False
+
+    if request.method == "POST":
+        if request.POST.get("action") == "annuler":
+            del request.session[CLE_SESSION_IMPORT]
+            messages.info(request, "Import annulé. Aucune fiche n'a été créée.")
+            return redirect("residents:import")
+        vues = request.POST.get("pretes", "")
+        if vues != ",".join(map(str, pretes)):
+            # Une chambre ou un numéro a été pris depuis l'aperçu.
+            situation_changee = True
+        else:
+            try:
+                creees = importer(lignes)
+            except ValidationError as erreur:
+                messages.warning(request, f"Rien n'a été importé : {' '.join(erreur.messages)}")
+            else:
+                del request.session[CLE_SESSION_IMPORT]
+                s = "s" if creees > 1 else ""
+                messages.success(request, f"{creees} résident{s} importé{s}.")
+                return redirect("residents:liste")
+
+    return render(
+        request,
+        "residents/import.html",
+        {
+            "actif": "residents",
+            "fichier": import_en_cours["fichier"],
+            "lignes": lignes,
+            "pretes": ",".join(map(str, pretes)),
+            "nombre_pretes": len(pretes),
+            "nombre_a_corriger": len(lignes) - len(pretes),
+            "situation_changee": situation_changee,
+        },
+    )
+
+
+@require_GET
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def import_modele(request):
+    """Fichier modèle : les titres de colonnes, en CSV lisible par Excel (BOM et « ; »)."""
+    reponse = HttpResponse(content_type="text/csv; charset=utf-8")
+    reponse["Content-Disposition"] = 'attachment; filename="modele-import-residents.csv"'
+    reponse.write("\ufeff" + ";".join(TITRES_MODELE) + "\r\n")
+    return reponse

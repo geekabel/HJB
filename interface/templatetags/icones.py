@@ -38,6 +38,7 @@ ICONES = {
     "horloge": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     "cadenas": '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     "retour": '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+    "importer": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
     "envoyer": '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
     "porte": '<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M15 12h.01"/>',
     "porte-voix": '<path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1zM17 9a3 3 0 0 1 0 6"/>',

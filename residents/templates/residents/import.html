@@ -1,0 +1,96 @@
+{% extends "interface/equipe.html" %}
+{% load icones %}
+{% block titre %}Importer des résidents{% endblock %}
+{% block contenu %}
+<a class="lien-retour" href="{% url 'residents:liste' %}">{% icone "retour" %}Tous les résidents</a>
+
+<header class="pile pile--serree">
+  <h1>Importer des résidents</h1>
+  <p class="texte-doux">Depuis un tableau Excel ou un fichier CSV. Vous verrez chaque ligne avant de confirmer.</p>
+</header>
+
+{% if lignes %}
+<section class="carte carte--cadre pile" aria-labelledby="titre-apercu">
+  <div class="entete-page">
+    <h2 id="titre-apercu">Aperçu · {{ fichier }}</h2>
+    <p><strong>{{ lignes|length }}</strong> ligne{{ lignes|length|pluralize }} · <strong class="texte-action">{{ nombre_pretes }} prête{{ nombre_pretes|pluralize }}</strong> · <strong class="texte-attention">{{ nombre_a_corriger }} à corriger</strong></p>
+  </div>
+
+  {% if situation_changee %}
+  <div class="alerte alerte--attention" role="alert">{% icone "alerte" %}<p><strong>La situation a changé depuis l'aperçu.</strong> Une chambre ou un numéro a été pris entre-temps. Vérifiez la liste à jour ci-dessous avant de confirmer.</p></div>
+  {% endif %}
+  {% if nombre_a_corriger %}
+  <div class="alerte alerte--info">{% icone "info" %}<p>Les lignes à corriger ne seront pas importées. Corrigez-les dans le fichier puis envoyez-le de nouveau, ou importez d'abord les lignes prêtes.</p></div>
+  {% endif %}
+
+  <div class="tableau-defilant" role="region" aria-labelledby="legende-apercu" tabindex="0">
+    <table class="tableau">
+      <caption id="legende-apercu" class="visuellement-cache">Lignes du fichier, leur état et les corrections à faire</caption>
+      <thead>
+        <tr>
+          <th scope="col">Ligne</th>
+          <th scope="col">Nom</th>
+          <th scope="col">État</th>
+          <th scope="col">Téléphone</th>
+          <th scope="col">Chambre</th>
+          <th scope="col">Arrivée</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+        <tr>
+          <td class="tableau__nombre">{{ ligne.numero }}</td>
+          <th scope="row" class="tableau__entete-ligne">{{ ligne.nom_complet|default:"(sans nom)" }}</th>
+          <td class="tableau__etat">
+            <div class="pile pile--serree">
+              {% if ligne.prete %}<span class="badge badge--info">Prête</span>{% else %}<span class="badge badge--attention">À corriger</span>{% endif %}
+              {% for erreur in ligne.erreurs %}<span class="champ__erreur">{% icone "alerte" %}{{ erreur }}</span>{% endfor %}
+              {% for avertissement in ligne.avertissements %}<span class="texte-doux texte-petit">{{ avertissement }}</span>{% endfor %}
+            </div>
+          </td>
+          <td class="tableau__nombre">{{ ligne.telephone_affiche|default:"–" }}</td>
+          <td class="tableau__nombre">{{ ligne.chambre|default:"–" }}</td>
+          <td class="tableau__nombre">{% if ligne.date_arrivee %}<time datetime="{{ ligne.arrivee }}">{{ ligne.date_arrivee|date:"j F Y" }}</time>{% else %}{{ ligne.arrivee|default:"–" }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form class="rangee" method="post" action="{% url 'residents:import_apercu' %}">
+    {% csrf_token %}
+    <input type="hidden" name="pretes" value="{{ pretes }}">
+    {% if nombre_pretes %}
+    <button class="bouton" type="submit" name="action" value="importer">Importer {% if nombre_pretes > 1 %}les {{ nombre_pretes }} lignes prêtes{% else %}la ligne prête{% endif %}</button>
+    {% endif %}
+    <button class="bouton bouton--discret" type="submit" name="action" value="annuler">Annuler l'import</button>
+  </form>
+</section>
+
+{% else %}
+<div class="fiche">
+  <form class="carte pile" method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <h2>Envoyer le fichier</h2>
+    {{ formulaire.fichier.as_field_group }}
+    <div class="rangee">
+      <button class="bouton" type="submit">{% icone "envoyer" %}Voir l'aperçu</button>
+    </div>
+  </form>
+
+  <section class="carte pile" aria-labelledby="titre-colonnes">
+    <h2 id="titre-colonnes">Colonnes attendues</h2>
+    <p class="texte-doux">La première ligne donne le titre de chaque colonne. L'ordre n'a pas d'importance.</p>
+    <dl class="details">
+      <dt>Prénom</dt><dd>Obligatoire</dd>
+      <dt>Nom</dt><dd>Obligatoire</dd>
+      <dt>Téléphone</dt><dd>Portable, par exemple 06 12 34 56 78</dd>
+      <dt>Chambre</dt><dd>Numéro, par exemple 312</dd>
+      <dt>Arrivée</dt><dd>Date, par exemple 01/09/2026. Vide : aujourd'hui</dd>
+      <dt>E-mail</dt><dd>Facultatif</dd>
+    </dl>
+    <p><a href="{% url 'residents:import_modele' %}" download>Télécharger un modèle vide (.csv)</a></p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

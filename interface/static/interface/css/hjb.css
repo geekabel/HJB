@@ -1045,6 +1045,11 @@
     font-size: inherit;
   }
 
+  /* Colonne qui porte des explications : assez large pour une phrase */
+  .tableau__etat {
+    min-width: 16rem;
+  }
+
   .tableau__action {
     text-align: end;
     white-space: nowrap;
@@ -1083,6 +1088,11 @@
   .details dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* Carte mise en avant par un cadre (aperçu d'import en attente de confirmation) */
+  .carte--cadre {
+    border: 2px solid var(--action);
   }
 
   .liste-simple {
@@ -1127,5 +1137,13 @@
 
   .texte-petit {
     font-size: var(--t-petit);
+  }
+
+  .texte-action {
+    color: var(--action);
+  }
+
+  .texte-attention {
+    color: var(--attention-texte);
   }
 }

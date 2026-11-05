@@ -8,6 +8,7 @@
     <p class="texte-doux">{{ compteurs.total }} résident{{ compteurs.total|pluralize }} · {{ compteurs.active }} compte{{ compteurs.active|pluralize }} activé{{ compteurs.active|pluralize }} · {{ compteurs.en_attente }} pas encore activé{{ compteurs.en_attente|pluralize }}</p>
   </div>
   <div class="rangee">
+    <a class="bouton bouton--discret" href="{% url 'residents:import' %}">{% icone "importer" %}Importer CSV ou Excel</a>
     <a class="bouton" href="{% url 'residents:creer' %}">{% icone "plus" %}Nouveau résident</a>
   </div>
 </header>

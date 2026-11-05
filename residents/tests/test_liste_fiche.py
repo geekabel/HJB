@@ -10,8 +10,7 @@ from comptes.tests.outils import creer_utilisateur
 from logement.models import Chambre, Etage, Sejour
 from logement.services import sejour_en_cours
 from outils.capture_html import enregistrer_page
-
-from .forms import nom_utilisateur_libre
+from residents.forms import nom_utilisateur_libre
 
 J1 = date(2026, 9, 1)
 J2 = date(2026, 10, 15)
