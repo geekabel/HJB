@@ -114,10 +114,17 @@ erDiagram
     CODE_ACTIVATION {
         int id PK
         int utilisateur_id FK
-        string code_hache
+        string empreinte UK "HMAC-SHA256, jamais le code"
         int cree_par_id FK
+        datetime cree_le
         datetime expire_le "création + 72 h"
         datetime utilise_le
+        datetime annule_le "remplacé par un code plus récent"
+    }
+    ECHEC_ACTIVATION {
+        int id PK
+        string adresse_ip "10 échecs par heure au plus"
+        datetime cree_le
     }
     VERIFICATION_TELEPHONE {
         int id PK

@@ -55,6 +55,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | Front | Gabarits Django, CSS natif, JavaScript léger | Moins de dépendances, validation W3C plus simple |
 | Import Excel | openpyxl en lecture seule, avec defusedxml | Lit les .xlsx sans Excel ; defusedxml bloque les fichiers XML piégés |
 | API OVHcloud | Bibliothèque officielle python-ovh | Conseillée par OVHcloud : elle signe les requêtes ; pas de cryptographie maison |
+| Code QR | segno (pur Python, sans dépendance, BSD) | SVG inséré dans la page, imprimable |
 
 ## Tableau
 
@@ -68,7 +69,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T11 | Code d'activation | E2 Connexion | T07 |
 | T12 | Vérification du téléphone par code SMS | E2 Connexion | T10, T11 |
 | T13 | Connexion par clé d'accès (passkey) | E2 Connexion | T12 |
 | T14 | Sécurité de l'espace équipe | E2 Connexion | T04, T13 |
@@ -118,6 +118,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T08 | Import CSV et Excel des résidents | 5 nov. 2026 |
 | T09 | Départ d'un résident | 5 nov. 2026 |
 | T10 | Couche fournisseur SMS | 5 nov. 2026 |
+| T11 | Code d'activation | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -238,14 +239,17 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : les journaux ne contiennent jamais le numéro complet ni le texte (un code de connexion y passerait). Un message est limité à 6 SMS. OVHcloud : `noStopClause` est activé, car nos messages sont des informations de service ; sans lui, OVHcloud bloque l'envoi entre 20 h et 8 h. Expéditeur : le numéro court d'OVHcloud par défaut (il permet de répondre), ou un nom déclaré. En français, « ê â î ô û ç » et l'apostrophe typographique font passer le message en UCS-2 (70 caractères) : T20 l'affichera à la rédaction. Aucun identifiant dans le dépôt : tout vient de l'environnement.
 - **Revue indépendante (5 nov.)** : corrigé après relecture. Avec `--parallel` en mode « spawn » (macOS, Windows, Python 3.14), les processus de test relisaient le fournisseur réel : le lanceur l'impose maintenant dans chaque processus (vérifié avec `DJANGO_SMS_FOURNISSEUR=ovh`). Un délai de réponse dépassé ou une acceptation sans identifiant sont « incertains » : le SMS est peut-être parti, donc pas de relance automatique (risque de doublon). OVHcloud 429 est temporaire. Un numéro de forme correcte mais inexistant ou fixe est refusé avant l'envoi. En production, sans `DJANGO_SMS_FOURNISSEUR`, aucun SMS ne part et rien n'est écrit dans les journaux (fournisseur « aucun »). 39 tests, sans aucun appel réseau.
 
-#### T11 Code d'activation
+#### T11 Code d'activation (fait le 5 nov. 2026)
 - **Maquettes** : P5 (bouton), R0.
-- [ ] Généré depuis la fiche du résident, à l'accueil, quand la personne se présente
-- [ ] Code haché en base, usage unique, valable 72 h
-- [ ] Impression du code ou affichage d'un QR code
-- [ ] Limite de tentatives
-- [ ] Import (T08) : option « envoyer un code d'activation aux nouveaux », par SMS
-- [ ] Retour d'un ancien résident (T09) : réactiver le compte avec un nouveau code et le reloger
+- **Docs** : [module secrets](https://docs.python.org/3/library/secrets.html), [module hmac](https://docs.python.org/3/library/hmac.html), [segno](https://pypi.org/project/segno/), [never_cache](https://docs.djangoproject.com/en/6.1/topics/http/decorators/#caching), [cycle_key](https://docs.djangoproject.com/en/6.1/topics/http/sessions/#django.contrib.sessions.backends.base.SessionBase.cycle_key).
+- [x] Généré depuis la fiche du résident (permission `generer_code_activation` : Accueil, Administration), quand la personne se présente ; noté dans le journal d'audit
+- [x] Code de 10 caractères sans lettres ambiguës (« ABCDE-FGHJK »), empreinte HMAC en base, usage unique, valable 72 h ; un nouveau code annule l'ancien ; le départ annule le code en cours
+- [x] Page imprimable, montrée une seule fois (jamais en cache), avec un code QR qui ouvre /activer/ et remplit le code
+- [x] Limite de tentatives : 10 codes faux par adresse IP et par heure, puis blocage
+- [x] Page résident /activer/ (étape 1 sur 3) ; le parcours dure une heure au plus, avec une nouvelle clé de session
+- [x] Import (T08) : option « envoyer par SMS un code aux nouveaux », décochée par défaut
+- [x] Retour d'un ancien résident (T09) : choix de la chambre, compte réactivé, puis nouveau code
+- **Notes** : le code QR contient l'adresse avec le code après « # » : le navigateur ne l'envoie jamais au serveur, et la page l'efface de l'adresse. L'option SMS de l'import est moins sûre qu'une remise en main propre (pas de contrôle d'identité) : l'écran le dit. Le code est marqué utilisé dès la saisie ; si la personne s'arrête en route, l'accueil lui en donne un autre. Correctif général : la bordure rouge des champs en erreur ne s'affichait pas (spécificité CSS), c'est réparé. 34 tests.
 
 #### T12 Vérification du téléphone par code SMS
 - **Maquette** : R0.
