@@ -313,7 +313,7 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Pages | `push:settings` (`/notifications/`), `push:subscribe`, `push:unsubscribe`, `push:test`, `push:remove_device` |
 | Commandes | `vapid_key`, `prune_push_subscriptions` |
 
-## Messages (carte T20)
+## Messages (cartes T20 et T21)
 
 | Mot du métier | Nom dans le code |
 |---|---|
@@ -323,7 +323,11 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Champs du texte | `messaging.placeholders` (`FIELDS`, `fill()`, `values_for()`, `check_text()`, `missing_values()`) ; les noms restent en français : `{prénom}`, `{chambre}`, `{date}`, `{début}`, `{fin}` |
 | Destinataires et canal | `messaging.audience` (`audience()`, `Audience`, `Recipient`, canal `push`, `sms` ou `none`) |
 | Version SMS | `messaging.sms_text` (`to_gsm()`, `sms_text()`) |
-| Pages | `messaging:list`, `messaging:new`, `messaging:compose`, `messaging:delete`, `messaging:templates`, `messaging:template_new`, `messaging:template_edit`, `messaging:template_delete` |
+| Pages | `messaging:list`, `messaging:new`, `messaging:compose`, `messaging:delete`, `messaging:templates`, `messaging:template_new`, `messaging:template_edit`, `messaging:template_delete`, `messaging:review`, `messaging:tracking`, `messaging:cancel`, `messaging:cancel_reminder` |
+| Envoi (« Envoi » dans le plan) | `messaging.models.Delivery` (`kind` : `message` ou `reminder`, `channel`, `status` : `pending`, `sending`, `sent`, `failed`) |
+| Réponse présent ou absent | `messaging.models.AttendanceReply` (`answer` : `present` ou `absent`) |
+| Envoi programmé, relance | `messaging.sending` (`problems()`, `schedule()`, `cancel()`, `cancel_reminder()`, `run_due()`, `deliver()`), tâche `messaging.tasks.deliver_task`, commande `run_scheduled` |
+| Départ prévu | `Stay.planned_departure`, `residents.departure.plan_departure()`, `cancel_planned_departure()`, `messaging.sending.record_planned_departures()` |
 
 ## Modèles prévus
 

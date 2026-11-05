@@ -7,9 +7,11 @@ drafts and sends a test to its author.
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.cache import cache
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.formats import date_format
 from django.views.decorators.http import require_POST
 
 from accounts.models import User
@@ -17,9 +19,10 @@ from housing.models import Room
 from sms.segments import analyze
 from sms.service import MAX_SEGMENTS
 
+from . import sending
 from .audience import audience, rendered
 from .forms import CampaignForm, TemplateForm
-from .models import Campaign, MessageTemplate, MessageType, ReplyType
+from .models import Campaign, Delivery, MessageTemplate, MessageType, ReplyType
 from .placeholders import FIELDS, fill, missing_values, values_for
 from .services import find_target, sample_recipient, send_test
 from .sms_text import GSM, REPLACEMENTS, words_with
@@ -31,11 +34,20 @@ TEST_DELAY = 60  # seconds between two tests of the same person
 @login_required
 @permission_required(PERMISSION, raise_exception=True)
 def campaign_list(request):
-    campaigns = Campaign.objects.select_related("author").filter(status=Campaign.Status.DRAFT)
+    campaigns = Campaign.objects.select_related("author")
+    status = Campaign.Status
     return render(
         request,
         "messaging/list.html",
-        {"active_nav": "messages", "campaigns": campaigns},
+        {
+            "active_nav": "messages",
+            "campaigns": campaigns.filter(status=status.DRAFT),
+            "scheduled": campaigns.filter(status=status.SCHEDULED).order_by("send_at"),
+            "sending": campaigns.filter(status=status.SENDING),
+            "sent": campaigns.filter(status__in=[status.SENT, status.CANCELLED]).order_by(
+                "-sent_at", "-updated_at"
+            )[:30],
+        },
     )
 
 
@@ -130,7 +142,9 @@ def compose(request, pk=None):
                 campaign = _from_template(template)
                 campaign.author = request.user
     else:
-        campaign = get_object_or_404(Campaign, pk=pk, status=Campaign.Status.DRAFT)
+        campaign = get_object_or_404(Campaign, pk=pk)
+        if campaign.status != Campaign.Status.DRAFT:
+            return redirect("messaging:tracking", pk=campaign.pk)
 
     if request.method != "POST":
         return _compose_page(request, CampaignForm(instance=campaign), campaign)
@@ -138,7 +152,19 @@ def compose(request, pk=None):
     form = CampaignForm(request.POST, instance=campaign)
     if not form.is_valid():
         return _compose_page(request, form, campaign)
-    campaign = form.save()
+    with transaction.atomic():
+        # Confirmed in another tab meanwhile: a late save must not turn it back into a draft.
+        if (
+            campaign.pk
+            and not Campaign.objects.select_for_update()
+            .filter(pk=campaign.pk, status=Campaign.Status.DRAFT)
+            .exists()
+        ):
+            messages.warning(
+                request, "Ce message vient d'être confirmé : il n'est plus modifiable."
+            )
+            return redirect("messaging:tracking", pk=campaign.pk)
+        campaign = form.save()
     action = request.POST.get("action", "save")
     done = _apply(request, campaign, action, form.cleaned_data.get("add", ""))
     if done is not None:
@@ -153,6 +179,8 @@ def _apply(request, campaign, action, add):
         kind = "save"  # Enter in a text field presses the first button: "Ajouter"
     if kind == "save":
         messages.success(request, f"Brouillon enregistré à {timezone.localtime():%H:%M}.")
+    elif kind == "review":
+        return redirect("messaging:review", pk=campaign.pk)
     elif kind == "add":
         room, person, error = find_target(add)
         if error:
@@ -192,6 +220,100 @@ def _apply(request, campaign, action, add):
             for line in lines:
                 messages.info(request, line)
     return None
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def review(request, pk):
+    """Last check before sending: what leaves, to whom, when, for how much."""
+    campaign = get_object_or_404(Campaign, pk=pk, status=Campaign.Status.DRAFT)
+    planned = campaign.send_at  # None: now
+    send_at = planned or timezone.now()
+    found = sending.problems(campaign, send_at)
+    if request.method == "POST" and not found:
+        try:
+            sending.schedule(campaign, send_at=send_at, by=request.user, request=request)
+        except ValidationError as error:
+            found = error.messages
+        else:
+            if planned:
+                when = date_format(timezone.localtime(send_at), "l j F à H:i")
+                messages.success(request, f"Envoi programmé le {when}.")
+            else:
+                messages.success(request, "Envoi en cours.")
+            return redirect("messaging:tracking", pk=campaign.pk)
+    audience_ = audience(campaign)
+    sms = _sms_report(campaign, audience_)
+    return render(
+        request,
+        "messaging/review.html",
+        {
+            "active_nav": "messages",
+            "campaign": campaign,
+            "send_at": campaign.send_at,
+            "remind_at": sending.reminder_time(campaign),
+            "audience": audience_,
+            "sms": sms,
+            # Until residents can answer (card T22), the reminder goes to everyone reached.
+            "reminder_sms": sms["total_segments"] if sending.reminder_time(campaign) else 0,
+            "problems": found,
+        },
+    )
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def tracking(request, pk):
+    """A message after its confirmation: scheduled, being sent, or sent."""
+    campaign = get_object_or_404(Campaign.objects.select_related("author"), pk=pk)
+    if campaign.status == Campaign.Status.DRAFT:
+        return redirect("messaging:compose", pk=campaign.pk)
+    deliveries = campaign.deliveries.select_related("recipient").order_by(
+        "kind", "room_number", "recipient__last_name"
+    )
+    return render(
+        request,
+        "messaging/tracking.html",
+        {
+            "active_nav": "messages",
+            "campaign": campaign,
+            "display_title": fill(campaign.title, values_for(campaign)),
+            "deliveries": deliveries,
+            "stats": sending.summary(campaign),
+            "reminder_stats": sending.summary(campaign, Delivery.Kind.REMINDER),
+            "audience": audience(campaign)
+            if campaign.status == Campaign.Status.SCHEDULED
+            else None,
+        },
+    )
+
+
+@require_POST
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def cancel_reminder(request, pk):
+    campaign = get_object_or_404(Campaign, pk=pk)
+    if sending.cancel_reminder(campaign, by=request.user, request=request):
+        messages.success(request, "Relance annulée.")
+    else:
+        messages.warning(request, "Trop tard : la relance est déjà partie.")
+    return redirect("messaging:tracking", pk=campaign.pk)
+
+
+@require_POST
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def cancel(request, pk):
+    campaign = get_object_or_404(Campaign, pk=pk)
+    back_to_draft = request.POST.get("to") == "draft"
+    if sending.cancel(campaign, by=request.user, back_to_draft=back_to_draft, request=request):
+        if back_to_draft:
+            messages.success(request, "Envoi annulé : le message est redevenu un brouillon.")
+            return redirect("messaging:compose", pk=campaign.pk)
+        messages.success(request, "Envoi annulé.")
+    else:
+        messages.warning(request, "Trop tard : l'envoi a déjà commencé.")
+    return redirect("messaging:tracking", pk=campaign.pk)
 
 
 @require_POST

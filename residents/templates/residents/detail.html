@@ -165,8 +165,19 @@
     {% if form and resident.is_active %}
     <section class="card stack" aria-labelledby="departure-title">
       <h2 id="departure-title">Départ</h2>
-      <p class="text-muted">Quand la personne quitte la résidence : fin du séjour et compte désactivé.</p>
+      {% if stay.planned_departure %}
+      <p class="icon-text">{% icon "clock" %}<span><strong>Départ prévu le <time datetime="{{ stay.planned_departure|date:'Y-m-d' }}">{{ stay.planned_departure|date:"l j F Y" }}</time></strong>. Il sera enregistré automatiquement ce jour-là à midi.</span></p>
+      <div class="row">
+        <a class="button button--quiet" href="{% url 'residents:departure' resident.pk %}">Changer la date</a>
+        <form method="post" action="{% url 'residents:cancel_planned_departure' resident.pk %}">
+          {% csrf_token %}
+          <button class="button button--quiet" type="submit">Annuler le départ prévu</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="text-muted">Quand la personne quitte la résidence : fin du séjour et compte désactivé. Le départ peut aussi être prévu à l'avance.</p>
       <a class="button button--quiet" href="{% url 'residents:departure' resident.pk %}">Enregistrer le départ</a>
+      {% endif %}
     </section>
     {% endif %}
 

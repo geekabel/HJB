@@ -1,0 +1,49 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Envoyer « {{ campaign.title }} »{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'messaging:compose' campaign.pk %}">{% icon "back" %}Revenir au message</a>
+
+<h1>{% if send_at %}Programmer l'envoi{% else %}Envoyer le message{% endif %}</h1>
+
+{% if problems %}
+<div class="alert alert--error" role="alert">{% icon "alert" %}
+  <div class="stack stack--tight">
+    <p><strong>Le message ne peut pas encore partir :</strong></p>
+    <ul class="bullet-list">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="profile">
+  <section class="card stack" aria-labelledby="what-title">
+    <h2 id="what-title">{{ campaign.title }}</h2>
+    <dl class="details">
+      <dt>Type</dt><dd>{{ campaign.get_type_display }}</dd>
+      <dt>Envoi</dt><dd>{% if send_at %}<time datetime="{{ send_at|date:'Y-m-d\TH:i:sO' }}">{{ send_at|date:"l j F à H:i" }}</time>{% else %}tout de suite{% endif %}</dd>
+      {% if campaign.reply_type == "attendance" %}<dt>Réponse</dt><dd>« Présent » ou « Absent »</dd>{% endif %}
+      {% if remind_at %}<dt>Relance</dt><dd><time datetime="{{ remind_at|date:'Y-m-d\TH:i:sO' }}">{{ remind_at|date:"l j F à H:i" }}</time>, pour ceux qui n'ont pas répondu</dd>{% endif %}
+    </dl>
+  </section>
+
+  <section class="card stack" aria-labelledby="who-title">
+    <h2 id="who-title">Destinataires</h2>
+    <dl class="details">
+      <dt>Résidents</dt><dd>{{ audience.total }}</dd>
+      <dt>Notifications</dt><dd>{{ audience.push }} · gratuit</dd>
+      <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
+      {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }} : prévenez-{% if audience.unreachable > 1 %}les{% else %}la{% endif %} autrement</dd>{% endif %}
+    </dl>
+    <p class="text-muted text-small">Une notification qui ne passe pas est réessayée. Le SMS ne part que pour les personnes sans aucun appareil.</p>
+    {% if remind_at %}<p class="text-small">La relance ira à ceux qui n'auront pas répondu{% if reminder_sms %} : jusqu'à {{ reminder_sms }} SMS de plus{% endif %}.</p>{% endif %}
+  </section>
+</div>
+
+{% if not problems %}
+<form class="row" method="post">
+  {% csrf_token %}
+  <button class="button" type="submit">{% icon "send" %}{% if send_at %}Programmer l'envoi{% else %}Envoyer maintenant à {{ audience.total }} résident{{ audience.total|pluralize }}{% endif %}</button>
+  <a class="button button--quiet" href="{% url 'messaging:compose' campaign.pk %}">Revenir au message</a>
+</form>
+{% endif %}
+{% endblock %}

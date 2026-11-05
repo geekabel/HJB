@@ -1,0 +1,81 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}{{ display_title }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
+
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>{{ display_title }}</h1>
+    <p class="text-muted">{{ campaign.get_type_display }} · rédigé par {{ campaign.author.get_full_name|default:campaign.author|default:"–" }}</p>
+  </div>
+  <span class="badge {% if campaign.status == 'sent' %}badge--success{% elif campaign.status == 'cancelled' %}badge--neutral{% else %}badge--info{% endif %}">{{ campaign.get_status_display }}</span>
+</header>
+
+{% if campaign.status == "scheduled" %}
+<section class="card stack" aria-labelledby="scheduled-title">
+  <h2 id="scheduled-title">Envoi programmé le <time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"l j F à H:i" }}</time></h2>
+  <p>{{ audience.total }} résident{{ audience.total|pluralize }} à ce jour : {{ audience.push }} par notification, {{ audience.sms }} par SMS. La liste est arrêtée au moment de l'envoi.</p>
+  {% if campaign.remind_at %}<p>Relance de ceux qui n'ont pas répondu : <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.</p>{% endif %}
+  <form class="row" method="post" action="{% url 'messaging:cancel' campaign.pk %}">
+    {% csrf_token %}
+    <button class="button button--secondary" type="submit" name="to" value="draft">Modifier le message</button>
+    <button class="button button--quiet" type="submit" name="to" value="cancel">Annuler l'envoi</button>
+  </form>
+</section>
+{% elif campaign.status == "cancelled" %}
+<p class="alert alert--info">{% icon "info" %}<span>Cet envoi a été annulé. Rien n'est parti.</span></p>
+{% else %}
+<div class="grid-auto" role="group" aria-label="Bilan de l'envoi">
+  <div class="card stat"><span class="text-muted text-small">Destinataires</span><span class="stat__value">{{ stats.recipients }}</span></div>
+  <div class="card stat"><span class="text-muted text-small">Notifications envoyées</span><span class="stat__value">{{ stats.push }}</span></div>
+  <div class="card stat"><span class="text-muted text-small">SMS envoyés</span><span class="stat__value">{{ stats.sms }}</span><span class="text-muted text-small">{{ stats.segments }} SMS facturé{{ stats.segments|pluralize }}</span></div>
+  <div class="card stat"><span class="text-muted text-small">Échecs</span><span class="stat__value">{{ stats.failed }}</span></div>
+</div>
+{% if campaign.status == "sending" %}<p class="alert alert--info" role="status">{% icon "clock" %}<span>Envoi en cours. Rechargez la page pour suivre l'avancée.</span></p>{% endif %}
+{% if campaign.remind_at %}
+<div class="row row--between">
+  <p class="text-muted">Relance de ceux qui n'ont pas répondu : {% if campaign.reminder_started_at %}partie le <time datetime="{{ campaign.reminder_started_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.reminder_started_at|date:"j F à H:i" }}</time>, {{ reminder_stats.recipients }} personne{{ reminder_stats.recipients|pluralize }}.{% else %}prévue le <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
+  {% if not campaign.reminder_started_at %}
+  <form method="post" action="{% url 'messaging:cancel_reminder' campaign.pk %}">
+    {% csrf_token %}
+    <button class="button button--quiet" type="submit">Annuler la relance</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if deliveries %}
+<div class="table-scroll" role="region" aria-labelledby="deliveries-caption" tabindex="0">
+  <table class="table">
+    <caption id="deliveries-caption" class="visually-hidden">Envoi à chaque destinataire</caption>
+    <thead>
+      <tr>
+        <th scope="col">Destinataire</th>
+        <th scope="col">Chambre</th>
+        <th scope="col">Envoi</th>
+        <th scope="col">Canal</th>
+        <th scope="col">État</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for delivery in deliveries %}
+      <tr>
+        <th scope="row" class="table__row-header">{{ delivery.recipient.get_full_name|default:delivery.recipient.get_username }}</th>
+        <td class="table__number">{{ delivery.room_number|default:"–" }}</td>
+        <td>{{ delivery.get_kind_display }}</td>
+        <td>{{ delivery.get_channel_display }}</td>
+        <td>{% if delivery.status == "sent" %}<span class="badge badge--success">Envoyé</span>{% elif delivery.status == "failed" %}<span class="badge badge--error">Échec</span> <span class="text-small">{{ delivery.error }}</span>{% else %}<span class="badge badge--info">{{ delivery.get_status_display }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+
+<details class="card">
+  <summary>Texte du message</summary>
+  <p class="compose__text">{{ campaign.body }}</p>
+</details>
+{% endblock %}

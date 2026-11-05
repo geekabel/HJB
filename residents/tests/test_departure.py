@@ -114,7 +114,9 @@ class DeparturePageTests(DepartureTestCase):
         self.assertContains(response, "Départ de Awa Koné")
         self.assertContains(response, "Le séjour en chambre 312 se termine")
         self.assertContains(response, 'class="button button--danger"')
-        self.assertContains(response, f'max="{timezone.localdate().isoformat()}"')
+        # A later date is a planned departure (card T21), up to one year ahead.
+        limit = timezone.localdate() + timedelta(days=365)
+        self.assertContains(response, f'max="{limit.isoformat()}"')
         self.assertContains(response, 'min="2026-09-01"')
 
     def test_recording(self):
@@ -133,7 +135,7 @@ class DeparturePageTests(DepartureTestCase):
 
     def test_refused_dates(self):
         cases = {
-            (timezone.localdate() + timedelta(days=1)).isoformat(): "dans le futur",
+            (timezone.localdate() + timedelta(days=366)).isoformat(): "plus d&#x27;un an",
             "2026-08-31": "avant l&#x27;arrivée dans la chambre (01/09/2026)",
             "": "Ce champ est obligatoire.",
         }
