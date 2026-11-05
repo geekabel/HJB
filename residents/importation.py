@@ -402,21 +402,20 @@ def depuis_session(donnees):
 def importer(lignes):
     """Crée une fiche (et un séjour) par ligne prête. Tout ou rien.
 
-    Renvoie le nombre de fiches créées. Lève ValidationError si une ligne est
+    Renvoie la liste des fiches créées. Lève ValidationError si une ligne est
     refusée au dernier moment ; rien n'est alors enregistré.
     """
     chambres = {
         c.numero: c for c in Chambre.objects.filter(numero__in=[lg.chambre for lg in lignes])
     }
-    creees = 0
+    creees = []
     for ligne in lignes:
         if not ligne.prete:
             continue
         try:
-            _creer(ligne, chambres)
+            creees.append(_creer(ligne, chambres))
         except ValidationError as erreur:
             raise ValidationError(f"Ligne {ligne.numero} : {' '.join(erreur.messages)}") from erreur
-        creees += 1
     return creees
 
 
@@ -433,3 +432,4 @@ def _creer(ligne, chambres):
     resident.save()
     if ligne.chambre:
         affecter_chambre(resident, chambres[ligne.chambre], ligne.date_arrivee)
+    return resident

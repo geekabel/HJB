@@ -178,3 +178,18 @@ class FormulaireDepart(forms.Form):
         le = self.cleaned_data["depart"]
         verifier_date(le, self.sejour)
         return le
+
+
+class FormulaireRetour(forms.Form):
+    chambre = ChoixChambre(queryset=Chambre.objects.none(), label="Chambre", empty_label=None)
+    arrivee = forms.DateField(
+        label="Date du retour",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["chambre"].queryset = Chambre.objects.libres().select_related("etage")
+        aujourd_hui = timezone.localdate()
+        self.fields["arrivee"].initial = aujourd_hui
+        self.fields["arrivee"].widget.attrs["max"] = aujourd_hui.isoformat()

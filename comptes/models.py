@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from .roles import GROUPE_PAR_ROLE, PERMISSIONS, ROLES_EQUIPE, Role, definir_roles, roles_de
 from .telephone import afficher_telephone, masquer_telephone, normaliser_telephone, valider_e164
@@ -130,3 +131,57 @@ class User(AbstractUser):
     def est_equipe(self):
         """Vrai si l'utilisateur a au moins un rôle du personnel."""
         return bool(self.roles & ROLES_EQUIPE)
+
+
+class CodeActivationQuerySet(models.QuerySet):
+    def valides(self):
+        """Ni utilisés, ni annulés, ni expirés."""
+        return self.filter(
+            utilise_le__isnull=True, annule_le__isnull=True, expire_le__gt=timezone.now()
+        )
+
+
+class CodeActivation(models.Model):
+    """Code remis à l'accueil pour activer un compte (carte T11).
+
+    Le code n'est jamais stocké en clair : seule son empreinte HMAC l'est
+    (voir comptes/activation.py). Il ne sert qu'une fois et expire après 72 h.
+    """
+
+    utilisateur = models.ForeignKey(
+        "User", on_delete=models.CASCADE, related_name="codes_activation"
+    )
+    empreinte = models.CharField(max_length=64, unique=True, editable=False)
+    cree_par = models.ForeignKey(
+        "User", on_delete=models.SET_NULL, null=True, related_name="+", verbose_name="créé par"
+    )
+    cree_le = models.DateTimeField("créé le", auto_now_add=True)
+    expire_le = models.DateTimeField("expire le")
+    utilise_le = models.DateTimeField("utilisé le", null=True, blank=True)
+    annule_le = models.DateTimeField(
+        "annulé le", null=True, blank=True, help_text="Remplacé par un code plus récent."
+    )
+
+    objects = CodeActivationQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "code d'activation"
+        verbose_name_plural = "codes d'activation"
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"Code pour {self.utilisateur} ({self.cree_le:%d/%m/%Y})"
+
+
+class EchecActivation(models.Model):
+    """Saisie d'un code d'activation inconnu : sert à limiter les essais par adresse."""
+
+    adresse_ip = models.GenericIPAddressField(null=True)
+    cree_le = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "échec d'activation"
+        verbose_name_plural = "échecs d'activation"
+
+    def __str__(self):
+        return f"Échec depuis {self.adresse_ip or '?'} ({self.cree_le:%d/%m/%Y %H:%M})"

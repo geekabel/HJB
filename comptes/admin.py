@@ -6,7 +6,7 @@ from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 from journal.models import Action
 from journal.service import journaliser
 
-from .models import User
+from .models import CodeActivation, User
 from .roles import Role, definir_roles
 
 
@@ -83,3 +83,18 @@ class UtilisateurAdmin(UserAdmin):
                 details={"avant": sorted(avant), "apres": sorted(apres)},
                 requete=request,
             )
+
+
+@admin.register(CodeActivation)
+class CodeActivationAdmin(admin.ModelAdmin):
+    """Lecture seule : les codes se génèrent depuis la fiche du résident."""
+
+    list_display = ("utilisateur", "cree_le", "expire_le", "utilise_le", "annule_le", "cree_par")
+    list_select_related = ("utilisateur", "cree_par")
+    exclude = ("empreinte",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

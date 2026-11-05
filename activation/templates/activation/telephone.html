@@ -1,0 +1,8 @@
+{% extends "activation/base_activation.html" %}
+{% block titre %}Vérifier mon téléphone{% endblock %}
+{% block etape %}
+<header class="pile pile--serree">
+  <h1>Code accepté</h1>
+  <p class="texte-doux">Bonjour {{ personne.first_name }}. Étape suivante : vérifier votre numéro de téléphone.</p>
+</header>
+{% endblock %}

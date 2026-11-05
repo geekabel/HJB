@@ -20,6 +20,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # Espace résident : activation du compte (cartes T11 à T13).
+    path("activer/", include("activation.urls")),
     # Guide de style, réservé à l'équipe.
     path("guide/", include("interface.urls")),
     # Espace équipe.

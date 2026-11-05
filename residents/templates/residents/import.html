@@ -60,14 +60,20 @@
     </table>
   </div>
 
-  <form class="rangee" method="post" action="{% url 'residents:import_apercu' %}">
+  <form class="pile" method="post" action="{% url 'residents:import_apercu' %}">
     {% csrf_token %}
     <input type="hidden" name="jeton" value="{{ jeton }}">
     <input type="hidden" name="pretes" value="{{ pretes }}">
-    {% if nombre_pretes %}
-    <button class="bouton" type="submit" name="action" value="importer">Importer {% if nombre_pretes > 1 %}les {{ nombre_pretes }} lignes prêtes{% else %}la ligne prête{% endif %}</button>
+    {% if nombre_pretes and perms.comptes.generer_code_activation %}
+    <label class="choix"><input type="checkbox" name="envoyer_codes" value="oui">Envoyer par SMS un code d'activation aux nouveaux résidents qui ont un numéro</label>
+    <p class="texte-doux texte-petit">Sans cette option, chaque personne reçoit son code à l'accueil, après vérification de son identité : c'est le plus sûr.</p>
     {% endif %}
-    <button class="bouton bouton--discret" type="submit" name="action" value="annuler">Annuler l'import</button>
+    <div class="rangee">
+      {% if nombre_pretes %}
+      <button class="bouton" type="submit" name="action" value="importer">Importer {% if nombre_pretes > 1 %}les {{ nombre_pretes }} lignes prêtes{% else %}la ligne prête{% endif %}</button>
+      {% endif %}
+      <button class="bouton bouton--discret" type="submit" name="action" value="annuler">Annuler l'import</button>
+    </div>
   </form>
 </section>
 
