@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Exists, OuterRef
 
 from .models import Chambre, Etage, Sejour
 
@@ -28,11 +29,13 @@ class FiltreOccupation(admin.SimpleListFilter):
         return [("libre", "Libre"), ("occupee", "Occupée")]
 
     def queryset(self, request, queryset):
-        libres = Chambre.objects.libres()
         if self.value() == "libre":
-            return queryset.filter(pk__in=libres)
+            return queryset.filter(pk__in=Chambre.objects.libres())
         if self.value() == "occupee":
-            return queryset.exclude(pk__in=libres)
+            # Une chambre fermée et vide n'est ni libre ni occupée. Exists, et non
+            # sejours__depart__isnull : ce filtre garderait les chambres sans séjour.
+            en_cours = Sejour.objects.filter(chambre=OuterRef("pk"), depart__isnull=True)
+            return queryset.filter(Exists(en_cours))
         return queryset
 
 

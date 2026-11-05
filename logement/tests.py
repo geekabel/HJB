@@ -180,6 +180,12 @@ class AdministrationTests(LogementTestCase):
         )
         self.assertContains(reponse, "304")
         self.assertNotContains(reponse, ">312<")
+        # Une chambre fermée et vide n'est ni libre ni occupée.
+        Chambre.objects.create(numero="399", etage=self.e3, active=False)
+        reponse = self.client.get(
+            reverse("admin:logement_chambre_changelist"), {"occupation": "occupee"}
+        )
+        self.assertEqual([c.numero for c in reponse.context["cl"].result_list], ["312"])
         reponse = self.client.get(reverse("admin:logement_etage_change", args=[self.e3.pk]))
         self.assertEqual(reponse.status_code, 200)
 
