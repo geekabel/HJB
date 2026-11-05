@@ -72,6 +72,14 @@ Le dépôt est public. Un second workflow lance [gitleaks](https://github.com/gi
 
 Les serveurs WSGI et ASGI utilisent `config.settings.prod` par défaut.
 
+## Clés d'accès (connexion)
+
+Les résidents se connectent avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. Il n'y a pas de mot de passe. La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
+
+- En développement, ouvrir **http://localhost:8000**, pas http://127.0.0.1:8000 : les navigateurs refusent les clés d'accès sur une adresse IP.
+- En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINES` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
+- Une clé se supprime dans l'administration (Clés d'accès) : l'appareil ne peut plus se connecter.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_FOURNISSEUR` (voir [.env.example](.env.example)) :
