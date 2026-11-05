@@ -10,7 +10,7 @@
 {% if messages %}
 <div class="stack" role="status">
   {% for message in messages %}
-  <div class="alert alert--{{ message.level_tag }}">{% icon "check" %}<p>{{ message }}</p></div>
+  <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% else %}{% icon "info" %}{% endif %}<p>{{ message }}</p></div>
   {% endfor %}
 </div>
 {% endif %}
@@ -27,7 +27,7 @@
 <form class="inbox-tools" method="post" action="{% url 'inbox:read_all' %}">
   {% csrf_token %}
   {% if current.key != "all" %}<input type="hidden" name="show" value="{{ current.key }}">{% endif %}
-  <p class="text-muted text-small">{{ unread }} message{{ unread|pluralize }} non lu{{ unread|pluralize }}</p>
+  <p class="text-muted text-small">{{ unread }} message{{ unread|pluralize }} non lu{{ unread|pluralize }}{% if current.key != "all" %} dans cette liste{% endif %}</p>
   <button class="button button--text" type="submit">Tout marquer comme lu</button>
 </form>
 {% endif %}
@@ -35,17 +35,16 @@
 {% if items %}
 <ul class="inbox">
   {% for item in items %}
-  <li>
-    <a class="inbox__item{% if item.unread %} inbox__item--unread{% endif %}" href="{% url 'inbox:message' item.campaign.pk %}">
-      <span class="inbox__top">
-        <span class="inbox__title">{% if item.unread %}<span class="visually-hidden">Non lu : </span>{% endif %}{{ item.delivery.title }}</span>
-        {% if item.when %}<time class="inbox__when" datetime="{{ item.when|date:'Y-m-d\TH:i:sO' }}">{{ item.when|short_when }}</time>{% endif %}
-      </span>
-      <span class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}</span>
-      <span class="inbox__excerpt">{{ item.delivery.body|truncatechars:160 }}</span>
-      {% if item.waiting %}<span class="inbox__status">Réponse attendue</span>
-      {% elif item.answer %}<span class="inbox__answer">Votre réponse : {{ item.answer_label }}</span>{% endif %}
-    </a>
+  {# The link is on the title only (short link name); its ::after covers the card. #}
+  <li class="inbox__item{% if item.unread %} inbox__item--unread{% endif %}">
+    <p class="inbox__top">
+      <a class="inbox__title" href="{% url 'inbox:message' item.campaign.pk %}">{% if item.unread %}<span class="visually-hidden">Non lu&nbsp;: </span>{% endif %}{{ item.delivery.title }}</a>
+      {% if item.when %}<time class="inbox__when" datetime="{{ item.when|date:'Y-m-d\TH:i:sO' }}"><span aria-hidden="true">{{ item.when|short_when }}</span><span class="visually-hidden">{{ item.when|date:"l j F Y à H:i" }}</span></time>{% endif %}
+    </p>
+    <p class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}</p>
+    <p class="inbox__excerpt">{{ item.delivery.body|truncatechars:160 }}</p>
+    {% if item.waiting %}<p class="inbox__status">Réponse attendue</p>
+    {% elif item.answer %}<p class="inbox__answer">Votre réponse&nbsp;: {{ item.answer_label }}</p>{% endif %}
   </li>
   {% endfor %}
 </ul>

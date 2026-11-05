@@ -23,6 +23,9 @@ class Recipient:
     user: object
     room: object  # None for a person added without a room
     channel: str  # "push", "sms" or "none"
+    # Chosen by name or by room, not as part of everyone or a whole floor
+    # ("Pour moi" in the inbox, card T23).
+    personal: bool = False
 
 
 @dataclass
@@ -84,6 +87,8 @@ def audience(campaign, *, floors=None, rooms=None, people=None, excluded=None, e
         .filter(Exists(PushSubscription.objects.filter(user=OuterRef("pk"))))
         .values_list("pk", flat=True)
     )
+    by_name = {person.pk for person in added}
+    room_ids = {room.pk for room in rooms}
     recipients = []
     for pk, user in users.items():
         if pk in with_device:
@@ -92,7 +97,9 @@ def audience(campaign, *, floors=None, rooms=None, people=None, excluded=None, e
             channel = "sms"
         else:
             channel = "none"
-        recipients.append(Recipient(user, room_of.get(pk), channel))
+        room = room_of.get(pk)
+        personal = not everyone and (pk in by_name or (room is not None and room.pk in room_ids))
+        recipients.append(Recipient(user, room, channel, personal))
     recipients.sort(key=lambda r: ((r.room.number if r.room else "~"), r.user.last_name))
     return Audience(recipients)
 

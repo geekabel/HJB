@@ -405,6 +405,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Nombre de messages non lus sur l'entrée « Messages » de la barre du bas ; « Réponse attendue » ou « Votre réponse » sur les messages qui demandent « Présent » ou « Absent »
 - [x] Un message dont le SMS a échoué reste visible dans l'appli
 - **Notes** : la carte de vote de la maquette arrive avec T25. Le nombre de requêtes ne dépend pas du nombre de messages (testé).
+- **Revue** : corrigé après la revue indépendante. Sur un filtre, « Tout marquer comme lu » et le nombre de non lus ne visent que cette liste. La liste est triée par l'heure de réception, celle qui est affichée. « Pour moi » est décidé à l'envoi (`Delivery.personal`, migration avec reprise des messages déjà envoyés) : un changement de chambre ne le change plus. Un message annulé ensuite n'ouvre plus. Lecteurs d'écran : le lien est le titre seul, la date complète est lue, le compteur est séparé du mot « Messages ». Le compteur affiche « 99+ » au plus. Le point « non lu » reste visible en mode contraste élevé. L'équipe qui ouvre `/messages/` est renvoyée vers son accueil.
 
 #### T24 Statuts de livraison des SMS
 - [ ] Réception des accusés du fournisseur

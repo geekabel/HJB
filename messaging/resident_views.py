@@ -16,8 +16,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
+from access.session_policy import is_resident
 from accounts.models import User
 
 from . import inbox, replies
@@ -100,7 +101,8 @@ def reply(request, token):
 @require_http_methods(["GET", "POST"])
 def message(request, pk):
     campaign = get_object_or_404(Campaign, pk=pk)
-    delivery = _delivery(campaign, request.user)
+    # Same messages as the inbox (not a campaign cancelled afterwards).
+    delivery = inbox.received(request.user).filter(campaign=campaign).first()
     if delivery is None:
         raise Http404
     is_open = replies.is_open(campaign)
@@ -136,13 +138,17 @@ def message(request, pk):
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_safe
 def inbox_list(request):
+    if not is_resident(request.user):
+        return redirect("home")  # the staff have their own pages
     key = request.GET.get("show", "all")
     if key not in inbox.FILTER_KEYS:
         key = "all"
     page = Paginator(inbox.inbox(request.user, key), PER_PAGE).get_page(request.GET.get("page"))
     current = next(item for item in inbox.FILTERS if item.key == key)
+    unread = inbox.unread_count(request.user, key)
+    total = unread if key == "all" else inbox.unread_count(request.user)
     response = render(
         request,
         "messaging/inbox.html",
@@ -152,7 +158,9 @@ def inbox_list(request):
             "current": current,
             "page_obj": page,
             "items": inbox.items(request.user, page.object_list),
-            "unread": inbox.unread_count(request.user),
+            "unread": unread,
+            # Replaces the context processor: no second count for the bar.
+            "unread_messages": total,
         },
     )
     add_never_cache_headers(response)
@@ -162,12 +170,14 @@ def inbox_list(request):
 @login_required
 @require_POST
 def read_all(request):
-    count = inbox.mark_all_read(request.user)
+    key = request.POST.get("show", "all")
+    if key not in inbox.FILTER_KEYS:
+        key = "all"
+    count = inbox.mark_all_read(request.user, key)
     if count:
         s = "s" if count > 1 else ""
         messages.success(request, f"{count} message{s} marqué{s} comme lu{s}.")
-    key = request.POST.get("show", "all")
     url = reverse("inbox:list")
-    if key in inbox.FILTER_KEYS - {"all"}:
+    if key != "all":
         url += f"?show={key}"
     return redirect(url)

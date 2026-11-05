@@ -26,7 +26,7 @@
   <ul>
     <li><a href="{% url 'home' %}"{% if active_nav == "home" %} aria-current="page"{% endif %}>{% icon "home" %}Accueil</a></li>
     {% with unread=unread_messages %}
-    <li><a href="{% url 'inbox:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>{% icon "message" %}Messages{% if unread %}<span class="counter">{{ unread }}<span class="visually-hidden"> non lu{{ unread|pluralize }}</span></span>{% endif %}</a></li>
+    <li><a href="{% url 'inbox:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>{% icon "message" %}Messages{% if unread %}<span class="visually-hidden">, </span><span class="counter"><span aria-hidden="true">{% if unread > 99 %}99+{% else %}{{ unread }}{% endif %}</span><span class="visually-hidden">{{ unread }} non lu{{ unread|pluralize }}</span></span>{% endif %}</a></li>
     {% endwith %}
     <li><a href="#"{% if active_nav == "report" %} aria-current="page"{% endif %}>{% icon "plus" %}Signaler</a></li>
     <li><a href="#"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>{% icon "calendar" %}Rendez-vous</a></li>

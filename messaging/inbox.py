@@ -7,7 +7,8 @@ not count: SMS apps open links by themselves to make a preview.
 
 from dataclasses import dataclass
 
-from django.db.models import BooleanField, Exists, ExpressionWrapper, OuterRef, Q
+from django.db.models import F
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from . import replies
@@ -43,8 +44,9 @@ SHORT_TYPES = {
 def received(user):
     """Messages that reached this person (or were meant to), newest first.
 
-    Failed deliveries stay: the SMS did not leave, but the application shows
-    the message anyway.
+    Sorted by the time the person got it (a retry can come later than the
+    start of the sending). Failed deliveries stay: the SMS did not leave, but
+    the application shows the message anyway.
     """
     return (
         Delivery.objects.filter(
@@ -53,29 +55,13 @@ def received(user):
             campaign__status__in=(Campaign.Status.SENDING, Campaign.Status.SENT),
         )
         .select_related("campaign")
-        .order_by("-campaign__started_at", "-pk")
+        .annotate(received_at=Coalesce("sent_at", "campaign__started_at"))
+        .order_by(F("received_at").desc(nulls_last=True), "-pk")
     )
-
-
-def _personal():
-    """Sent to this person by name or to the room, not to everyone or a whole floor."""
-    by_name = Exists(
-        Campaign.people.through.objects.filter(
-            campaign_id=OuterRef("campaign_id"), user_id=OuterRef("recipient_id")
-        )
-    )
-    by_room = Exists(
-        Campaign.rooms.through.objects.filter(
-            campaign_id=OuterRef("campaign_id"), room__number=OuterRef("room_number")
-        )
-    )
-    return Q(campaign__everyone=False) & (Q(by_name) | Q(by_room))
 
 
 def inbox(user, key="all"):
-    deliveries = received(user).annotate(
-        personal=ExpressionWrapper(_personal(), output_field=BooleanField())
-    )
+    deliveries = received(user)
     if key == "mine":
         return deliveries.filter(personal=True)
     if key in FILTER_KEYS - {"all"}:
@@ -83,14 +69,15 @@ def inbox(user, key="all"):
     return deliveries
 
 
-def unread_count(user):
+def unread_count(user, key="all"):
     if not user.is_authenticated:
         return 0
-    return received(user).filter(read_at__isnull=True).count()
+    return inbox(user, key).filter(read_at__isnull=True).count()
 
 
-def mark_all_read(user):
-    return received(user).filter(read_at__isnull=True).update(read_at=timezone.now())
+def mark_all_read(user, key="all"):
+    """Only the messages of the list shown: the others were not seen."""
+    return inbox(user, key).filter(read_at__isnull=True).update(read_at=timezone.now())
 
 
 @dataclass
@@ -110,7 +97,7 @@ class Item:
 
     @property
     def when(self):
-        return self.delivery.sent_at or self.campaign.started_at
+        return self.delivery.received_at
 
     @property
     def answer_label(self):

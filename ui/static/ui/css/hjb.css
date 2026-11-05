@@ -1470,12 +1470,31 @@
     border: 1px solid var(--line);
     border-radius: var(--r-large);
     background: var(--surface);
-    color: var(--ink);
-    text-decoration: none;
+  }
+
+  .inbox__item p {
+    margin: 0;
   }
 
   .inbox__item:hover {
     border-color: var(--control);
+  }
+
+  /* The whole card opens the message, but the link name stays the title */
+  .inbox__title::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  .inbox__title:focus-visible {
+    outline: none;
+  }
+
+  .inbox__item:has(.inbox__title:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
   }
 
   /* Unread: a dot, and the title in bold (not color alone) */
@@ -1498,7 +1517,9 @@
   }
 
   .inbox__title {
+    color: var(--ink);
     font-weight: 400;
+    text-decoration: none;
     overflow-wrap: anywhere;
   }
 
@@ -1548,6 +1569,14 @@
     position: absolute;
     inset-block-start: 0.25rem;
     inset-inline-start: calc(50% + 0.375rem);
+  }
+
+  /* High contrast mode removes backgrounds: keep the unread dot */
+  @media (forced-colors: active) {
+    .inbox__item--unread::before {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
   }
 
   /* Notification settings (card T19) */
