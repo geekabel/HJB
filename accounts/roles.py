@@ -98,7 +98,7 @@ def install_groups(apps=global_apps, using="default"):
         group.permissions.set([permissions[codename] for codename in codenames])
 
 
-def create_groups_after_migrate(sender, apps, using, **kwargs):
+def create_groups_after_migrate(sender, apps=global_apps, using="default", **kwargs):
     """post_migrate signal handler (connected in AccountsConfig.ready)."""
     install_groups(apps=apps, using=using)
 

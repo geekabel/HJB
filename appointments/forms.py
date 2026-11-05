@@ -7,9 +7,17 @@ from .models import Absence, EducatorSettings
 
 
 class SettingsForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["reply_hours"].required = False  # empty: the usual hours
+
+    def clean_reply_hours(self):
+        value = " ".join(self.cleaned_data.get("reply_hours", "").split())
+        return value or EducatorSettings._meta.get_field("reply_hours").default
+
     class Meta:
         model = EducatorSettings
-        fields = ["slot_minutes", "notice"]
+        fields = ["slot_minutes", "notice", "reply_hours"]
         help_texts = {
             "notice": "« La veille » : pas de rendez-vous pris le jour même.",
         }

@@ -14,11 +14,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_safe
 
 from access.session_policy import is_resident
 
-from . import booking
+from . import booking, direct
+from .availability import settings_of
 from .models import Appointment, EducatorSettings
 
 ANY = "libre"
@@ -124,6 +126,12 @@ def book(request):
                 "length": length,
                 "reasons": Appointment.Reason.choices,
                 "upcoming": booking.upcoming(request.user),
+                "conversations": direct.with_unread(
+                    direct.resident_conversations(request.user).select_related("educator"),
+                    request.user,
+                ),
+                # Write to any educator, even one without open times (card T28).
+                "writable": direct.educators(),
             },
         )
     )
@@ -140,5 +148,42 @@ def detail(request, pk):
             request,
             "appointments/detail.html",
             {"active_nav": "appointments", "meeting": meeting},
+        )
+    )
+
+
+@login_required
+@sensitive_post_parameters("text")  # never in an error report
+@require_http_methods(["GET", "POST"])
+def write(request, educator_pk):
+    """Direct messages with one educator (card T28)."""
+    if not is_resident(request.user):
+        return redirect("home")
+    educator = get_object_or_404(direct.educators(), pk=educator_pk)
+    conversation = direct.conversation_of(request.user, educator)
+    text = ""
+    if request.method == "POST":
+        text = request.POST.get("text", "")
+        try:
+            direct.send(conversation, request.user, text, resident=request.user, educator=educator)
+        except direct.MessageRefused as refused:
+            messages.warning(request, str(refused))
+        else:
+            messages.success(request, "Message envoyé.")
+            return redirect(reverse("rdv:write", args=[educator.pk]) + "#last-message")
+    new_ids = direct.mark_read(conversation, request.user) if conversation else []
+    return _page(
+        render(
+            request,
+            "appointments/write.html",
+            {
+                "active_nav": "appointments",
+                "educator": educator,
+                "reply_hours": settings_of(educator).reply_hours,
+                "thread": conversation.messages.select_related("author") if conversation else [],
+                "text": text,
+                "max_length": direct.MAX_LENGTH,
+                "new_ids": new_ids,
+            },
         )
     )

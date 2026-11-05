@@ -52,8 +52,24 @@
       <h2 id="settings-title" class="card__title">Réglages</h2>
       {{ form.slot_minutes.as_field_group }}
       {{ form.notice.as_field_group }}
+      {{ form.reply_hours.as_field_group }}
       <button class="button" type="submit">{% icon "check" %}Enregistrer</button>
     </section>
+    {% if is_educator %}
+    <section class="card stack" aria-labelledby="direct-title">
+      <h2 id="direct-title" class="card__title">Messages directs</h2>
+      {% if conversations %}
+      <ul class="plain-list stack stack--tight">
+        {% for item in conversations %}
+        <li><a href="{% url 'appointments:conversation' item.pk %}">{{ item.resident.get_full_name|default:item.resident.get_username }}</a>{% if item.unread %} <span class="counter">{{ item.unread }}<span class="visually-hidden"> non lu{{ item.unread|pluralize }}</span></span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted text-small">Aucun message pour le moment.</p>
+      {% endif %}
+      <a href="{% url 'appointments:conversations' %}">Tous les messages directs</a>
+    </section>
+    {% endif %}
   </aside>
 </form>
 

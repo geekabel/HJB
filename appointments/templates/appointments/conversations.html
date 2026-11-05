@@ -1,0 +1,17 @@
+{% extends "ui/staff.html" %}
+{% block title %}Messages directs{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'appointments:availability' %}">Mes disponibilités</a>
+<header class="page-header">
+  <h1>Messages directs</h1>
+</header>
+{% if conversations %}
+<ul class="plain-list stack">
+  {% for item in conversations %}
+  <li><a class="card card--link rdv-line" href="{% url 'appointments:conversation' item.pk %}"><span><strong>{{ item.resident.get_full_name|default:item.resident.get_username }}</strong><br><span class="text-muted text-small">Dernier message le {{ item.updated_at|date:"j F à H:i" }}</span></span>{% if item.unread %}<span class="visually-hidden">, </span><span class="counter">{{ item.unread }}<span class="visually-hidden"> non lu{{ item.unread|pluralize }}</span></span>{% endif %}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="card text-muted">Aucun message pour le moment. Les résidents peuvent vous écrire depuis la page des rendez-vous.</p>
+{% endif %}
+{% endblock %}

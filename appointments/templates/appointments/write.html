@@ -1,0 +1,31 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Écrire à {{ educator.first_name|default:educator.get_username }}{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'rdv:book' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>
+  <h1>Écrire à {{ educator.first_name|default:educator.get_username }}</h1>
+</div>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% else %}{% icon "info" %}{% endif %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<p class="card icon-text">{% icon "clock" %}<span>{{ educator.first_name|default:educator.get_username }} répond en général {{ reply_hours }}.</span></p>
+
+{% include "appointments/_thread.html" with me=user %}
+
+<form class="stack" method="post">
+  {% csrf_token %}
+  <div class="field">
+    <label for="text">Votre message</label>
+    <textarea id="text" name="text" rows="4" maxlength="{{ max_length }}" required aria-describedby="text-help">{{ text }}</textarea>
+    <span class="field__help icon-text" id="text-help">{% icon "lock" %}<span>Lu seulement par {{ educator.first_name|default:educator.get_username }}. Pour une urgence, appelez l'accueil.</span></span>
+  </div>
+  <button class="button button--block" type="submit">{% icon "send" %}Envoyer</button>
+</form>
+{% endblock %}

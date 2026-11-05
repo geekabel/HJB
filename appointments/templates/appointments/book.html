@@ -26,6 +26,17 @@
 </section>
 {% endif %}
 
+{% if conversations %}
+<section class="stack stack--tight" aria-labelledby="conversations-title">
+  <h2 id="conversations-title">Mes messages</h2>
+  <ul class="plain-list stack stack--tight">
+    {% for conversation in conversations %}
+    <li><a class="card card--link rdv-line" href="{% url 'rdv:write' conversation.educator_id %}"><span>Avec {{ conversation.educator.first_name|default:conversation.educator.get_username }}</span>{% if conversation.unread %}<span class="visually-hidden">, </span><span class="counter">{{ conversation.unread }}<span class="visually-hidden"> non lu{{ conversation.unread|pluralize }}</span></span>{% endif %}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if not educators %}
 <p class="card text-muted">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil pour en parler.</p>
 {% else %}
@@ -80,5 +91,16 @@
   <button class="button button--block" type="submit">{% icon "calendar" %}Réserver</button>
 </form>
 {% endif %}
+{% if educator %}
+<a class="button button--secondary button--block" href="{% url 'rdv:write' educator.pk %}">{% icon "message" %}Plutôt écrire à {{ educator.first_name|default:educator.get_username }}</a>
+{% endif %}
+{% endif %}
+{% if writable and not educator %}
+<details class="card">
+  <summary>Écrire à un éducateur</summary>
+  <ul class="plain-list stack stack--tight">
+    {% for person in writable %}<li><a href="{% url 'rdv:write' person.pk %}">Écrire à {{ person.first_name|default:person.get_username }}</a></li>{% endfor %}
+  </ul>
+</details>
 {% endif %}
 {% endblock %}

@@ -29,7 +29,9 @@
     <li><a href="{% url 'inbox:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>{% icon "message" %}Messages{% if unread %}<span class="visually-hidden">, </span><span class="counter"><span aria-hidden="true">{% if unread > 99 %}99+{% else %}{{ unread }}{% endif %}</span><span class="visually-hidden">{{ unread }} non lu{{ unread|pluralize }}</span></span>{% endif %}</a></li>
     {% endwith %}
     <li><a href="#"{% if active_nav == "report" %} aria-current="page"{% endif %}>{% icon "plus" %}Signaler</a></li>
-    <li><a href="{% url 'rdv:book' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>{% icon "calendar" %}Rendez-vous</a></li>
+    {% with direct=unread_direct %}
+    <li><a href="{% url 'rdv:book' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>{% icon "calendar" %}Rendez-vous{% if direct %}<span class="visually-hidden">, </span><span class="counter"><span aria-hidden="true">{% if direct > 99 %}99+{% else %}{{ direct }}{% endif %}</span><span class="visually-hidden">{{ direct }} message{{ direct|pluralize }} non lu{{ direct|pluralize }}</span></span>{% endif %}</a></li>
+    {% endwith %}
     <li><a href="#"{% if active_nav == "account" %} aria-current="page"{% endif %}>{% icon "person" %}Mon compte</a></li>
   </ul>
 </nav>

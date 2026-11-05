@@ -1791,6 +1791,50 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Direct messages (card T28): theirs on the left, mine on the right */
+  .thread {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .thread__message {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    max-width: 85%;
+    padding: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-large) var(--r-large) var(--r-large) var(--r-small);
+    background: var(--surface);
+  }
+
+  .thread__message--mine {
+    align-self: flex-end;
+    border-color: var(--action);
+    border-radius: var(--r-large) var(--r-large) var(--r-small) var(--r-large);
+    background: var(--action-soft);
+  }
+
+  .thread__message p {
+    margin: 0;
+  }
+
+  .thread__meta {
+    color: var(--text-muted);
+  }
+
+  .thread__text {
+    overflow-wrap: anywhere;
+  }
+
+  .thread__new {
+    color: var(--warning-text);
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;

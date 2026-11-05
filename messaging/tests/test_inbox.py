@@ -326,5 +326,7 @@ class InboxEdgeTests(InboxTestCase):
         with CaptureQueriesContext(connection) as queries:
             self.client.get(LIST)
         counts = [q["sql"] for q in queries if q["sql"].startswith("SELECT COUNT(")]
-        self.assertEqual(len(counts), 2)  # the pages, the unread ones
+        # The pages, the unread ones, and the unread direct messages of the
+        # "Rendez-vous" entry of the bar (card T28).
+        self.assertEqual(len(counts), 3)
         self.assertEqual(self.client.head(LIST).status_code, 200)

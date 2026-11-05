@@ -1,0 +1,11 @@
+{% comment %}Messages of a conversation (card T28). Variables: thread, me, new_ids (just read).{% endcomment %}
+{% if thread %}
+<ol class="thread" aria-label="Messages">
+  {% for message in thread %}
+  <li class="thread__message{% if message.author_id == me.pk %} thread__message--mine{% endif %}"{% if forloop.last %} id="last-message"{% endif %}>
+    <p class="thread__meta text-small"><span>{% if message.author_id == me.pk %}Vous{% else %}{{ message.author.first_name|default:message.author.get_username }}{% endif %}</span> · <time datetime="{{ message.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ message.sent_at|date:"j F à H:i" }}</time>{% if message.pk in new_ids %} · <strong class="thread__new">Nouveau</strong>{% endif %}</p>
+    <p class="thread__text" dir="auto">{{ message.text|linebreaksbr }}</p>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}

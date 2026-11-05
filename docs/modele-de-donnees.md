@@ -281,6 +281,7 @@ erDiagram
         int educator_id FK "un par éducateur"
         int slot_minutes "30, 45 ou 60"
         string notice "2h, day_before"
+        string reply_hours "montré aux résidents (T28)"
     }
     APPOINTMENT {
         int id PK
@@ -301,7 +302,7 @@ erDiagram
     CONVERSATION {
         int id PK
         int resident_id FK
-        int staff_member_id FK
+        int educator_id FK "unique avec resident"
         datetime updated_at
     }
     DIRECT_MESSAGE {
