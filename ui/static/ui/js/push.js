@@ -68,17 +68,23 @@
     return;
   }
 
+  function sameKey(subscription) {
+    return window.hjbSameServerKey ? window.hjbSameServerKey(subscription, box.dataset.publicKey) : true;
+  }
+
   function refresh() {
     if (Notification.permission === "denied") {
       show("denied");
       return Promise.resolve();
     }
+    show("loading");
     return navigator.serviceWorker.ready
       .then(function (registration) {
         return registration.pushManager.getSubscription();
       })
       .then(function (subscription) {
-        if (!subscription) {
+        // None, or made with an old server key (its messages would be refused): off.
+        if (!subscription || !sameKey(subscription)) {
           show("off");
           return;
         }
@@ -89,6 +95,7 @@
       })
       .catch(function () {
         show("off");
+        fail("L'état des notifications n'a pas pu être vérifié. Rechargez la page.");
       });
   }
 
@@ -101,9 +108,15 @@
           return null;
         }
         return navigator.serviceWorker.ready.then(function (registration) {
-          return registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: keyBytes(box.dataset.publicKey),
+          return registration.pushManager.getSubscription().then(function (old) {
+            // A subscription made with an old server key must go first (Push API).
+            var cleared = old && !sameKey(old) ? old.unsubscribe() : Promise.resolve();
+            return cleared.then(function () {
+              return registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: keyBytes(box.dataset.publicKey),
+              });
+            });
           });
         });
       })

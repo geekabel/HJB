@@ -4,7 +4,8 @@ from django.db import transaction
 
 from .models import PushSubscription
 
-SESSION_KEY = "push_endpoint"
+SESSION_KEY = "push_endpoint"  # the device of this session, forgotten at logout
+CHECKED_KEY = "push_checked"  # this session already told the server which device it is
 
 
 def forget_devices_after_passkey_delete(sender, instance, **kwargs):

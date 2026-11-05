@@ -11,8 +11,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import PushSubscription
-from .services import endpoint_allowed, save_subscription, send_to_user
-from .signals import SESSION_KEY
+from .services import endpoint_allowed, keys_valid, save_subscription, send_to_user
+from .signals import CHECKED_KEY, SESSION_KEY
 from .vapid import application_server_key
 
 TEST_DELAY = 60  # seconds between two test notifications of the same person
@@ -72,10 +72,12 @@ def subscribe(request):
         return _error("invalid subscription")
     if not all(isinstance(v, str) for v in (endpoint, p256dh, auth, mode)):
         return _error("invalid subscription")
-    if not endpoint_allowed(endpoint) or len(endpoint) > 2048:
+    if not endpoint_allowed(endpoint):
         return _error("unknown push service")
-    if not (0 < len(p256dh) <= 128 and 0 < len(auth) <= 64):
+    if not (len(p256dh) <= 128 and len(auth) <= 64 and keys_valid(p256dh, auth)):
         return _error("invalid keys")
+    # The base page asks once per session (base.html, app.js).
+    request.session[CHECKED_KEY] = True
     if mode == "enable":
         save_subscription(
             request.user,
@@ -84,11 +86,16 @@ def subscribe(request):
             auth=auth,
             user_agent=request.headers.get("User-Agent", ""),
         )
+        messages.success(request, "Notifications activées sur cet appareil.")
     else:
+        # This browser now serves this account: the previous person of a shared
+        # phone stops receiving here, even if their session just expired.
+        PushSubscription.objects.filter(endpoint=endpoint).exclude(user=request.user).delete()
         updated = PushSubscription.objects.filter(user=request.user, endpoint=endpoint).update(
             p256dh=p256dh, auth=auth
         )
         if not updated:
+            request.session.pop(SESSION_KEY, None)
             return JsonResponse({"known": False})
     request.session[SESSION_KEY] = endpoint
     return JsonResponse({"known": True})
@@ -105,6 +112,7 @@ def unsubscribe(request):
     if isinstance(endpoint, str):
         PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
     request.session.pop(SESSION_KEY, None)
+    request.session[CHECKED_KEY] = True
     return JsonResponse({"known": False})
 
 

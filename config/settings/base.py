@@ -72,6 +72,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Public VAPID key for the once-per-session check of app.js (T19).
+                "push.context_processors.push",
             ],
         },
     },

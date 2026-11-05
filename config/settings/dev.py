@@ -44,9 +44,13 @@ WIFI_ENCRYPTION_KEYS = [
 
 # Web Push (T19): a VAPID key derived from the development secret key, unless
 # DJANGO_VAPID_PRIVATE_KEY is set. Never used in production (see prod.py).
+# The scalar is reduced into [1, n - 1], so the key is always valid on P-256.
+_P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+_dev_scalar = (
+    int.from_bytes(hashlib.sha256(b"hjb.vapid:" + SECRET_KEY.encode()).digest()) % (_P256_ORDER - 1)
+    + 1
+)
 VAPID_PRIVATE_KEY = os.environ.get("DJANGO_VAPID_PRIVATE_KEY") or (
-    base64.urlsafe_b64encode(hashlib.sha256(b"hjb.vapid:" + SECRET_KEY.encode()).digest())
-    .rstrip(b"=")
-    .decode()
+    base64.urlsafe_b64encode(_dev_scalar.to_bytes(32, "big")).rstrip(b"=").decode()
 )
 VAPID_CONTACT = os.environ.get("DJANGO_VAPID_CONTACT", "mailto:dev@example.org")

@@ -133,7 +133,7 @@ class SendTests(PushTestCase):
         self.assertEqual(result.removed, 1)
         self.assertFalse(PushSubscription.objects.exists())
 
-    @mock.patch("push.services.webpush", side_effect=requests.ConnectionError())
+    @mock.patch("push.services.webpush", side_effect=push_error(403))
     def test_failures_then_removed(self, webpush):
         self.add()
         with self.assertLogs("push.services", "WARNING") as logs:
@@ -258,20 +258,21 @@ class ViewTests(PushTestCase):
         device = PushSubscription.objects.get()
         self.assertEqual((device.user, device.device), (self.ines, "Navigateur"))
         self.assertEqual(self.client.session["push_endpoint"], CHROME)
-        new_keys = {**KEYS, "auth": "newAuthSecret123"}
+        new_keys = {**KEYS, "auth": "AAAAAAAAAAAAAAAAAAAAAA"}
         response = self.post_json("push:subscribe", {"endpoint": CHROME, "keys": new_keys})
         self.assertEqual(response.json(), {"known": True})
         device.refresh_from_db()
-        self.assertEqual(device.auth, "newAuthSecret123")
+        self.assertEqual(device.auth, "AAAAAAAAAAAAAAAAAAAAAA")
 
-    def test_sync_never_adds_nor_moves_a_device(self):
-        # Shared phone: the browser was subscribed by Inès; Yanis logs in after her.
+    def test_sync_never_adds_a_device_and_stops_the_previous_person(self):
+        # Shared phone: the browser was subscribed by Inès; her session expired and
+        # Yanis logs in after her (review of T19).
         self.add()
         log_in_verified(self.client, self.yanis)
         response = self.post_json("push:subscribe", {"endpoint": CHROME, "keys": KEYS})
         self.assertEqual(response.json(), {"known": False})
-        self.assertEqual(PushSubscription.objects.get().user, self.ines)
-        # Only his own tap on "Activer" moves the device to him.
+        self.assertFalse(PushSubscription.objects.exists())
+        # Only his own tap on "Activer" gives him the device.
         self.post_json("push:subscribe", {"endpoint": CHROME, "keys": KEYS, "mode": "enable"})
         self.assertEqual(PushSubscription.objects.get().user, self.yanis)
 
@@ -330,3 +331,103 @@ class ViewTests(PushTestCase):
         response = self.client.post(reverse("push:test"), follow=True)
         self.assertContains(response, "Attendez une minute")
         self.assertEqual(webpush.call_count, 1)
+
+
+class ReviewTests(PushTestCase):
+    """Cases found by the independent review of T19."""
+
+    def test_endpoint_tricks(self):
+        for url in (
+            "https://attacker.example\\.fcm.googleapis.com/x",
+            "https://fcm.googleapis.com:abc/x",
+            "https://fcm.googleapis.com#@evil.example/x",
+            "https://FCM.googleapis.com/x",
+            "https://fcm.googleapis.com/x y",
+            "https://fcm.googleapis.com/é",
+        ):
+            self.assertFalse(services.endpoint_allowed(url), url)
+        log_in_verified(self.client, self.ines)
+        response = self.client.post(
+            reverse("push:subscribe"),
+            {"endpoint": "https://fcm.googleapis.com:abc/x", "keys": KEYS, "mode": "enable"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_keys_refused(self):
+        self.assertTrue(services.keys_valid(KEYS["p256dh"], KEYS["auth"]))
+        for p256dh, auth in (("!!!!", KEYS["auth"]), ("AAAA", KEYS["auth"]), (KEYS["p256dh"], "x")):
+            self.assertFalse(services.keys_valid(p256dh, auth), (p256dh, auth))
+
+    @mock.patch("push.services.webpush")
+    def test_redirects_are_refused(self, webpush):
+        self.add()
+        services.send_to_user(self.ines, title="t", body="b")
+        self.assertEqual(webpush.call_args.kwargs["requests_session"].max_redirects, 0)
+
+    @mock.patch("push.services.webpush")
+    def test_broken_device_does_not_stop_the_others(self, webpush):
+        good = self.add()
+        PushSubscription.objects.create(
+            user=self.ines, endpoint=SAFARI, p256dh="AAAA", auth=KEYS["auth"]
+        )
+        webpush.side_effect = [None]
+        result = services.send_to_user(self.ines, title="t", body="b")
+        self.assertEqual((result.sent, result.removed), (1, 1))
+        self.assertEqual(list(PushSubscription.objects.all()), [good])
+
+    @mock.patch("push.services.webpush", side_effect=IndexError("bad key"))
+    def test_unexpected_error_is_counted(self, webpush):
+        self.add()
+        with self.assertLogs("push.services", "WARNING"):
+            self.assertEqual(services.send_to_user(self.ines, title="t", body="b").failed, 1)
+        self.assertEqual(PushSubscription.objects.get().failures, 1)
+
+    def test_temporary_errors_keep_the_device(self):
+        self.add()
+        for error in (push_error(503), push_error(429), requests.Timeout()):
+            with (
+                self.subTest(error=error),
+                mock.patch("push.services.webpush", side_effect=error),
+                self.assertLogs("push.services", "WARNING"),
+            ):
+                for _ in range(services.MAX_FAILURES + 1):
+                    services.send_to_user(self.ines, title="t", body="b")
+        self.assertEqual(PushSubscription.objects.get().failures, 0)
+        with mock.patch("push.services.webpush", side_effect=push_error(403)):
+            with self.assertLogs("push.services", "WARNING"):
+                services.send_to_user(self.ines, title="t", body="b")
+        self.assertEqual(PushSubscription.objects.get().failures, 1)
+
+    def test_moved_device_gets_a_new_date(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        device = self.add()
+        PushSubscription.objects.filter(pk=device.pk).update(
+            created_at=timezone.now() - timedelta(days=100)
+        )
+        moved = self.add(self.yanis)
+        self.assertEqual(moved.pk, device.pk)
+        self.assertGreater(moved.created_at, timezone.now() - timedelta(minutes=1))
+
+    def test_pages_ask_once_per_session(self):
+        log_in_verified(self.client, self.ines)
+        home = reverse("home")
+        self.assertContains(self.client.get(home), "data-push-sync=")
+        self.assertContains(self.client.get(home), f'data-push-key="{application_server_key()}"')
+        self.client.post(
+            reverse("push:subscribe"),
+            {"endpoint": CHROME, "keys": KEYS},
+            content_type="application/json",
+        )
+        self.assertNotContains(self.client.get(home), "data-push-sync=")
+
+    def test_dev_key_is_in_range(self):
+        from django.conf import settings
+
+        scalar = int.from_bytes(services._b64url_decode(settings.VAPID_PRIVATE_KEY))
+        self.assertTrue(
+            1 <= scalar < 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+        )

@@ -9,6 +9,7 @@ Docs: https://github.com/web-push-libs/vapid/tree/main/python
 """
 
 import base64
+from functools import lru_cache
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -40,6 +41,11 @@ def vapid():
 
 def application_server_key():
     """The public key given to the browser (applicationServerKey), in base64url."""
+    return _public_key(settings.VAPID_PRIVATE_KEY)
+
+
+@lru_cache(maxsize=4)
+def _public_key(raw):
     point = vapid().public_key.public_bytes(
         serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
     )

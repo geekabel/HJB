@@ -9,12 +9,16 @@ the push service no longer knows (404 or 410) is deleted at once; one that
 fails MAX_FAILURES times in a row too.
 """
 
+import base64
+import binascii
 import json
 import logging
+import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import requests
+from cryptography.hazmat.primitives.asymmetric import ec
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -43,15 +47,35 @@ PUSH_SERVICE_HOSTS = (
 )
 
 
+# Strict form of an endpoint: https, a plain host name, ASCII path and query.
+# A looser check would let "https://evil.example\\.fcm.googleapis.com/" through:
+# urlsplit sees a Google host, requests sends to evil.example.
+ENDPOINT_PATTERN = re.compile(r"^https://([a-z0-9.-]+)(?::443)?/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$")
+
+
 def endpoint_allowed(endpoint):
-    try:
-        parts = urlsplit(endpoint)
-    except ValueError:
+    if not isinstance(endpoint, str) or len(endpoint) > 2048:
         return False
-    host = (parts.hostname or "").lower()
-    if parts.scheme != "https" or parts.port not in (None, 443) or parts.username:
+    match = ENDPOINT_PATTERN.match(endpoint)
+    if not match:
         return False
+    host = match.group(1)
     return any(host == known or host.endswith("." + known) for known in PUSH_SERVICE_HOSTS)
+
+
+def _b64url_decode(value):
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def keys_valid(p256dh, auth):
+    """The keys of the browser: a P-256 public point (65 bytes) and a 16-byte secret."""
+    try:
+        point = _b64url_decode(p256dh)
+        secret = _b64url_decode(auth)
+        ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), point)
+    except (ValueError, TypeError, binascii.Error):
+        return False
+    return len(point) == 65 and point[0] == 4 and len(secret) == 16
 
 
 def device_label(user_agent):
@@ -99,6 +123,8 @@ def save_subscription(user, *, endpoint, p256dh, auth, user_agent=""):
             "auth": auth,
             "device": device_label(user_agent)[:100],
             "failures": 0,
+            # A device moved to a new person starts a new life (list date, pruning order).
+            "created_at": timezone.now(),
         },
     )
     extra = PushSubscription.objects.filter(user=user).order_by("-created_at")[MAX_DEVICES:]
@@ -132,15 +158,25 @@ def send_to_user(user, *, title, body, url="/", tag="", urgency="normal"):
     payload = _payload(title, body, url, tag)
     key = vapid()
     result = SendResult()
-    for subscription in PushSubscription.objects.filter(user=user):
-        outcome = _send_one(subscription, payload, key, urgency)
-        setattr(result, outcome, getattr(result, outcome) + 1)
+    with requests.Session() as session:
+        # A push service answers directly: a redirect is refused, so the server
+        # never follows one to another address.
+        session.max_redirects = 0
+        for subscription in PushSubscription.objects.filter(user=user):
+            outcome = _send_one(subscription, payload, key, urgency, session)
+            setattr(result, outcome, getattr(result, outcome) + 1)
     return result
 
 
-def _send_one(subscription, payload, key, urgency):
+# Answers that say "try later": they never count toward the removal of a device.
+TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
+
+
+def _send_one(subscription, payload, key, urgency, session):
     host = urlsplit(subscription.endpoint).hostname
-    if not endpoint_allowed(subscription.endpoint):
+    if not endpoint_allowed(subscription.endpoint) or not keys_valid(
+        subscription.p256dh, subscription.auth
+    ):
         subscription.delete()
         return "removed"
     try:
@@ -152,6 +188,7 @@ def _send_one(subscription, payload, key, urgency):
             ttl=TTL,
             headers={"Urgency": urgency},
             timeout=TIMEOUT,
+            requests_session=session,
         )
     except WebPushException as error:
         status = error.response.status_code if error.response is not None else None
@@ -160,8 +197,14 @@ def _send_one(subscription, payload, key, urgency):
             subscription.delete()
             return "removed"
         logger.warning("Push to %s failed with status %s", host, status)
+        if status in TRANSIENT_STATUSES:
+            return "failed"
         return _count_failure(subscription)
-    except requests.RequestException as error:
+    except (requests.ConnectionError, requests.Timeout) as error:
+        # The push service is down or slow: try again next time, keep the device.
+        logger.warning("Push to %s failed: %s", host, type(error).__name__)
+        return "failed"
+    except Exception as error:  # a broken device must not stop the others
         logger.warning("Push to %s failed: %s", host, type(error).__name__)
         return _count_failure(subscription)
     subscription.last_success_at = timezone.now()
