@@ -15,3 +15,18 @@ class FormulaireCode(forms.Form):
             }
         ),
     )
+
+
+class FormulaireCodeSms(forms.Form):
+    code = forms.CharField(
+        label="Code reçu par SMS",
+        max_length=12,
+        help_text="6 chiffres.",
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "one-time-code",
+                "inputmode": "numeric",
+                "class": "champ-code",
+            }
+        ),
+    )

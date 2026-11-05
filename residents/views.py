@@ -5,6 +5,7 @@ Administration). Création, modification, import et départ :
 ``comptes.gerer_residents`` (Accueil, Administration).
 """
 
+import logging
 import secrets
 import time
 
@@ -46,6 +47,8 @@ from .importation import (
     vers_session,
 )
 from .models import ImportResidents
+
+journal_erreurs = logging.getLogger(__name__)
 
 RESIDENTS_PAR_PAGE = 50
 SANS_CHAMBRE = "sans"
@@ -205,6 +208,9 @@ def fiche(request, pk):
             "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
             "activation": etat_activation(resident),
+            "jeton_code": jeton_code_activation(request, resident)
+            if request.user.has_perm("comptes.generer_code_activation")
+            else "",
             "dernier_depart": resident.sejours.filter(depart__isnull=False)
             .order_by("-depart")
             .values_list("depart", flat=True)
@@ -275,22 +281,45 @@ def retour(request, pk):
     )
 
 
+CLE_JETONS_CODE = "jetons_code_activation"
+JETONS_MAX = 10
+
+
+def jeton_code_activation(request, resident):
+    """Jeton à usage unique pour le bouton « Générer un code » de la fiche.
+
+    Recharger la page du code renvoie le même jeton, déjà consommé : aucun
+    nouveau code ne remplace celui déjà remis. Le code n'est jamais gardé en
+    clair, ni en base ni dans la session.
+    """
+    jeton = secrets.token_urlsafe(16)
+    jetons = request.session.get(CLE_JETONS_CODE, [])[-(JETONS_MAX - 1) :]
+    request.session[CLE_JETONS_CODE] = [*jetons, [jeton, resident.pk]]
+    return jeton
+
+
 @require_POST
 @login_required
 @permission_required("comptes.generer_code_activation", raise_exception=True)
 def code_activation(request, pk):
-    """Génère un code et l'affiche une seule fois, en page imprimable.
-
-    Réponse à un POST, jamais mise en cache : le code ne peut pas être
-    réaffiché (on ne garde que son empreinte).
-    """
+    """Génère un code et l'affiche une seule fois, en page imprimable, jamais mise en cache."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
+    jetons = request.session.get(CLE_JETONS_CODE, [])
+    attendu = [request.POST.get("jeton", ""), resident.pk]
+    if attendu not in jetons:
+        messages.info(
+            request,
+            "Ce code a déjà été généré : il reste valable. "
+            "S'il ne s'est pas affiché ou s'il est perdu, générez-en un nouveau.",
+        )
+        return redirect("residents:fiche", pk=resident.pk)
+    request.session[CLE_JETONS_CODE] = [j for j in jetons if j != attendu]
     if not resident.is_active:
         messages.info(request, "Ce compte est désactivé : enregistrez d'abord le retour.")
         return redirect("residents:fiche", pk=resident.pk)
     code = generer_code(resident, par=request.user, requete=request)
-    lien = request.build_absolute_uri(reverse("activation:saisie")) + "#" + code
-    qr = segno.make_qr(lien, error="m").svg_inline(
+    adresse = request.build_absolute_uri(reverse("activation:saisie"))
+    qr = segno.make_qr(f"{adresse}#{code}", error="m").svg_inline(
         scale=4, title=f"Code QR pour activer le compte de {resident.get_full_name()}"
     )
     reponse = render(
@@ -300,7 +329,7 @@ def code_activation(request, pk):
             "actif": "residents",
             "resident": resident,
             "code": code,
-            "adresse": request.build_absolute_uri(reverse("activation:saisie")),
+            "adresse": adresse,
             "expire_le": timezone.now() + DUREE_VALIDITE,
             "qr": mark_safe(qr),  # SVG produit par segno à partir de notre propre lien
         },
@@ -383,13 +412,26 @@ def _confirmer(request, import_en_cours, lignes):
     return None
 
 
+CODES_SMS_MAX = 20  # au-delà, la page attendrait trop longtemps les fournisseurs
+
+
 def _envoyer_codes(request, residents):
     """Option de l'import : un code d'activation par SMS aux nouveaux qui ont un numéro."""
     adresse = request.build_absolute_uri(reverse("activation:saisie"))
     avec_numero = [r for r in residents if r.telephone]
-    envoyes = sum(
-        envoyer_code_par_sms(r, adresse, par=request.user, requete=request) for r in avec_numero
-    )
+    if len(avec_numero) > CODES_SMS_MAX:
+        messages.warning(
+            request,
+            f"Plus de {CODES_SMS_MAX} codes à envoyer : aucun SMS n'est parti. "
+            "Remettez les codes à l'accueil, ou envoyez-les depuis chaque fiche.",
+        )
+        return
+    envoyes = 0
+    for resident in avec_numero:
+        try:
+            envoyes += envoyer_code_par_sms(resident, adresse, par=request.user, requete=request)
+        except Exception:  # une panne imprévue ne doit pas cacher l'import réussi
+            journal_erreurs.exception("Envoi du code d'activation impossible")
     if envoyes:
         s = "s" if envoyes > 1 else ""
         messages.success(request, f"{envoyes} code{s} d'activation envoyé{s} par SMS.")

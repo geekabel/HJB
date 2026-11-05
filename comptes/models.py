@@ -64,6 +64,13 @@ class User(AbstractUser):
         validators=[valider_e164],
         help_text="Saisie libre (06 12 34 56 78) ; enregistré au format international.",
     )
+    telephone_verifie = models.CharField(
+        "numéro vérifié",
+        max_length=16,
+        blank=True,
+        help_text="Confirmé par code SMS. S'il diffère du numéro actuel, rien n'est vérifié.",
+    )
+    telephone_verifie_le = models.DateTimeField("téléphone vérifié le", null=True, blank=True)
 
     objects = GestionnaireUtilisateurs()
 
@@ -118,6 +125,20 @@ class User(AbstractUser):
         if not self.is_active:
             return EtatCompte.DESACTIVE
         return EtatCompte.ACTIVE if self.last_login else EtatCompte.EN_ATTENTE
+
+    @property
+    def telephone_est_verifie(self):
+        """Vrai seulement si le numéro actuel est celui qui a été vérifié.
+
+        On compare les numéros au lieu de surveiller les modifications : la règle
+        tient quelle que soit la façon dont le numéro change (fiche,
+        administration, import, update() en base).
+        """
+        return bool(
+            self.telephone
+            and self.telephone_verifie_le
+            and self.telephone_verifie == self.telephone
+        )
 
     @property
     def telephone_affiche(self):
@@ -185,3 +206,28 @@ class EchecActivation(models.Model):
 
     def __str__(self):
         return f"Échec depuis {self.adresse_ip or '?'} ({self.cree_le:%d/%m/%Y %H:%M})"
+
+
+class VerificationTelephone(models.Model):
+    """Code SMS à 6 chiffres envoyé pendant l'activation (carte T12).
+
+    Seule l'empreinte HMAC du code est gardée. Valable 10 minutes, 5 essais.
+    """
+
+    utilisateur = models.ForeignKey(
+        "User", on_delete=models.CASCADE, related_name="verifications_telephone"
+    )
+    telephone = models.CharField("numéro", max_length=16)
+    empreinte = models.CharField(max_length=64, editable=False)
+    cree_le = models.DateTimeField("envoyé le", auto_now_add=True, db_index=True)
+    expire_le = models.DateTimeField("expire le")
+    tentatives = models.PositiveSmallIntegerField(default=0)
+    verifie_le = models.DateTimeField("vérifié le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "vérification de téléphone"
+        verbose_name_plural = "vérifications de téléphone"
+        ordering = ["-cree_le", "-id"]
+
+    def __str__(self):
+        return f"Vérification pour {self.utilisateur} ({self.cree_le:%d/%m/%Y %H:%M})"

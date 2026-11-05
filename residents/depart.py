@@ -133,7 +133,14 @@ def enregistrer_retour(resident, chambre, le, *, requete=None):
         if le > timezone.localdate():
             raise ValidationError("La date ne peut pas être dans le futur.", code="retour_futur")
         resident.is_active = True
-        resident.save(update_fields=["is_active"])
+        # Le compte doit être activé de nouveau (code, téléphone, clé d'accès) :
+        # sans cela, il paraîtrait « activé » à cause de l'ancienne connexion.
+        resident.last_login = None
+        resident.telephone_verifie = ""
+        resident.telephone_verifie_le = None
+        resident.save(
+            update_fields=["is_active", "last_login", "telephone_verifie", "telephone_verifie_le"]
+        )
         sejour = affecter_chambre(resident, chambre, le)
         journaliser(
             Action.RETOUR_RESIDENT,

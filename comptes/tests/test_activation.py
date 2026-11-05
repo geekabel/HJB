@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from comptes.activation import (
     ECHECS_MAX,
+    ECHECS_MAX_ADRESSE,
     ErreurActivation,
     empreinte,
     envoyer_code_par_sms,
@@ -98,11 +99,20 @@ class CodeTests(TestCase):
         ):
             utiliser_code(code, IP)
 
-    def test_limite_d_essais_par_adresse(self):
+    def test_limite_par_navigateur(self):
         code = generer_code(self.awa)
-        for _ in range(ECHECS_MAX):
-            with self.assertRaises(ErreurActivation):
-                utiliser_code("AAAAA-AAAAA", IP)
+        with self.assertRaises(ErreurActivation) as ctx:
+            utiliser_code(code, IP, echecs_session=ECHECS_MAX)
+        self.assertEqual(ctx.exception.code, "trop_essais")
+        self.assertEqual(
+            utiliser_code(code, IP, echecs_session=ECHECS_MAX - 1).utilisateur, self.awa
+        )
+
+    def test_limite_par_adresse(self):
+        code = generer_code(self.awa)
+        EchecActivation.objects.bulk_create(
+            [EchecActivation(adresse_ip=IP) for _ in range(ECHECS_MAX_ADRESSE)]
+        )
         with self.assertRaises(ErreurActivation) as ctx:
             utiliser_code(code, IP)  # même le bon code est refusé pendant une heure
         self.assertEqual(ctx.exception.code, "trop_essais")
@@ -111,6 +121,34 @@ class CodeTests(TestCase):
         # Après une heure, l'adresse est débloquée.
         EchecActivation.objects.update(cree_le=timezone.now() - timedelta(hours=2))
         self.assertEqual(utiliser_code(generer_code(self.awa), IP).utilisateur, self.awa)
+
+    def test_quelques_fautes_sur_le_wifi_partage_ne_bloquent_personne(self):
+        code = generer_code(self.awa)
+        for _ in range(ECHECS_MAX + 5):  # plusieurs résidents se trompent, chacun une fois
+            with self.assertRaises(ErreurActivation):
+                utiliser_code("AAAAA-AAAAA", IP)
+        self.assertEqual(utiliser_code(code, IP).utilisateur, self.awa)
+
+    def test_code_annule_pendant_la_saisie(self):
+        ancien = generer_code(self.awa)
+        original = CodeActivation.objects.valides
+
+        appels = []
+
+        def valides_puis_nouveau_code(*args, **kwargs):
+            if appels:  # appels suivants (dont ceux de generer_code) : comportement normal
+                return original(*args, **kwargs)
+            appels.append(1)
+            resultat = list(original(*args, **kwargs))
+            generer_code(self.awa)  # l'accueil remplace le code à ce moment-là
+            return CodeActivation.objects.filter(pk__in=[c.pk for c in resultat])
+
+        with (
+            mock.patch.object(CodeActivation.objects, "valides", valides_puis_nouveau_code),
+            self.assertRaises(ErreurActivation),
+        ):
+            utiliser_code(ancien, IP)
+        self.assertFalse(CodeActivation.objects.filter(utilise_le__isnull=False).exists())
 
     def test_menage_des_vieux_echecs(self):
         EchecActivation.objects.create(adresse_ip=IP)

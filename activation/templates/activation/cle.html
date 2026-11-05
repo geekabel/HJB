@@ -1,0 +1,10 @@
+{% extends "activation/base_activation.html" %}
+{% load icones %}
+{% block titre %}Téléphone vérifié{% endblock %}
+{% block etape %}
+<div class="alerte alerte--succes" role="status">{% icone "coche" %}<p>Votre téléphone est vérifié. Merci {{ personne.first_name }}.</p></div>
+<header class="pile pile--serree">
+  <h1>Dernière étape : votre clé d'accès</h1>
+  <p class="texte-doux">La création de la clé d'accès arrive bientôt dans l'application. Vous pourrez alors vous connecter avec Face ID, votre empreinte ou le code de votre téléphone.</p>
+</header>
+{% endblock %}

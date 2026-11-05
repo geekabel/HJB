@@ -73,7 +73,8 @@ erDiagram
         string telephone UK "portable, format E.164, unique s'il est renseigné"
         string email "facultatif"
         bool is_active
-        datetime telephone_verifie_le "carte T12"
+        string telephone_verifie "numéro confirmé par SMS ; vérifié seulement s'il égale telephone"
+        datetime telephone_verifie_le
     }
     ETAGE {
         int id PK
@@ -129,8 +130,10 @@ erDiagram
     VERIFICATION_TELEPHONE {
         int id PK
         int utilisateur_id FK
-        string code_hache
-        int tentatives
+        string telephone "numéro au moment de l'envoi"
+        string empreinte "HMAC-SHA256, jamais le code"
+        datetime cree_le
+        int tentatives "5 au plus"
         datetime expire_le "création + 10 min"
         datetime verifie_le
     }

@@ -1,0 +1,11 @@
+{% extends "activation/base_activation.html" %}
+{% load icones %}
+{% block titre %}Numéro à corriger{% endblock %}
+{% block etape %}
+<header class="pile pile--serree">
+  <h1>Ce n'est pas votre numéro ?</h1>
+  <p>Passez à l'accueil avec une pièce d'identité. L'équipe corrigera votre numéro et vous remettra un nouveau code d'activation.</p>
+  <p class="texte-doux">Pour votre sécurité, seul l'accueil peut changer le numéro lié à votre compte.</p>
+</header>
+<a class="bouton bouton--discret" href="{% url 'activation:saisie' %}">J'ai un nouveau code</a>
+{% endblock %}

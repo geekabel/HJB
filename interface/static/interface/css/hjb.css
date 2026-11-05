@@ -944,6 +944,19 @@
   }
 
   /* Bouton aligné sur le bas d'un champ voisin, dans une rangée de formulaire */
+  /* Rangée alignée en haut : icône à côté d'un texte sur plusieurs lignes */
+  .rangee--haut {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .rangee--haut > svg {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--action);
+  }
+
   .rangee:has(> .champ) {
     align-items: flex-end;
   }
