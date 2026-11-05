@@ -296,10 +296,65 @@ class FicheTests(ResidentsTestCase):
         self.assertFormError(
             reponse.context["formulaire"],
             "arrivee",
-            "La date est avant le début du séjour en cours.",
+            "Pour un déménagement, indiquez sa date : après le 01/09/2026, "
+            "jour d'arrivée dans la chambre actuelle.",
         )
         self.assertEqual(sejour_en_cours(self.awa).chambre, self.c312)
         self.assertContains(reponse, "<h1>Awa Koné</h1>", html=True)
+
+    def test_changer_de_chambre_sans_changer_la_date_est_refuse(self):
+        # La date proposée est celle du séjour en cours : l'oublier ne doit pas
+        # effacer l'ancienne chambre de l'historique.
+        reponse = self.client.post(self.url(), self.donnees(chambre=self.c304.pk))
+        self.assertIn("arrivee", reponse.context["formulaire"].errors)
+        self.assertEqual(sejour_en_cours(self.awa).chambre, self.c312)
+        self.assertEqual(self.awa.sejours.count(), 1)
+
+    def test_correction_de_chambre_le_jour_de_l_arrivee(self):
+        aujourd_hui = timezone.localdate()
+        self.client.post(
+            reverse("residents:creer"),
+            {
+                "first_name": "Léa",
+                "last_name": "Moreau",
+                "telephone": "",
+                "email": "",
+                "chambre": self.c304.pk,
+                "arrivee": aujourd_hui.isoformat(),
+            },
+        )
+        lea = User.objects.get(first_name="Léa")
+        c305 = Chambre.objects.create(numero="305", etage=self.e3)
+        self.client.post(
+            self.url(lea),
+            {
+                "first_name": "Léa",
+                "last_name": "Moreau",
+                "telephone": "",
+                "email": "",
+                "chambre": c305.pk,
+                "arrivee": aujourd_hui.isoformat(),
+            },
+        )
+        self.assertEqual(lea.sejours.get().chambre, c305)
+
+    def test_chambre_prise_au_meme_moment(self):
+        # Simule la course : la contrainte en base refuse le second séjour.
+        from unittest import mock
+
+        from django.db import IntegrityError
+
+        with mock.patch("residents.forms.affecter_chambre", side_effect=IntegrityError("unique")):
+            reponse = self.client.post(
+                self.url(), self.donnees(chambre=self.c304.pk, arrivee="2026-11-02")
+            )
+        self.assertFormError(
+            reponse.context["formulaire"],
+            "chambre",
+            "Cette chambre vient d'être attribuée. Choisissez-en une autre.",
+        )
+        self.awa.refresh_from_db()
+        self.assertEqual(sejour_en_cours(self.awa).chambre, self.c312)
 
     def test_chambre_obligatoire_pendant_un_sejour(self):
         reponse = self.client.post(self.url(), self.donnees(chambre=""))
