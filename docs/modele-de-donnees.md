@@ -58,6 +58,7 @@ erDiagram
     USER ||--o{ PARTICIPATION : "a voté"
 
     USER ||--o{ AVAILABILITY : "ouvre"
+    USER ||--o| EDUCATOR_SETTINGS : "règle"
     USER ||--o{ APPOINTMENT : "réserve ou reçoit"
     USER ||--o{ CONVERSATION : "participe"
     CONVERSATION ||--o{ DIRECT_MESSAGE : "contient"
@@ -270,11 +271,15 @@ erDiagram
     AVAILABILITY {
         int id PK
         int educator_id FK
-        int weekday "0 = lundi"
-        time start
+        int weekday "0 = lundi ; répété chaque semaine"
+        time start "par demi-heure, de 8 h à 19 h"
         time end
-        date valid_from
-        date valid_until
+    }
+    EDUCATOR_SETTINGS {
+        int id PK
+        int educator_id FK "un par éducateur"
+        int slot_minutes "30, 45 ou 60"
+        string notice "2h, day_before"
     }
     APPOINTMENT {
         int id PK
