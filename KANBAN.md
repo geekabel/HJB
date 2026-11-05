@@ -69,7 +69,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T12 | Vérification du téléphone par code SMS | E2 Connexion | T10, T11 |
 | T13 | Connexion par clé d'accès (passkey) | E2 Connexion | T12 |
 | T14 | Sécurité de l'espace équipe | E2 Connexion | T04, T13 |
 | T15 | Accès wifi chiffré (équipe) | E3 Wifi | T06, T05 |
@@ -119,6 +118,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T09 | Départ d'un résident | 5 nov. 2026 |
 | T10 | Couche fournisseur SMS | 5 nov. 2026 |
 | T11 | Code d'activation | 5 nov. 2026 |
+| T12 | Vérification du téléphone par code SMS | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -249,13 +249,19 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Page résident /activer/ (étape 1 sur 3) ; le parcours dure une heure au plus, avec une nouvelle clé de session
 - [x] Import (T08) : option « envoyer par SMS un code aux nouveaux », décochée par défaut
 - [x] Retour d'un ancien résident (T09) : choix de la chambre, compte réactivé, puis nouveau code
-- **Notes** : le code QR contient l'adresse avec le code après « # » : le navigateur ne l'envoie jamais au serveur, et la page l'efface de l'adresse. L'option SMS de l'import est moins sûre qu'une remise en main propre (pas de contrôle d'identité) : l'écran le dit. Le code est marqué utilisé dès la saisie ; si la personne s'arrête en route, l'accueil lui en donne un autre. Correctif général : la bordure rouge des champs en erreur ne s'affichait pas (spécificité CSS), c'est réparé. 34 tests.
+- **Notes** : le code QR contient l'adresse avec le code après « # » : le navigateur ne l'envoie jamais au serveur, et la page l'efface de l'adresse. L'option SMS de l'import est moins sûre qu'une remise en main propre (pas de contrôle d'identité) : l'écran le dit. Le code est marqué utilisé dès la saisie ; si la personne s'arrête en route, l'accueil lui en donne un autre. Correctif général : la bordure rouge des champs en erreur ne s'affichait pas (spécificité CSS), c'est réparé.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Un code remplacé ou annulé pendant la saisie passait encore (la mise à jour « usage unique » revérifie maintenant tout). La limite par adresse IP aurait permis à une personne de bloquer tout le wifi de la résidence : 10 échecs par navigateur et 50 par adresse. Recharger la page du code en générait un nouveau et annulait celui déjà remis : la page passe par une redirection et ne s'affiche qu'une fois. Au retour d'un ancien résident, son ancienne connexion ne le fait plus passer pour « activé ». L'envoi des codes par SMS à l'import est limité à 20 et ne peut plus casser l'import. Le lien « Enregistrer un retour » est visible avec le seul droit de gérer les résidents.
 
-#### T12 Vérification du téléphone par code SMS
+#### T12 Vérification du téléphone par code SMS (fait le 5 nov. 2026)
 - **Maquette** : R0.
-- [ ] Code à 6 chiffres haché, valable 10 minutes, 5 essais au plus
-- [ ] Délai avant renvoi
-- [ ] Message clair si le numéro n'est pas le bon : passer à l'accueil
+- **Docs** : [module secrets](https://docs.python.org/3/library/secrets.html), [hmac.compare_digest](https://docs.python.org/3/library/hmac.html#hmac.compare_digest), [chargement des modèles (from_db)](https://docs.djangoproject.com/en/6.1/ref/models/instances/#customizing-model-loading), [expressions F](https://docs.djangoproject.com/en/6.1/ref/models/expressions/#f-expressions).
+- [x] Étape 2 de /activer/ : le code part seulement quand la personne le demande (rien n'est envoyé sur un simple affichage)
+- [x] Code à 6 chiffres (module `secrets`), empreinte HMAC, valable 10 minutes, 5 essais au plus, comptés en base même avec des envois simultanés
+- [x] Délai de 60 secondes avant renvoi, 3 envois par heure au plus ; un nouveau code remplace l'ancien
+- [x] Message clair si le numéro n'est pas le bon (« Ce n'est pas mon numéro » : passer à l'accueil) ou s'il n'y a pas de numéro
+- [x] `telephone_verifie_le` sur le compte, affiché sur la fiche ; remis à vide si le numéro change (fiche, administration, import)
+- [x] Étape 3 : en attendant T13, page « Téléphone vérifié, la clé d'accès arrive bientôt »
+- **Notes** : un SMS qui n'a pas pu partir rend son code inutilisable, mais compte dans la limite horaire (pour ne pas épuiser le crédit SMS). Le code n'est jamais dans les journaux (voir T10). Le champ utilise `autocomplete="one-time-code"` : iOS et Android proposent le code reçu. 21 tests.
 
 #### T13 Connexion par clé d'accès (passkey)
 - **Docs** : django-otp-webauthn (à lire en entier avant de coder), [MDN Web Authentication API](https://developer.mozilla.org/fr/docs/Web/API/Web_Authentication_API).
