@@ -49,3 +49,30 @@ def normaliser_telephone(texte, region=REGION_PAR_DEFAUT):
             code="telephone_non_portable",
         )
     return phonenumbers.format_number(numero, phonenumbers.PhoneNumberFormat.E164)
+
+
+def afficher_telephone(e164, region=REGION_PAR_DEFAUT):
+    """Forme lisible : « 06 12 34 56 78 » pour la France, internationale sinon."""
+    if not e164:
+        return ""
+    numero = phonenumbers.parse(e164, None)
+    if phonenumbers.region_code_for_number(numero) == region:
+        return phonenumbers.format_number(numero, phonenumbers.PhoneNumberFormat.NATIONAL)
+    return phonenumbers.format_number(numero, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+
+
+def masquer_telephone(e164, region=REGION_PAR_DEFAUT):
+    """Cache les chiffres du milieu : « 06 •• •• •• 78 ».
+
+    On garde le premier groupe (indicatif ou 06/07) et les deux derniers
+    chiffres : assez pour reconnaître un numéro, pas pour l'appeler.
+    """
+    texte = afficher_telephone(e164, region)
+    if not texte:
+        return ""
+    debut = texte.find(" ")
+    if debut == -1:
+        debut = 2
+    positions = [i for i, c in enumerate(texte) if c.isdigit() and i > debut]
+    a_cacher = set(positions[:-2])
+    return "".join("•" if i in a_cacher else c for i, c in enumerate(texte))

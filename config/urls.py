@@ -24,4 +24,5 @@ urlpatterns = [
     path("guide/", include("interface.urls")),
     # Espace équipe.
     path("equipe/journal/", include("journal.urls")),
+    path("equipe/residents/", include("residents.urls")),
 ]

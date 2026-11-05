@@ -3,7 +3,7 @@
 {% comment %}
   Gabarit de section de l'espace équipe (ordinateur, se replie sur téléphone).
   Variables : ``actif`` (tableau, messages, signalements, rendezvous, residents).
-  Les liens « # » seront remplacés par les vraies pages (cartes T07, T20, T26, T31, T35).
+  Les liens « # » seront remplacés par les vraies pages (cartes T20, T26, T31, T35).
 {% endcomment %}
 {% block classe_corps %}page-equipe{% endblock %}
 {% block corps %}
@@ -21,7 +21,9 @@
       </a>
     </li>
     <li><a href="#"{% if actif == "rendezvous" %} aria-current="page"{% endif %}>Rendez-vous</a></li>
-    <li><a href="#"{% if actif == "residents" %} aria-current="page"{% endif %}>Résidents et wifi</a></li>
+    {% if perms.comptes.gerer_residents %}
+    <li><a href="{% url 'residents:liste' %}"{% if actif == "residents" %} aria-current="page"{% endif %}>Résidents et wifi</a></li>
+    {% endif %}
     {% if perms.comptes.voir_journal %}
     <li><a href="{% url 'journal:liste' %}"{% if actif == "journal" %} aria-current="page"{% endif %}>Journal d'audit</a></li>
     {% endif %}
@@ -35,6 +37,13 @@
 </nav>
 
 <main id="contenu" class="page-equipe__contenu">
+  {% if messages %}
+  <div class="pile" role="status">
+    {% for message in messages %}
+    <div class="alerte alerte--{{ message.level_tag }}">{% if message.level_tag == "succes" %}{% icone "coche" %}{% elif message.level_tag == "info" %}{% icone "info" %}{% else %}{% icone "alerte" %}{% endif %}<p>{{ message }}</p></div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% block contenu %}{% endblock %}
 </main>
 {% endblock %}

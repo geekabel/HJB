@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 
+from django.contrib.messages import constants as niveaux
+
 # Racine du dépôt : config/settings/base.py -> trois niveaux au-dessus.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -29,6 +31,7 @@ INSTALLED_APPS = [
     "interface",
     "journal",
     "logement",
+    "residents",
 ]
 
 MIDDLEWARE = [
@@ -57,6 +60,9 @@ TEMPLATES = [
         },
     },
 ]
+
+# Formulaires : gabarit de champ du système de design (interface/formulaires.py).
+FORM_RENDERER = "interface.formulaires.RenduHJB"
 
 WSGI_APPLICATION = "config.wsgi.application"
 
@@ -104,6 +110,19 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# Messages : les niveaux prennent le nom des bandeaux du système de design
+# (classes alerte--succes, alerte--info, alerte--attention).
+# https://docs.djangoproject.com/en/6.1/ref/contrib/messages/#message-tags
+
+MESSAGE_TAGS = {
+    niveaux.DEBUG: "info",
+    niveaux.INFO: "info",
+    niveaux.SUCCESS: "succes",
+    niveaux.WARNING: "attention",
+    niveaux.ERROR: "attention",
+}
 
 
 # E-mail : affiché dans la console tant que le fournisseur n'est pas choisi.

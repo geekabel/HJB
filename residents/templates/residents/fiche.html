@@ -1,0 +1,90 @@
+{% extends "interface/equipe.html" %}
+{% load icones %}
+{% block titre %}{% if resident %}{{ resident.get_full_name|default:resident.get_username }}{% else %}Nouveau résident{% endif %}{% endblock %}
+{% block contenu %}
+<a class="lien-retour" href="{% url 'residents:liste' %}">{% icone "retour" %}Tous les résidents</a>
+
+<header class="pile pile--serree">
+  {% if resident %}
+  <h1>{{ resident.get_full_name|default:resident.get_username }}</h1>
+  {% with etat=resident.etat_compte %}
+  <p class="rangee"><span class="badge {% if etat == 'active' %}badge--info{% elif etat == 'en_attente' %}badge--attention{% else %}badge--neutre{% endif %}">{{ etat.label }}</span>{% if formulaire.sejour %}<span class="texte-doux">{{ formulaire.sejour.chambre }} · {{ formulaire.sejour.chambre.etage }}</span>{% else %}<span class="texte-doux">Sans chambre</span>{% endif %}</p>
+  {% endwith %}
+  {% else %}
+  <h1>Nouveau résident</h1>
+  <p class="texte-doux">Le compte sera activé par la personne elle-même, avec le code remis à l'accueil.</p>
+  {% endif %}
+</header>
+
+<div class="fiche">
+  <form class="carte pile pile--aeree" method="post" novalidate>
+    {% csrf_token %}
+    {% if formulaire.errors %}
+    <div class="alerte alerte--attention" role="alert">
+      {% icone "alerte" %}
+      <div class="pile pile--serree">
+        <p><strong>La fiche n'est pas enregistrée.</strong> Corrigez les champs signalés.</p>
+        {% for erreur in formulaire.non_field_errors %}<p>{{ erreur }}</p>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <section class="pile" aria-labelledby="titre-identite">
+      <h2 id="titre-identite">Identité et contact</h2>
+      <div class="grille-auto">
+        {{ formulaire.first_name.as_field_group }}
+        {{ formulaire.last_name.as_field_group }}
+      </div>
+      {{ formulaire.telephone.as_field_group }}
+      {{ formulaire.email.as_field_group }}
+    </section>
+
+    <section class="pile" aria-labelledby="titre-logement">
+      <h2 id="titre-logement">Logement</h2>
+      <div class="grille-auto">
+        {{ formulaire.chambre.as_field_group }}
+        {{ formulaire.arrivee.as_field_group }}
+      </div>
+    </section>
+
+    <div class="rangee">
+      <button class="bouton" type="submit">{% if resident %}Enregistrer{% else %}Créer la fiche{% endif %}</button>
+      <a class="bouton bouton--discret" href="{% if resident %}{% url 'residents:fiche' resident.pk %}{% else %}{% url 'residents:liste' %}{% endif %}">Annuler</a>
+    </div>
+  </form>
+
+  {% if resident %}
+  <div class="pile">
+    <section class="carte pile" aria-labelledby="titre-compte">
+      <h2 id="titre-compte">Compte</h2>
+      <dl class="details">
+        <dt>Téléphone</dt>
+        <dd>{{ resident.telephone_affiche|default:"Aucun" }}</dd>
+        <dt>Fiche créée le</dt>
+        <dd><time datetime="{{ resident.date_joined|date:'Y-m-d' }}">{{ resident.date_joined|date:"j F Y" }}</time></dd>
+        <dt>Dernière connexion</dt>
+        <dd>{% if resident.last_login %}<time datetime="{{ resident.last_login|date:'Y-m-d\TH:i:sO' }}">{{ resident.last_login|date:"j F Y à H:i" }}</time>{% else %}Jamais{% endif %}</dd>
+        <dt>Identifiant interne</dt>
+        <dd>{{ resident.get_username }}</dd>
+      </dl>
+    </section>
+
+    <section class="carte pile" aria-labelledby="titre-sejours">
+      <h2 id="titre-sejours">Séjours</h2>
+      {% if sejours %}
+      <ul class="liste-simple">
+        {% for s in sejours %}
+        <li class="pile pile--serree">
+          <strong>{{ s.chambre }} · {{ s.chambre.etage }}</strong>
+          <span class="texte-doux">{% if s.depart %}Du <time datetime="{{ s.arrivee|date:'Y-m-d' }}">{{ s.arrivee|date:"j F Y" }}</time> au <time datetime="{{ s.depart|date:'Y-m-d' }}">{{ s.depart|date:"j F Y" }}</time>{% else %}Depuis le <time datetime="{{ s.arrivee|date:'Y-m-d' }}">{{ s.arrivee|date:"j F Y" }}</time>{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="texte-doux">Aucun séjour pour l'instant.</p>
+      {% endif %}
+    </section>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
