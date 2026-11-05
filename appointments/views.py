@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from accounts.roles import Role
 from housing.models import Stay
 
-from . import availability, direct
+from . import availability, booking, direct
 from .forms import AbsenceForm, SettingsForm
 from .holidays import holiday_name
 from .models import Absence, Appointment, Availability, Conversation
@@ -217,3 +217,18 @@ def conversation(request, pk):
             },
         )
     )
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_POST
+def cancel_meeting(request, pk):
+    """The educator cancels one of their meetings (card T29); the resident is told."""
+    meeting = get_object_or_404(Appointment, pk=pk, educator=request.user)
+    try:
+        booking.cancel(meeting, request.user)
+    except booking.CancelRefused as refused:
+        messages.warning(request, str(refused))
+    else:
+        messages.success(request, "Rendez-vous annulé. La personne est prévenue.")
+    return redirect("appointments:availability")

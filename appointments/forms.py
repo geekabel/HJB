@@ -17,7 +17,7 @@ class SettingsForm(forms.ModelForm):
 
     class Meta:
         model = EducatorSettings
-        fields = ["slot_minutes", "notice", "reply_hours"]
+        fields = ["slot_minutes", "notice", "remind_residents", "reply_hours"]
         help_texts = {
             "notice": "« La veille » : pas de rendez-vous pris le jour même.",
         }

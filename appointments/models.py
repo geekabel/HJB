@@ -7,6 +7,8 @@ T27: a resident books a meeting (Appointment); an educator closes days
 (Absence); French public holidays are closed too (holidays.py).
 T28: a resident and an educator write to each other (Conversation,
 DirectMessage); the educator shows when they usually answer (reply_hours).
+T29: reminders the day before and one hour before, and cancellation by the
+resident or the educator, with a notice to the other person.
 """
 
 from django.conf import settings
@@ -31,6 +33,9 @@ class EducatorSettings(models.Model):
     )
     notice = models.CharField(
         "réserver au plus tard", max_length=12, choices=Notice.choices, default=Notice.TWO_HOURS
+    )
+    remind_residents = models.BooleanField(
+        "rappel au résident la veille et 1 h avant", default=True
     )
     reply_hours = models.CharField(
         "heures de réponse aux messages",
@@ -126,6 +131,19 @@ class Appointment(models.Model):
         "état", max_length=12, choices=Status.choices, default=Status.CONFIRMED
     )
     created_at = models.DateTimeField("pris le", auto_now_add=True)
+    # Reminders (card T29): claimed before they leave, never sent twice.
+    day_before_sent_at = models.DateTimeField(null=True, blank=True, editable=False)
+    hour_before_sent_at = models.DateTimeField(null=True, blank=True, editable=False)
+    cancelled_at = models.DateTimeField("annulé le", null=True, blank=True)
+    # Empty for a cancellation by the system (a departure).
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="annulé par",
+    )
 
     class Meta:
         verbose_name = "rendez-vous"

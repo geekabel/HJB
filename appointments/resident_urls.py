@@ -8,4 +8,5 @@ urlpatterns = [
     path("", resident_views.book, name="book"),
     path("<int:pk>/", resident_views.detail, name="detail"),
     path("ecrire/<int:educator_pk>/", resident_views.write, name="write"),
+    path("<int:pk>/annuler/", resident_views.cancel, name="cancel"),
 ]

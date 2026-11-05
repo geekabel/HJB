@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 from access.session_policy import is_resident
 
@@ -147,7 +147,13 @@ def detail(request, pk):
         render(
             request,
             "appointments/detail.html",
-            {"active_nav": "appointments", "meeting": meeting},
+            {
+                "active_nav": "appointments",
+                "meeting": meeting,
+                "can_cancel": meeting.status == Appointment.Status.CONFIRMED
+                and meeting.start > timezone.now(),
+                "reminders": settings_of(meeting.educator).remind_residents,
+            },
         )
     )
 
@@ -187,3 +193,17 @@ def write(request, educator_pk):
             },
         )
     )
+
+
+@login_required
+@require_POST
+def cancel(request, pk):
+    """The resident cancels their meeting (card T29); the educator is told."""
+    meeting = get_object_or_404(Appointment, pk=pk, resident=request.user)
+    try:
+        booking.cancel(meeting, request.user)
+    except booking.CancelRefused as refused:
+        messages.warning(request, str(refused))
+    else:
+        messages.success(request, "Rendez-vous annulé. L'éducateur est prévenu.")
+    return redirect("rdv:detail", pk=meeting.pk)

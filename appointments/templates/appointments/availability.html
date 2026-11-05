@@ -83,6 +83,13 @@
         <strong><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}–{{ meeting.end|time:"H:i" }}</time></strong>
         <span>{{ meeting.resident.get_full_name|default:meeting.resident.get_username }}{% if meeting.room %} · chambre {{ meeting.room }}{% endif %}</span>
         <span class="text-muted text-small">Motif : {{ meeting.get_reason_display }}{% if meeting.holiday %} · jour férié ({{ meeting.holiday }}){% endif %}</span>
+        <details>
+          <summary class="text-small">Annuler<span class="visually-hidden"> le rendez-vous du {{ meeting.start|date:"j F à H:i" }}</span></summary>
+          <form method="post" action="{% url 'appointments:cancel_meeting' meeting.pk %}">
+            {% csrf_token %}
+            <button class="button button--danger" type="submit">Oui, annuler et prévenir la personne</button>
+          </form>
+        </details>
       </li>
       {% endfor %}
     </ul>

@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T29 | Rappels et annulation de rendez-vous | E6 Rendez-vous | T27, T19 |
 | T30 | Signaler un problème | E7 Signalements | T13 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T26 | Disponibilités des éducateurs | 5 nov. 2026 |
 | T27 | Réservation d'un rendez-vous | 5 nov. 2026 |
 | T28 | Messages directs avec un éducateur | 5 nov. 2026 |
+| T29 | Rappels et annulation de rendez-vous | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -466,9 +466,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : le résident écrit à n'importe quel éducateur actif, même sans créneau ouvert. L'éducateur répond dans les conversations ouvertes par les résidents. La conservation des messages sera réglée avec le RGPD (T36).
 - **Revue** : corrigé après la revue indépendante. La file des tâches ne reçoit plus que l'identifiant du message (ses lignes sont visibles dans l'administration : plus de « qui écrit à qui »). Compteurs selon le rôle, et seulement pour les éducateurs encore actifs (plus de compteur bloqué). Plus de message à une personne qui a quitté la résidence (le formulaire disparaît, avec une explication). Texte jamais dans un rapport d'erreur, caractère nul refusé, message invisible refusé, sauts de ligne comptés comme dans le navigateur et regroupés, sens d'écriture automatique. 60 messages par jour en tout, une seule notification tant que l'autre n'a pas lu. Liste « Écrire à un éducateur » même sans créneau ouvert. Titre neutre « Message direct » dans l'historique. Marque « Nouveau » sur les messages qu'on vient d'ouvrir, retour au dernier message après l'envoi, conversations non lues en tête. Suppression d'un compte (traces des conversations) : avec le RGPD (T36).
 
-#### T29 Rappels et annulation de rendez-vous
-- [ ] Rappel la veille et une heure avant
-- [ ] Annulation par le résident ou l'éducateur, avec notification
+#### T29 Rappels et annulation de rendez-vous (fait le 5 nov. 2026)
+- **Maquette** : P4 (« Rappel au résident la veille et 1 h avant »).
+- **Docs** : [tâches de fond](https://docs.djangoproject.com/en/6.1/topics/tasks/), [mises à jour conditionnelles](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#update), [`transaction.on_commit`](https://docs.djangoproject.com/en/6.1/topics/db/transactions/#performing-actions-after-commit).
+- [x] Rappel la veille à 18 h (notification, ou SMS pour un résident sans l'application) et une heure avant (notification seulement, pour limiter le coût des SMS), envoyés par `run_scheduled` chaque minute
+- [x] Chaque rappel est réservé en base avant de partir : jamais deux fois, même avec deux exécutions en même temps ; jamais en retard (rien la veille à moins de 2 h du rendez-vous, rien après le début) ; rien pour un rendez-vous annulé entre-temps
+- [x] Réglage de l'éducateur : rappels activés ou non (activés par défaut)
+- [x] Annulation par le résident (page du rendez-vous) ou par l'éducateur (liste des prochains rendez-vous), avec confirmation, jusqu'au début du rendez-vous ; l'autre personne est prévenue (notification, et SMS de secours pour le résident) ; le créneau redevient libre ; la page dit qui a annulé
+- **Notes** : la file des tâches ne reçoit que l'identifiant du rendez-vous (rien de nominatif dans l'administration).
 
 ### E7 Signalements
 
