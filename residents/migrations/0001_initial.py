@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -39,9 +38,7 @@ class Migration(migrations.Migration):
                 ("file_name", models.CharField(max_length=100, verbose_name="fichier")),
                 (
                     "count",
-                    models.PositiveIntegerField(
-                        default=0, verbose_name="fiches créées"
-                    ),
+                    models.PositiveIntegerField(default=0, verbose_name="fiches créées"),
                 ),
                 (
                     "imported_by",

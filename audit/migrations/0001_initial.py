@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -83,9 +82,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "ip_address",
-                    models.GenericIPAddressField(
-                        blank=True, null=True, verbose_name="adresse IP"
-                    ),
+                    models.GenericIPAddressField(blank=True, null=True, verbose_name="adresse IP"),
                 ),
                 (
                     "actor",
