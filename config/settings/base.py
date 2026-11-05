@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "comptes",
     "interface",
     "journal",
+    "logement",
 ]
 
 MIDDLEWARE = [
