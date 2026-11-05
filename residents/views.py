@@ -12,7 +12,7 @@ import time
 import segno
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
@@ -22,6 +22,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.utils.safestring import mark_safe
+from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_GET, require_POST
 from django_otp_webauthn.utils import get_credential_model
 
@@ -260,6 +261,7 @@ def departure(request, pk):
     form = DepartureForm(request.POST or None, stay=stay)
     if request.method == "POST" and form.is_valid():
         try:
+            had_wifi = stay is not None and wifi.current_access(stay.room) is not None
             ended = record_departure(resident, form.cleaned_data["departure"], request=request)
         except ValidationError as error:
             if error.code == "already_left":
@@ -269,7 +271,7 @@ def departure(request, pk):
         else:
             name = resident.get_full_name() or resident.get_username()
             text = f"Le départ de {name} est enregistré. Son compte est désactivé."
-            if ended is not None:
+            if ended is not None and had_wifi:
                 text += (
                     f" L'accès wifi de la chambre {ended.room.number} est coupé : "
                     "changez-le sur le réseau avant l'arrivée du prochain résident."
@@ -398,18 +400,26 @@ def activation_sheet(request, user, code, back_url):
 # --- Wifi access of the room (card T15) ----------------------------------------
 
 WIFI_TOKENS_KEY = "wifi_form_tokens"
+WIFI_NOT_CONFIGURED = (
+    "Le chiffrement du wifi n'est pas configuré sur le serveur (DJANGO_WIFI_KEYS). "
+    "Prévenez la personne qui l'administre."
+)
 
 
-def _wifi_token(request, resident):
-    """Single-use token of the wifi form: a reload never records (or generates) twice."""
+def _wifi_token(request, resident, stay):
+    """Single-use token of the wifi form, tied to the person and to the room.
+
+    A reload never records (or generates) twice, and a form opened before a
+    change of room cannot record on the new room.
+    """
     token = secrets.token_urlsafe(16)
     tokens = request.session.get(WIFI_TOKENS_KEY, [])[-(MAX_TOKENS - 1) :]
-    request.session[WIFI_TOKENS_KEY] = [*tokens, [token, resident.pk]]
+    request.session[WIFI_TOKENS_KEY] = [*tokens, [token, resident.pk, stay.pk]]
     return token
 
 
 def _resident_room(request, pk):
-    """The resident and their current stay, or a redirection if they have no room."""
+    """The resident and their current stay, or a message if they have no room."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
     stay = current_stay(resident)
     if stay is None:
@@ -417,6 +427,13 @@ def _resident_room(request, pk):
     return resident, stay
 
 
+def _never_cached(response):
+    add_never_cache_headers(response)
+    return response
+
+
+@sensitive_post_parameters("password")
+@sensitive_variables("password")
 @login_required
 @permission_required("accounts.manage_residents", raise_exception=True)
 @recent_confirmation_required
@@ -435,25 +452,42 @@ def wifi_access(request, pk):
     )
     if request.method == "POST":
         tokens = request.session.get(WIFI_TOKENS_KEY, [])
-        expected = [request.POST.get("token", ""), resident.pk]
+        expected = [request.POST.get("token", ""), resident.pk, stay.pk]
         if expected not in tokens:
-            messages.info(request, "Cet accès wifi est déjà enregistré.")
+            messages.info(
+                request,
+                "Ce formulaire a déjà servi, ou la chambre a changé depuis. Vérifiez la fiche.",
+            )
             return redirect("residents:detail", pk=resident.pk)
         if form.is_valid():
             request.session[WIFI_TOKENS_KEY] = [t for t in tokens if t != expected]
+            # The access the person saw on the form: if another one was recorded
+            # since (double click, two people), nothing is recorded.
+            seen = request.POST.get("replaces", "")
+            replaces = stay.room.wifi_accesses.filter(pk=seen).first() if seen.isdigit() else None
             password = form.cleaned_data["password"]
             generated = not password
             if generated:
                 password = wifi.generate_password()
-            access = wifi.set_access(
-                stay.room,
-                username=form.cleaned_data["username"],
-                password=password,
-                expires_on=form.cleaned_data["expires_on"],
-                generated=generated,
-                by=request.user,
-                request=request,
-            )
+            try:
+                access = wifi.set_access(
+                    stay.room,
+                    username=form.cleaned_data["username"],
+                    password=password,
+                    expires_on=form.cleaned_data["expires_on"],
+                    stay=stay,
+                    replaces=replaces,
+                    generated=generated,
+                    by=request.user,
+                    request=request,
+                )
+            except ValidationError as error:
+                messages.warning(request, error.messages[0])
+                return redirect("residents:detail", pk=resident.pk)
+            except ImproperlyConfigured:
+                logger.exception("Wifi encryption is not configured")
+                messages.warning(request, WIFI_NOT_CONFIGURED)
+                return redirect("residents:detail", pk=resident.pk)
             if not generated:
                 messages.success(
                     request,
@@ -462,32 +496,35 @@ def wifi_access(request, pk):
                 )
                 return redirect("residents:detail", pk=resident.pk)
             # Shown once, never cached: the person copies it on the network.
-            response = render(
-                request,
-                "residents/wifi_generated.html",
-                {
-                    "active_nav": "residents",
-                    "resident": resident,
-                    "access": access,
-                    "password": password,
-                },
+            return _never_cached(
+                render(
+                    request,
+                    "residents/wifi_generated.html",
+                    {
+                        "active_nav": "residents",
+                        "resident": resident,
+                        "access": access,
+                        "password": password,
+                    },
+                )
             )
-            add_never_cache_headers(response)
-            return response
-    return render(
-        request,
-        "residents/wifi_access.html",
-        {
-            "active_nav": "residents",
-            "resident": resident,
-            "stay": stay,
-            "current": current,
-            "form": form,
-            "token": _wifi_token(request, resident),
-        },
+    return _never_cached(
+        render(
+            request,
+            "residents/wifi_access.html",
+            {
+                "active_nav": "residents",
+                "resident": resident,
+                "stay": stay,
+                "current": current,
+                "form": form,
+                "token": _wifi_token(request, resident, stay),
+            },
+        )
     )
 
 
+@sensitive_variables("password")
 @login_required
 @permission_required("accounts.view_wifi_password", raise_exception=True)
 @recent_confirmation_required
@@ -512,13 +549,22 @@ def wifi_password(request, pk):
                 "Enregistrez un nouvel accès.",
             )
             return redirect("residents:detail", pk=resident.pk)
-    response = render(
-        request,
-        "residents/wifi_password.html",
-        {"active_nav": "residents", "resident": resident, "access": access, "password": password},
+        except ImproperlyConfigured:
+            logger.exception("Wifi encryption is not configured")
+            messages.warning(request, WIFI_NOT_CONFIGURED)
+            return redirect("residents:detail", pk=resident.pk)
+    return _never_cached(
+        render(
+            request,
+            "residents/wifi_password.html",
+            {
+                "active_nav": "residents",
+                "resident": resident,
+                "access": access,
+                "password": password,
+            },
+        )
     )
-    add_never_cache_headers(response)
-    return response
 
 
 # --- CSV and Excel import (card T08) ------------------------------------------

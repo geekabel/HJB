@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Stay, WifiAccess
+from .wifi import end_access
 
 
 def current_stay(resident):
@@ -32,16 +33,18 @@ def assign_room(resident, room, on=None):
                 code="date_before_stay",
             )
         if on == current.arrival:
+            # Same day: the room is corrected. The person may already know the
+            # wifi of the first room, so it is cut too (T15).
+            old_room = current.room
             current.room = room
             current.full_clean()
             current.save()
+            end_access(old_room, WifiAccess.EndReason.MOVE)
             return current
         current.departure = on
         current.full_clean()
         current.save()
         # The person leaves this room: its wifi access must be renewed (T15).
-        from .wifi import end_access
-
         end_access(current.room, WifiAccess.EndReason.MOVE)
     new = Stay(resident=resident, room=room, arrival=on)
     new.full_clean()

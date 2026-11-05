@@ -12,6 +12,7 @@
 <form class="card stack" method="post" novalidate>
   {% csrf_token %}
   <input type="hidden" name="token" value="{{ token }}">
+  <input type="hidden" name="replaces" value="{{ current.pk|default:'' }}">
   {% if form.errors %}
   <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>L'accès n'est pas enregistré.</strong> Corrigez les champs signalés.</p></div>
   {% endif %}

@@ -108,7 +108,7 @@ class RecordTests(WifiPagesTestCase):
         self.assertIn("no-store", response["Cache-Control"])
         # Reloading the page sends the same form again: nothing new is generated.
         response = self.client.post(self.url("wifi_access"), data, follow=True)
-        self.assertContains(response, "Cet accès wifi est déjà enregistré.")
+        self.assertContains(response, "Ce formulaire a déjà servi")
         self.assertEqual(WifiAccess.objects.count(), 1)
 
     def test_invalid_input(self):
@@ -124,6 +124,9 @@ class RecordTests(WifiPagesTestCase):
             },
         )
         self.assertContains(response, "de 8 à 63 caractères")
+        # The typed password is never sent back in the page, which is never cached.
+        self.assertNotContains(response, 'value="court"')
+        self.assertIn("no-store", response["Cache-Control"])
         self.assertContains(response, "La date doit être dans le futur.")
         self.assertFalse(WifiAccess.objects.exists())
         # The token stays valid: the corrected form can be sent.
@@ -148,6 +151,61 @@ class RecordTests(WifiPagesTestCase):
     def test_educator_cannot_record(self):
         self.log_in(self.educator)
         self.assertEqual(self.client.get(self.url("wifi_access")).status_code, 403)
+
+
+class RecordReviewTests(WifiPagesTestCase):
+    """Cases found by the independent review of T15."""
+
+    def post(self, token, **data):
+        return self.client.post(
+            self.url("wifi_access"),
+            {
+                "token": token,
+                "username": "ch312-ines",
+                "password": PASSWORD,
+                "expires_on": f"{wifi.default_expiry():%Y-%m-%d}",
+                **data,
+            },
+            follow=True,
+        )
+
+    def test_two_forms_open_at_once(self):
+        self.log_in(self.front_desk)
+        _, first = self.form_page()
+        _, second = self.form_page()
+        self.post(first)
+        response = self.post(second)  # this form still showed "no access"
+        self.assertContains(response, "vient d&#x27;être modifié par une autre demande")
+        self.assertEqual(WifiAccess.objects.count(), 1)
+
+    def test_form_opened_before_a_room_change(self):
+        from housing.services import assign_room
+
+        other = Room.objects.create(number="205", floor=self.f3)
+        self.log_in(self.front_desk)
+        _, token = self.form_page()
+        assign_room(self.ines, other, timezone.localdate())
+        response = self.post(token)
+        self.assertContains(response, "la chambre a changé depuis")
+        self.assertFalse(WifiAccess.objects.exists())
+
+    def test_keys_not_configured(self):
+        from django.test import override_settings
+
+        self.log_in(self.front_desk)
+        _, token = self.form_page()
+        with override_settings(WIFI_ENCRYPTION_KEYS=[]), self.assertLogs("residents.views"):
+            response = self.post(token)
+        self.assertContains(response, "pas configuré sur le serveur")
+        self.assertFalse(WifiAccess.objects.exists())
+
+    def test_departure_without_wifi_says_nothing_about_it(self):
+        self.log_in(self.front_desk)
+        response = self.client.post(
+            self.url("departure"), {"departure": f"{timezone.localdate():%Y-%m-%d}"}, follow=True
+        )
+        self.assertContains(response, "Le départ de Inès Martin est enregistré.")
+        self.assertNotContains(response, "accès wifi de la chambre")
 
 
 class ShowPasswordTests(WifiPagesTestCase):

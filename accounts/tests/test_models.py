@@ -63,9 +63,16 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DJANGO_SECRET_KEY", result.stderr)
 
+    def test_refuses_to_start_without_wifi_keys(self):
+        # Card T15: without a key, the wifi passwords could not be read.
+        result = self._import_prod(DJANGO_SECRET_KEY="test-key")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DJANGO_WIFI_KEYS", result.stderr)
+
     def test_reads_key_and_hosts_from_environment(self):
         result = self._import_prod(
             DJANGO_SECRET_KEY="test-key",
+            DJANGO_WIFI_KEYS="test-wifi-key",
             DJANGO_ALLOWED_HOSTS="residence.example, www.residence.example",
         )
         self.assertEqual(result.returncode, 0, result.stderr)

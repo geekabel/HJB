@@ -61,8 +61,10 @@ class WifiTestCase(TestCase):
         cls.nadia = make_user("nadia", Role.FRONT_DESK)
 
     def record(self, room=None, password="Soleil-2026!", **kwargs):
+        room = room or self.r312
+        kwargs.setdefault("replaces", wifi.current_access(room))
         return wifi.set_access(
-            room or self.r312,
+            room,
             username=kwargs.pop("username", "ch312-ines"),
             password=password,
             expires_on=kwargs.pop("expires_on", wifi.default_expiry()),
@@ -144,6 +146,30 @@ class ServiceTests(WifiTestCase):
         self.assertFalse(access.renew_soon)
 
 
+class RecordingChecksTests(WifiTestCase):
+    """Cases found by the independent review of T15."""
+
+    def test_refused_when_the_stay_is_over(self):
+        stay = Stay.objects.create(resident=self.ines, room=self.r312, arrival=date(2026, 9, 1))
+        record_departure(self.ines, timezone.localdate())
+        with self.assertRaises(ValidationError) as error:
+            self.record(stay=stay)
+        self.assertEqual(error.exception.code, "no_current_stay")
+        self.assertFalse(WifiAccess.objects.exists())
+
+    def test_refused_when_another_access_was_recorded_meanwhile(self):
+        seen = self.record()
+        self.record(password="Lune-2027-ok", replaces=seen)  # first click
+        with self.assertRaises(ValidationError) as error:
+            self.record(password="Mars-2028-ok", replaces=seen)  # second click
+        self.assertEqual(error.exception.code, "access_changed")
+        self.assertEqual(
+            wifi_crypto.decrypt(wifi.current_access(self.r312).encrypted_password), "Lune-2027-ok"
+        )
+        with self.assertRaises(ValidationError):
+            self.record(replaces=None)  # the form showed no access, but there is one
+
+
 class CutTests(WifiTestCase):
     def test_departure_cuts_the_room_access(self):
         Stay.objects.create(resident=self.ines, room=self.r312, arrival=date(2026, 9, 1))
@@ -161,6 +187,14 @@ class CutTests(WifiTestCase):
         record_departure(self.ines, timezone.localdate())
         entry = AuditEntry.objects.get(action=Action.RESIDENT_DEPARTED)
         self.assertNotIn("wifi", entry.summary())
+
+    def test_same_day_room_fix_cuts_the_first_room(self):
+        Stay.objects.create(resident=self.ines, room=self.r312, arrival=timezone.localdate())
+        access = self.record()
+        assign_room(self.ines, self.r304, timezone.localdate())
+        access.refresh_from_db()
+        self.assertFalse(access.active)
+        self.assertEqual(access.end_reason, WifiAccess.EndReason.MOVE)
 
     def test_room_change_cuts_the_old_room(self):
         Stay.objects.create(resident=self.ines, room=self.r312, arrival=date(2026, 9, 1))
@@ -184,12 +218,19 @@ class RotationTests(WifiTestCase):
             self.assertEqual(wifi_crypto.decrypt(access.encrypted_password), "Soleil-2026!")
 
     def test_unreadable_password_changes_nothing(self):
+        # One password readable with the new key list, one not: nothing is changed at all.
         with override_settings(WIFI_ENCRYPTION_KEYS=[KEY_A]):
-            access = self.record()
-        before = WifiAccess.objects.get(pk=access.pk).encrypted_password
+            readable = self.record()
+        other_key = Fernet.generate_key().decode()
+        with override_settings(WIFI_ENCRYPTION_KEYS=[other_key]):
+            unreadable = self.record(room=self.r304, username="ch304")
+        before = dict(WifiAccess.objects.values_list("pk", "encrypted_password"))
         with (
-            override_settings(WIFI_ENCRYPTION_KEYS=[KEY_B]),
+            override_settings(WIFI_ENCRYPTION_KEYS=[KEY_B, KEY_A]),
             self.assertRaisesMessage(CommandError, "rien n'est changé"),
         ):
             call_command("rotate_wifi_keys", stdout=io.StringIO())
-        self.assertEqual(WifiAccess.objects.get(pk=access.pk).encrypted_password, before)
+        after = dict(WifiAccess.objects.values_list("pk", "encrypted_password"))
+        self.assertEqual(after, before)
+        self.assertIn(readable.pk, after)
+        self.assertIn(unreadable.pk, after)

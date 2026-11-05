@@ -92,9 +92,12 @@ OTP_WEBAUTHN_ALLOWED_ORIGINS = _list("DJANGO_WEBAUTHN_ORIGINS")
 OTP_ADMIN_HIDE_SENSITIVE_DATA = True
 
 # Wifi passwords (T15): Fernet keys, separated by commas, the newest first.
-# Without them, `check` reports an error (housing.E001). Losing them makes the
+# An invalid key is reported by `check` (housing.E001). Losing them makes the
 # stored wifi passwords unreadable: keep a copy outside the server.
-WIFI_ENCRYPTION_KEYS = _list("DJANGO_WIFI_KEYS")
+# Required: the application refuses to start without a key, like SECRET_KEY.
+WIFI_ENCRYPTION_KEYS = [
+    key.strip() for key in os.environ["DJANGO_WIFI_KEYS"].split(",") if key.strip()
+]
 
 
 # HTTPS
