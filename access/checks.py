@@ -21,6 +21,7 @@ RESERVED_SEGMENTS = {
     "messages",
     "r",
     "sms",
+    "rendez-vous",
     "manifest.webmanifest",
     "sw.js",
     "favicon.ico",

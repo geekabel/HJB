@@ -3,14 +3,19 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
-from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
+from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.roles import Role
+from housing.models import Stay
 
 from . import availability
-from .forms import SettingsForm
-from .models import Availability
+from .forms import AbsenceForm, SettingsForm
+from .holidays import holiday_name
+from .models import Absence, Appointment, Availability
 
 PERMISSION = "accounts.manage_appointments"
 
@@ -66,7 +71,7 @@ def my_availability(request):
         }
         for moment in availability.cell_times()
     ]
-    return render(
+    response = render(
         request,
         "appointments/availability.html",
         {
@@ -77,5 +82,68 @@ def my_availability(request):
             "opened": opened,
             # Only educators are offered to the residents (T27).
             "is_educator": educator.has_role(Role.EDUCATOR),
+            "meetings": _meetings(educator),
+            "absences": Absence.objects.filter(
+                educator=educator, last_day__gte=timezone.localdate()
+            ),
+            "absence_form": AbsenceForm(),
         },
     )
+    # Names, rooms and reasons: never kept by the browser or a proxy.
+    add_never_cache_headers(response)
+    return response
+
+
+def _meetings(educator):
+    """The next meetings of the educator, with the room of each resident."""
+    current = Stay.objects.current().select_related("room")
+    meetings = list(
+        Appointment.objects.filter(
+            educator=educator, status=Appointment.Status.CONFIRMED, end__gt=timezone.now()
+        )
+        .select_related("resident")
+        .prefetch_related(Prefetch("resident__stays", queryset=current, to_attr="current"))[:30]
+    )
+    for meeting in meetings:
+        stays = meeting.resident.current
+        meeting.room = stays[0].room.number if stays else ""
+        meeting.holiday = holiday_name(timezone.localtime(meeting.start).date())
+    return meetings
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_POST
+def add_absence(request):
+    form = AbsenceForm(request.POST)
+    if form.is_valid():
+        # Same lock as the bookings: none lands on a day being closed.
+        with transaction.atomic():
+            availability.lock(request.user)
+            absence = form.save(commit=False)
+            absence.educator = request.user
+            absence.save()
+        busy = Appointment.objects.filter(
+            educator=request.user,
+            status=Appointment.Status.CONFIRMED,
+            start__date__gte=absence.first_day,
+            start__date__lte=absence.last_day,
+        ).count()
+        messages.success(request, "Absence enregistrée : personne ne peut réserver ces jours-là.")
+        if busy:
+            who = "les personnes concernées" if busy > 1 else "la personne concernée"
+            messages.warning(
+                request, f"{busy} rendez-vous déjà pris pendant cette absence : prévenez {who}."
+            )
+    else:
+        messages.warning(request, " ".join(e for errors in form.errors.values() for e in errors))
+    return redirect("appointments:availability")
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_POST
+def delete_absence(request, pk):
+    get_object_or_404(Absence, pk=pk, educator=request.user).delete()
+    messages.success(request, "Absence retirée.")
+    return redirect("appointments:availability")

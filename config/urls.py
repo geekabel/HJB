@@ -44,6 +44,8 @@ urlpatterns = [
     path("r/<str:token>/", messaging_resident_views.reply, name="reply"),
     # Delivery receipts of the SMS, called by OVHcloud (card T24).
     path("sms/ovh/<str:secret>/", messaging_receipts.ovh_callback, name="sms_receipt_ovh"),
+    # Appointments with an educator, resident side (card T27).
+    path("rendez-vous/", include("appointments.resident_urls")),
     # Notification settings and Web Push subscriptions (card T19).
     path("notifications/", include("push.urls")),
     # Style guide, for staff only.

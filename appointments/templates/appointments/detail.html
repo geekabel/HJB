@@ -1,0 +1,28 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Rendez-vous{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'rdv:book' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>
+  <h1>Rendez-vous</h1>
+</div>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% else %}{% icon "info" %}{% endif %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<article class="card stack">
+  <p class="text-muted text-small">{% if meeting.status == "confirmed" %}Confirmé{% else %}{{ meeting.get_status_display }}{% endif %}</p>
+  <h2><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</time></h2>
+  <dl class="details">
+    <dt>Avec</dt><dd>{{ meeting.educator.first_name|default:meeting.educator.get_username }}</dd>
+    <dt>Durée</dt><dd>{{ meeting.minutes }} minutes, jusqu'à {{ meeting.end|time:"H:i" }}</dd>
+    <dt>Motif</dt><dd>{{ meeting.get_reason_display }}</dd>
+  </dl>
+  <p class="text-muted text-small">Le motif n'est visible que par {{ meeting.educator.first_name|default:"l'éducateur" }}.</p>
+</article>
+{% endblock %}

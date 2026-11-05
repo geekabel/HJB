@@ -16,7 +16,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Availability, EducatorSettings
+from .holidays import holiday_name
+from .models import Absence, Availability, EducatorSettings
 
 DAYS = (0, 1, 2, 3, 4)  # Monday to Friday
 FIRST = time(8, 0)
@@ -130,8 +131,19 @@ class Slot:
     end: datetime
 
 
-def bookable(educator, day, now=None, settings=None, availabilities=None):
+def closed(educator, day, absences=None):
+    """True on a public holiday, or a day the educator is away (card T27)."""
+    if holiday_name(day):
+        return True
+    if absences is None:
+        absences = Absence.objects.filter(educator=educator)
+    return any(a.first_day <= day <= a.last_day for a in absences)
+
+
+def bookable(educator, day, now=None, settings=None, availabilities=None, absences=None):
     """Meetings that ``educator`` offers on ``day``, after the booking deadline."""
+    if closed(educator, day, absences):
+        return []
     settings = settings or settings_of(educator)
     length = timedelta(minutes=settings.slot_minutes)
     earliest = earliest_start(settings, now)

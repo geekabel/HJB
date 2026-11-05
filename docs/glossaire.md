@@ -342,6 +342,11 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Disponibilité (créneau ouvert chaque semaine) | `appointments.models.Availability` (`educator`, `weekday`, `start`, `end`) |
 | Réglages de l'éducateur | `appointments.models.EducatorSettings` (`slot_minutes`, `notice` : `2h` « 2 heures avant », `day_before` « La veille ») |
 | Grille de la semaine | `appointments.availability` (`DAYS`, `FIRST`, `LAST`, `STEP`, `cell_times()`, `cell_key()`, `open_cells()`, `ranges()`, `save_grid()`, `settings_of()`, `earliest_start()`, `bookable()`, `Slot`) |
+| Rendez-vous | `appointments.models.Appointment` (`educator`, `resident`, `start`, `end`, `reason` : `papers`, `work`, `budget`, `housing`, `other` ou vide, `status` : `confirmed`, `cancelled`) |
+| Absence d'un éducateur, jours fériés | `appointments.models.Absence` (`first_day`, `last_day`) ; `appointments.holidays` (`easter()`, `holidays()`, `holiday_name()`) ; `availability.closed()` |
+| Réservation | `appointments.booking` (`educators()`, `Planner`, `free_slots()`, `days_with_slots()`, `upcoming()`, `book()`, `BookingRefused`, `DAYS_AHEAD`, `MAX_UPCOMING`) ; `availability.lock()` |
+| Pages du résident | `rdv:book` (`/rendez-vous/?avec=…&jour=…&heure=…`), `rdv:detail` (`/rendez-vous/<n>/`) ; gabarits `appointments/book.html`, `detail.html` ; classes CSS `rdv__step`, `rdv-people`, `rdv-person`, `rdv-person__initial`, `rdv-days`, `rdv-day`, `rdv-times` |
+| Absences, côté équipe | `appointments:add_absence`, `appointments:delete_absence` |
 | Page « Mes disponibilités » | `appointments:availability` (`/equipe/rendez-vous/`), gabarit `appointments/availability.html`, script `appointments/grid.js` ; classes CSS `slot-grid`, `slot`, `slot__face`, `slot__text`, `slot-key` |
 
 ## Votes (carte T25)

@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T27 | Réservation d'un rendez-vous | E6 Rendez-vous | T26, T13 |
 | T28 | Messages directs avec un éducateur | E6 Rendez-vous | T13 |
 | T29 | Rappels et annulation de rendez-vous | E6 Rendez-vous | T27, T19 |
 | T30 | Signaler un problème | E7 Signalements | T13 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T24 | Statuts de livraison des SMS | 5 nov. 2026 |
 | T25 | Sondages anonymes | 5 nov. 2026 |
 | T26 | Disponibilités des éducateurs | 5 nov. 2026 |
+| T27 | Réservation d'un rendez-vous | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -442,12 +442,18 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : les rappels (« la veille et 1 h avant ») viennent avec T29, les messages directs avec T28. Les rendez-vous pris s'afficheront dans la grille avec T27. Un compte sans le rôle Éducateur (Administration) peut ouvrir des créneaux, mais un message dit que les résidents ne le verront pas.
 - **Revue** : corrigé après la revue indépendante. Deux enregistrements en même temps (double clic, deux onglets) : réglages et grille ensemble ou rien, avec un verrou sur l'éducateur (le même que la réservation de T27). Seules les clés exactes des cases sont acceptées (plus de doublons ni de créneaux qui se chevauchent). Avertissement pour un créneau trop court pour la durée choisie. Délai de 2 heures en temps réel (changement d'heure). Script : un glisser rapide remplit tout le rectangle, un glisser bloqué s'arrête, un clic n'est plus perdu, événements `change` envoyés. Cases fermées avec une bordure visible (contraste 3:1), heures toujours visibles quand la grille défile sur téléphone, lien pour passer la grille au clavier. Pour T27 : absences, jours fériés et chevauchements après un changement de durée.
 
-#### T27 Réservation d'un rendez-vous
-- **Maquette** : R5.
-- [ ] Choix de l'éducateur (nom visible) ou « le premier libre »
-- [ ] Prochain créneau libre mis en avant
-- [ ] Pas de double réservation (transaction et contrainte)
-- [ ] Motif facultatif, visible par l'éducateur seul
+#### T27 Réservation d'un rendez-vous (fait le 5 nov. 2026)
+- **Maquette** : R5 (« Voir un éducateur »).
+- **Docs** : [contraintes conditionnelles](https://docs.djangoproject.com/en/6.1/ref/models/constraints/#condition), [`select_for_update`](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#select-for-update), [transactions](https://docs.djangoproject.com/en/6.1/topics/db/transactions/), [`Prefetch`](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#prefetch-objects) ; calcul de Pâques : Meeus, *Astronomical Algorithms*, chapitre 8.
+- [x] Page `/rendez-vous/` en étapes simples (liens et un seul formulaire, sans script) : avec qui (prénom de chaque éducateur, ou « Le 1er libre »), quel jour, quelle heure, motif
+- [x] Prochain créneau libre mis en avant, avec un bouton « Choisir » qui le présélectionne
+- [x] Pas de double réservation : transaction avec verrou sur l'éducateur (le même que l'enregistrement de la grille), nouvelle vérification sans chevauchement (même après un changement de durée), contrainte unique en base sur (éducateur, début) pour les rendez-vous confirmés
+- [x] Motif facultatif (liste courte), visible par l'éducateur du rendez-vous seul : pas par le reste de l'équipe, pas dans l'administration
+- [x] Absences de l'éducateur (congés, formation) et jours fériés français fermés à la réservation ; avertissement si des rendez-vous sont déjà pris pendant une absence
+- [x] Page de l'éducateur : prochains rendez-vous avec le nom, la chambre et le motif
+- [x] Limites : deux semaines à l'avance au plus, deux rendez-vous à venir par résident, jamais deux rendez-vous en même temps pour un résident. « Le 1er libre » choisit l'éducateur le moins pris ce jour-là
+- **Notes** : l'annulation et les rappels viennent avec T29, « Plutôt écrire à … » avec T28 (messages directs). Les rendez-vous ne s'affichent pas encore dans la grille de la semaine (liste à côté).
+- **Revue** : corrigé après la revue indépendante, qui a reproduit trois failles de concurrence sur PostgreSQL. Toutes les vérifications ont maintenant lieu dans la transaction, après les verrous (le résident d'abord, puis les éducateurs, toujours dans le même ordre) : plus de troisième rendez-vous, plus de deux rendez-vous à la même heure, plus de réservation sur un créneau fermé ou pendant une absence ajoutée au même moment. « Le premier libre » essaie l'éducateur suivant si le premier vient d'être pris. Un éducateur inconnu n'est plus remplacé en silence. Le départ d'un résident annule ses rendez-vous à venir. Page de l'équipe jamais gardée en cache, nom neutre dans l'administration (« Rendez-vous n°… »), dates d'absence limitées. Fenêtre de 14 jours exacte, tous les jours affichés. Accessibilité : vraies sections, titre pour « Quelle heure ? », jour complet lu. Le lundi de Pentecôte reste fermé (journée de solidarité : mieux vaut un jour perdu qu'un rendez-vous où personne ne travaille). Pâques vérifié contre `dateutil` de 1583 à 9999.
 
 #### T28 Messages directs avec un éducateur
 - [ ] Conversation résident et éducateur, non lus

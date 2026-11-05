@@ -59,6 +59,7 @@ erDiagram
 
     USER ||--o{ AVAILABILITY : "ouvre"
     USER ||--o| EDUCATOR_SETTINGS : "règle"
+    USER ||--o{ ABSENCE : "s'absente"
     USER ||--o{ APPOINTMENT : "réserve ou reçoit"
     USER ||--o{ CONVERSATION : "participe"
     CONVERSATION ||--o{ DIRECT_MESSAGE : "contient"
@@ -285,11 +286,17 @@ erDiagram
         int id PK
         int educator_id FK
         int resident_id FK
-        datetime start
-        datetime end
-        string reason "liste courte, facultatif"
-        text private_note "visible par l'éducateur seul"
-        string status "confirmed, cancelled, attended, no_show"
+        datetime start "unique avec educator si confirmé"
+        datetime end "gardé : la durée peut changer ensuite"
+        string reason "liste courte, facultatif, lu par l'éducateur seul"
+        string status "confirmed, cancelled"
+        datetime created_at
+    }
+    ABSENCE {
+        int id PK
+        int educator_id FK
+        date first_day
+        date last_day
     }
     CONVERSATION {
         int id PK
