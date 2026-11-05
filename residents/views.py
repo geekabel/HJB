@@ -1,6 +1,8 @@
 """Espace équipe : liste et fiche des résidents (maquette P5).
 
-Réservé à la permission ``comptes.gerer_residents`` (Accueil, Administration).
+Consultation : permission ``comptes.voir_residents`` (Accueil, Éducateurs,
+Administration). Création, modification, import et départ :
+``comptes.gerer_residents`` (Accueil, Administration).
 """
 
 import secrets
@@ -8,7 +10,7 @@ import time
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
@@ -19,6 +21,7 @@ from django.views.decorators.http import require_GET
 from comptes.models import FILTRE_ETAT_COMPTE, EtatCompte, User
 from comptes.roles import Role
 from logement.models import Etage, Sejour
+from logement.services import sejour_en_cours
 
 from .forms import FormulaireImport, FormulaireResident
 from .importation import (
@@ -69,7 +72,7 @@ def _filtrer(residents, recherche, etage, compte):
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
+@permission_required("comptes.voir_residents", raise_exception=True)
 def liste(request):
     recherche = request.GET.get("q", "").strip()[:100]
     etages = list(Etage.objects.all())
@@ -144,14 +147,18 @@ def creer(request):
 
 
 @login_required
-@permission_required("comptes.gerer_residents", raise_exception=True)
+@permission_required("comptes.voir_residents", raise_exception=True)
 def fiche(request, pk):
     resident = get_object_or_404(User.objects.residents(), pk=pk)
-    formulaire, enregistre = _formulaire(request, resident)
-    if enregistre:
-        messages.success(request, "Les modifications sont enregistrées.")
-        return redirect("residents:fiche", pk=resident.pk)
-    resident.refresh_from_db()  # le formulaire a pu modifier l'objet sans l'enregistrer
+    formulaire = None
+    if request.user.has_perm("comptes.gerer_residents"):
+        formulaire, enregistre = _formulaire(request, resident)
+        if enregistre:
+            messages.success(request, "Les modifications sont enregistrées.")
+            return redirect("residents:fiche", pk=resident.pk)
+        resident.refresh_from_db()  # le formulaire a pu modifier l'objet sans l'enregistrer
+    elif request.method == "POST":
+        raise PermissionDenied
     return render(
         request,
         "residents/fiche.html",
@@ -159,6 +166,7 @@ def fiche(request, pk):
             "actif": "residents",
             "formulaire": formulaire,
             "resident": resident,
+            "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
         },
     )

@@ -196,7 +196,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Compteurs en tête de liste : résidents, comptes activés, pas encore activés
 - [x] Numéros masqués dans la liste (« 06 •• •• •• 47 »), avec un texte lisible par les lecteurs d'écran ; complets sur la fiche
 - [x] Création et modification d'une fiche, avec chambre et date d'arrivée. Un déménagement interne ferme l'ancien séjour et en ouvre un nouveau
-- [x] Réservé à la permission `gerer_residents` (Accueil, Administration) ; lien dans le menu
+- [x] Consultation avec `voir_residents` (Accueil, Éducateurs, Administration) ; création, modification et import avec `gerer_residents` (Accueil, Administration). Les éducateurs voient une fiche en lecture seule (ajout du 5 nov., à la demande de Godwin)
 - [x] Gabarit de champ commun à tous les formulaires (`interface/formulaires`) : libellé, aide, erreurs reliées au champ, mention « facultatif »
 - [x] Gabarits validés W3C ; rendu vérifié dans Chrome (mobile et ordinateur, clair et sombre), y compris les erreurs de saisie
 - **Notes** : l'état du compte vient pour l'instant de la première connexion (« Activé » ou « Pas encore activé ») ; T11 ajoutera l'invitation et son expiration. La colonne wifi de la maquette arrivera avec T15. Le compte d'un résident n'a pas de mot de passe utilisable : il se connectera par clé d'accès (T13). Correctif général : dans un tableau qui défile, les textes « visuellement cachés » élargissaient la page sur mobile ; le cadre du tableau les contient maintenant. Nombre de requêtes de la liste constant, quel que soit le nombre de résidents (testé).

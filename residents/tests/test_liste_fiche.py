@@ -48,7 +48,8 @@ class AccesTests(ResidentsTestCase):
         self.assertEqual(reponse.status_code, 302)
 
     def test_sans_la_permission(self):
-        for nom, roles in [("sam", [Role.EDUCATEUR]), ("lina", []), ("mod", [Role.MODERATEUR])]:
+        roles_sans_acces = [("max", [Role.MAINTENANCE]), ("lina", []), ("mod", [Role.MODERATEUR])]
+        for nom, roles in roles_sans_acces:
             with self.subTest(nom=nom):
                 self.client.force_login(creer_utilisateur(nom, *roles))
                 for url in [
@@ -57,6 +58,31 @@ class AccesTests(ResidentsTestCase):
                     reverse("residents:fiche", args=[self.awa.pk]),
                 ]:
                     self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_educateur_en_lecture_seule(self):
+        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        reponse = self.client.get(reverse("residents:liste"))
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, "Résidents et wifi")
+        self.assertNotContains(reponse, "Nouveau résident")
+        self.assertNotContains(reponse, "Importer CSV ou Excel")
+        self.assertContains(reponse, ">Voir<span")
+        # Fiche : consultation, sans formulaire.
+        reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
+        enregistrer_page("residents-fiche-lecture", reponse)
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIsNone(reponse.context["formulaire"])
+        self.assertNotContains(reponse, '<form class="carte')
+        self.assertContains(reponse, '<a href="tel:+33612345647">06 12 34 56 47</a>', html=True)
+        self.assertContains(reponse, "Chambre 312 · 3e étage")
+        # Pas de modification, ni de création, ni d'import.
+        donnees = {"first_name": "Zed", "last_name": "Koné", "telephone": "", "email": ""}
+        reponse = self.client.post(reverse("residents:fiche", args=[self.awa.pk]), donnees)
+        self.assertEqual(reponse.status_code, 403)
+        self.awa.refresh_from_db()
+        self.assertEqual(self.awa.first_name, "Awa")
+        for nom in ["creer", "import", "import_modele"]:
+            self.assertEqual(self.client.get(reverse(f"residents:{nom}")).status_code, 403)
 
     def test_accueil_et_administration(self):
         for utilisateur in [self.accueil, creer_utilisateur("chef", Role.ADMIN)]:
@@ -70,7 +96,8 @@ class AccesTests(ResidentsTestCase):
             f'<a href="{reverse("residents:liste")}" aria-current="page">Résidents et wifi</a>',
             html=True,
         )
-        self.client.force_login(creer_utilisateur("sam", Role.EDUCATEUR))
+        # La maintenance n'a pas accès aux fiches : pas de lien.
+        self.client.force_login(creer_utilisateur("max", Role.MAINTENANCE))
         reponse = self.client.get(reverse("interface:guide"))
         self.assertNotContains(reponse, reverse("residents:liste"))
 

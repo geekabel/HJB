@@ -7,10 +7,12 @@
     <h1>Résidents</h1>
     <p class="texte-doux">{{ compteurs.total }} résident{{ compteurs.total|pluralize }} · {{ compteurs.active }} compte{{ compteurs.active|pluralize }} activé{{ compteurs.active|pluralize }} · {{ compteurs.en_attente }} pas encore activé{{ compteurs.en_attente|pluralize }}</p>
   </div>
+  {% if perms.comptes.gerer_residents %}
   <div class="rangee">
     <a class="bouton bouton--discret" href="{% url 'residents:import' %}">{% icone "importer" %}Importer CSV ou Excel</a>
     <a class="bouton" href="{% url 'residents:creer' %}">{% icone "plus" %}Nouveau résident</a>
   </div>
+  {% endif %}
 </header>
 
 <form class="rangee filtres" method="get" role="search" aria-label="Rechercher et filtrer les résidents">
@@ -64,7 +66,7 @@
         <td class="tableau__nombre">{% if r.telephone %}<span class="telephone-masque" aria-hidden="true">{{ r.telephone_masque }}</span><span class="visuellement-cache">numéro finissant par {{ r.telephone|slice:"-2:" }}</span>{% else %}<span class="texte-doux">Aucun</span>{% endif %}</td>
         <td>{% with etat=r.etat_compte %}<span class="badge {% if etat == 'active' %}badge--info{% elif etat == 'en_attente' %}badge--attention{% else %}badge--neutre{% endif %}">{{ etat.label }}</span>{% endwith %}</td>
         <td class="tableau__nombre">{% if r.sejour %}<time datetime="{{ r.sejour.arrivee|date:'Y-m-d' }}">{{ r.sejour.arrivee|date:"j F Y" }}</time>{% else %}<span class="texte-doux">–</span>{% endif %}</td>
-        <td class="tableau__action"><a href="{% url 'residents:fiche' r.pk %}">Gérer<span class="visuellement-cache"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
+        <td class="tableau__action"><a href="{% url 'residents:fiche' r.pk %}">{% if perms.comptes.gerer_residents %}Gérer{% else %}Voir{% endif %}<span class="visuellement-cache"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
       </tr>
       {% endfor %}
     </tbody>

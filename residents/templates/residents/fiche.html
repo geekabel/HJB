@@ -8,7 +8,7 @@
   {% if resident %}
   <h1>{{ resident.get_full_name|default:resident.get_username }}</h1>
   {% with etat=resident.etat_compte %}
-  <p class="rangee"><span class="badge {% if etat == 'active' %}badge--info{% elif etat == 'en_attente' %}badge--attention{% else %}badge--neutre{% endif %}">{{ etat.label }}</span>{% if formulaire.sejour %}<span class="texte-doux">{{ formulaire.sejour.chambre }} · {{ formulaire.sejour.chambre.etage }}</span>{% else %}<span class="texte-doux">Sans chambre</span>{% endif %}</p>
+  <p class="rangee"><span class="badge {% if etat == 'active' %}badge--info{% elif etat == 'en_attente' %}badge--attention{% else %}badge--neutre{% endif %}">{{ etat.label }}</span>{% if sejour %}<span class="texte-doux">{{ sejour.chambre }} · {{ sejour.chambre.etage }}</span>{% else %}<span class="texte-doux">Sans chambre</span>{% endif %}</p>
   {% endwith %}
   {% else %}
   <h1>Nouveau résident</h1>
@@ -17,6 +17,7 @@
 </header>
 
 <div class="fiche">
+  {% if formulaire %}
   <form class="carte pile pile--aeree" method="post" novalidate>
     {% csrf_token %}
     {% if formulaire.errors %}
@@ -52,14 +53,34 @@
       <a class="bouton bouton--discret" href="{% if resident %}{% url 'residents:fiche' resident.pk %}{% else %}{% url 'residents:liste' %}{% endif %}">Annuler</a>
     </div>
   </form>
+  {% else %}
+  <section class="carte pile" aria-labelledby="titre-identite">
+    <h2 id="titre-identite">Identité et contact</h2>
+    <dl class="details">
+      <dt>Prénom</dt>
+      <dd>{{ resident.first_name|default:"–" }}</dd>
+      <dt>Nom</dt>
+      <dd>{{ resident.last_name|default:"–" }}</dd>
+      <dt>Téléphone</dt>
+      <dd>{% if resident.telephone %}<a href="tel:{{ resident.telephone }}">{{ resident.telephone_affiche }}</a>{% else %}Aucun{% endif %}</dd>
+      <dt>Adresse e-mail</dt>
+      <dd>{% if resident.email %}<a href="mailto:{{ resident.email }}">{{ resident.email }}</a>{% else %}Aucune{% endif %}</dd>
+      <dt>Chambre</dt>
+      <dd>{% if sejour %}{{ sejour.chambre }} · {{ sejour.chambre.etage }}{% else %}Sans chambre{% endif %}</dd>
+    </dl>
+    <p class="texte-doux texte-petit">Pour modifier cette fiche, adressez-vous à l'accueil.</p>
+  </section>
+  {% endif %}
 
   {% if resident %}
   <div class="pile">
     <section class="carte pile" aria-labelledby="titre-compte">
       <h2 id="titre-compte">Compte</h2>
       <dl class="details">
+        {% if formulaire %}
         <dt>Téléphone</dt>
         <dd>{{ resident.telephone_affiche|default:"Aucun" }}</dd>
+        {% endif %}
         <dt>Fiche créée le</dt>
         <dd><time datetime="{{ resident.date_joined|date:'Y-m-d' }}">{{ resident.date_joined|date:"j F Y" }}</time></dd>
         <dt>Dernière connexion</dt>

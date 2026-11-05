@@ -296,6 +296,7 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 | Permission (`comptes.…`) | Accueil | Éducateurs | Maintenance | Administration | Modérateurs |
 |---|:-:|:-:|:-:|:-:|:-:|
 | `acceder_espace_equipe` | oui | oui | oui | oui | |
+| `voir_residents` | oui | oui | | oui | |
 | `gerer_residents` | oui | | | oui | |
 | `generer_code_activation` | oui | | | oui | |
 | `voir_code_wifi` | | | | oui | |

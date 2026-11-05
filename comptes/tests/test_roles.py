@@ -27,12 +27,18 @@ def droits(utilisateur):
 ATTENDU = {
     Role.ACCUEIL: {
         "acceder_espace_equipe",
+        "voir_residents",
         "gerer_residents",
         "generer_code_activation",
         "envoyer_messages",
         "gerer_signalements",
     },
-    Role.EDUCATEUR: {"acceder_espace_equipe", "envoyer_messages", "gerer_rendezvous"},
+    Role.EDUCATEUR: {
+        "acceder_espace_equipe",
+        "voir_residents",
+        "envoyer_messages",
+        "gerer_rendezvous",
+    },
     Role.MAINTENANCE: {"acceder_espace_equipe", "envoyer_messages", "gerer_signalements"},
     Role.ADMIN: set(PERMISSIONS),
     Role.MODERATEUR: {"moderer_discussion"},
