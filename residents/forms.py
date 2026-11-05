@@ -117,3 +117,11 @@ class FormulaireResident(forms.ModelForm):
     def ajouter_erreurs_sejour(self, erreur: ValidationError):
         for champ, messages in erreur.message_dict.items():
             self.add_error(champ if champ in ("chambre", "arrivee") else None, messages)
+
+
+class FormulaireImport(forms.Form):
+    fichier = forms.FileField(
+        label="Fichier CSV ou Excel",
+        help_text="Format .csv ou .xlsx, 2 Mo au plus, 500 résidents au plus.",
+        widget=forms.FileInput(attrs={"accept": ".csv,.xlsx"}),
+    )
