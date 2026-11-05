@@ -16,6 +16,9 @@
     <p><strong>{{ lignes|length }}</strong> ligne{{ lignes|length|pluralize }} · <strong class="texte-action">{{ nombre_pretes }} prête{{ nombre_pretes|pluralize }}</strong> · <strong class="texte-attention">{{ nombre_a_corriger }} à corriger</strong></p>
   </div>
 
+  {% if autre_apercu %}
+  <div class="alerte alerte--attention" role="alert">{% icone "alerte" %}<p><strong>Un autre fichier a été envoyé depuis.</strong> Voici son aperçu. Rien n'a été importé.</p></div>
+  {% endif %}
   {% if situation_changee %}
   <div class="alerte alerte--attention" role="alert">{% icone "alerte" %}<p><strong>La situation a changé depuis l'aperçu.</strong> Une chambre ou un numéro a été pris entre-temps. Vérifiez la liste à jour ci-dessous avant de confirmer.</p></div>
   {% endif %}
@@ -50,7 +53,7 @@
           </td>
           <td class="tableau__nombre">{{ ligne.telephone_affiche|default:"–" }}</td>
           <td class="tableau__nombre">{{ ligne.chambre|default:"–" }}</td>
-          <td class="tableau__nombre">{% if ligne.date_arrivee %}<time datetime="{{ ligne.arrivee }}">{{ ligne.date_arrivee|date:"j F Y" }}</time>{% else %}{{ ligne.arrivee|default:"–" }}{% endif %}</td>
+          <td class="tableau__nombre">{% if ligne.arrivee_auto %}Aujourd'hui{% elif ligne.date_arrivee %}<time datetime="{{ ligne.arrivee }}">{{ ligne.date_arrivee|date:"j F Y" }}</time>{% else %}{{ ligne.arrivee|default:"–" }}{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -59,6 +62,7 @@
 
   <form class="rangee" method="post" action="{% url 'residents:import_apercu' %}">
     {% csrf_token %}
+    <input type="hidden" name="jeton" value="{{ jeton }}">
     <input type="hidden" name="pretes" value="{{ pretes }}">
     {% if nombre_pretes %}
     <button class="bouton" type="submit" name="action" value="importer">Importer {% if nombre_pretes > 1 %}les {{ nombre_pretes }} lignes prêtes{% else %}la ligne prête{% endif %}</button>

@@ -187,6 +187,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Administration Django pour la saisie initiale : un étage et ses chambres sur une seule page, filtre « libre / occupée »
 - [x] Tests des contraintes en base et des messages de validation (21 tests)
 - **Notes** : un compte qui a des séjours ne peut pas être supprimé (`PROTECT`) : l'historique reste. Le départ d'un résident sera fait en T09.
+- **Revue indépendante (5 nov.)** : le filtre « occupée » de l'administration montrait aussi les chambres fermées et vides. Corrigé avec `Exists`.
 
 #### T07 Liste et fiche des résidents (équipe) (fait le 5 nov. 2026)
 - **Maquette** : P5.
@@ -199,6 +200,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Gabarit de champ commun à tous les formulaires (`interface/formulaires`) : libellé, aide, erreurs reliées au champ, mention « facultatif »
 - [x] Gabarits validés W3C ; rendu vérifié dans Chrome (mobile et ordinateur, clair et sombre), y compris les erreurs de saisie
 - **Notes** : l'état du compte vient pour l'instant de la première connexion (« Activé » ou « Pas encore activé ») ; T11 ajoutera l'invitation et son expiration. La colonne wifi de la maquette arrivera avec T15. Le compte d'un résident n'a pas de mot de passe utilisable : il se connectera par clé d'accès (T13). Correctif général : dans un tableau qui défile, les textes « visuellement cachés » élargissaient la page sur mobile ; le cadre du tableau les contient maintenant. Nombre de requêtes de la liste constant, quel que soit le nombre de résidents (testé).
+- **Revue indépendante (5 nov.)** : changer de chambre sans changer la date effaçait l'ancienne chambre de l'historique. La fiche demande maintenant la date du déménagement (sauf correction le jour de l'arrivée). Deux personnes qui donnent la même chambre au même moment : message clair au lieu d'une erreur 500.
 
 #### T08 Import CSV et Excel des résidents (fait le 5 nov. 2026)
 - **Docs** : [module `csv` de Python](https://docs.python.org/3/library/csv.html), [openpyxl, mode lecture seule](https://openpyxl.readthedocs.io/en/3.1/optimized.html), [openpyxl et defusedxml](https://openpyxl.readthedocs.io/en/stable/), [phonenumbers](https://github.com/daviddrysdale/python-phonenumbers).
@@ -208,7 +210,8 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Import des seules lignes prêtes, dans une transaction (tout ou rien)
 - [x] Si la base change entre l'aperçu et la confirmation (chambre prise…), rien n'est importé et l'aperçu à jour s'affiche
 - [ ] Option « envoyer un code d'activation aux nouveaux » : déplacée en T11, car elle demande le code d'activation et l'envoi de SMS (T10)
-- **Notes** : le fichier n'est jamais enregistré ; seules les lignes analysées restent dans la session jusqu'à la confirmation ou l'annulation. openpyxl lit en mode lecture seule, et `defusedxml` est installé, comme le conseille sa doc contre les attaques XML. Le numéro de ligne affiché est celui du fichier, même s'il contient des lignes vides. Une fiche au même nom qu'une fiche existante est signalée sans bloquer. Fichiers d'essai : données inventées uniquement. 25 tests.
+- **Notes** : le fichier n'est jamais enregistré ; seules les lignes analysées restent dans la session jusqu'à la confirmation ou l'annulation. openpyxl lit en mode lecture seule, et `defusedxml` est installé, comme le conseille sa doc contre les attaques XML. Le numéro de ligne affiché est celui du fichier, même s'il contient des lignes vides. Une fiche au même nom qu'une fiche existante est signalée sans bloquer. Fichiers d'essai : données inventées uniquement.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Fichiers abîmés ou piégés (encodage, CSV mal formé, XML cassé, archive qui gonfle) refusés avec un message au lieu d'une erreur 500. Les lignes vides ne font plus perdre de lignes. La confirmation est liée à son aperçu par un jeton : deux onglets ou un double clic ne créent rien en double (trace `ImportResidents`, jeton unique en base). Aperçu valable une heure. Un ancien séjour qui croise la date d'arrivée est signalé dans l'aperçu. Une arrivée sans date prend le jour de l'import. 45 tests pour l'import.
 
 #### T09 Départ d'un résident
 - [ ] Fin du séjour, compte désactivé, sessions fermées, accès wifi désactivé

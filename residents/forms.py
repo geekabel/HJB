@@ -87,8 +87,24 @@ class FormulaireResident(forms.ModelForm):
 
     def clean(self):
         donnees = super().clean()
-        if donnees.get("chambre") and not donnees.get("arrivee"):
+        chambre, arrivee = donnees.get("chambre"), donnees.get("arrivee")
+        if chambre and not arrivee:
             self.add_error("arrivee", "Indiquez la date d'arrivée dans la chambre.")
+        elif (
+            self.sejour
+            and chambre
+            and chambre.pk != self.sejour.chambre_id
+            and arrivee <= self.sejour.arrivee
+            # Le jour même de l'arrivée, changer de chambre corrige une erreur de saisie.
+            and not arrivee == self.sejour.arrivee == timezone.localdate()
+        ):
+            # Sinon, garder la date du séjour en cours effacerait l'ancienne chambre
+            # de l'historique au lieu d'enregistrer un déménagement.
+            self.add_error(
+                "arrivee",
+                "Pour un déménagement, indiquez sa date : après le "
+                f"{self.sejour.arrivee:%d/%m/%Y}, jour d'arrivée dans la chambre actuelle.",
+            )
         return donnees
 
     def enregistrer(self):

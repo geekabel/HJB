@@ -31,6 +31,9 @@ from .forms import nom_utilisateur_libre
 
 TAILLE_MAX = 2 * 1024 * 1024  # 2 Mo : bien plus qu'une liste de résidents
 LIGNES_MAX = 500
+LIGNES_BRUTES_MAX = 5000  # lignes lues au plus, vides comprises
+TAILLE_DECOMPRESSEE_MAX = 20 * 1024 * 1024  # contre les archives qui « gonflent »
+ILLISIBLE_XLSX = "Ce fichier Excel est illisible. Enregistrez-le de nouveau en .xlsx."
 COLONNES_MAX = 20
 EXTENSIONS = (".csv", ".xlsx")
 
@@ -66,38 +69,64 @@ CLE_PAR_EN_TETE = {variante: cle for cle, variantes in EN_TETES.items() for vari
 # --- Lecture ---------------------------------------------------------------
 
 
-def _lire_csv(contenu):
+def _cellules_csv(contenu):
+    """Génère les lignes d'un CSV. Lève ErreurFichier si le texte est illisible."""
+    texte = None
     for encodage in ("utf-8-sig", "cp1252"):
         try:
             texte = contenu.decode(encodage)
             break
         except UnicodeDecodeError:
             continue
+    if texte is None:
+        raise ErreurFichier(
+            "Les caractères de ce fichier sont illisibles. Dans Excel, enregistrez-le "
+            "en « CSV UTF-8 »."
+        )
     try:
         dialecte = csv.Sniffer().sniff(texte[:4096], delimiters=";,\t")
     except csv.Error:
         dialecte = PointVirgule  # une seule colonne : on prend le séparateur d'Excel en français
     # newline="" comme le demande la doc du module csv.
     lecteur = csv.reader(io.StringIO(texte, newline=""), dialecte)
-    return [ligne[:COLONNES_MAX] for _, ligne in zip(range(LIGNES_MAX + 2), lecteur, strict=False)]
+    try:
+        for ligne in lecteur:
+            yield ligne[:COLONNES_MAX]
+    except csv.Error as erreur:
+        raise ErreurFichier(
+            "Ce fichier CSV est mal formé (guillemets ou cellule trop longue)."
+        ) from erreur
 
 
-def _lire_xlsx(fichier):
+def _verifier_archive(fichier):
+    """Un .xlsx est une archive zip : on refuse celles qui gonflent trop une fois ouvertes."""
+    try:
+        with zipfile.ZipFile(fichier) as archive:
+            taille = sum(info.file_size for info in archive.infolist())
+    except (zipfile.BadZipFile, OSError) as erreur:
+        raise ErreurFichier(ILLISIBLE_XLSX) from erreur
+    if taille > TAILLE_DECOMPRESSEE_MAX:
+        raise ErreurFichier(ILLISIBLE_XLSX)
+    fichier.seek(0)
+
+
+def _cellules_xlsx(fichier):
+    """Génère les lignes de la première feuille d'un .xlsx."""
     from openpyxl import load_workbook
-    from openpyxl.utils.exceptions import InvalidFileException
 
+    _verifier_archive(fichier)
     try:
         classeur = load_workbook(fichier, read_only=True, data_only=True)
-    except (InvalidFileException, zipfile.BadZipFile, KeyError, OSError, ValueError) as erreur:
-        raise ErreurFichier(
-            "Ce fichier Excel est illisible. Enregistrez-le de nouveau en .xlsx."
-        ) from erreur
+    except Exception as erreur:  # fichier piégé ou abîmé : toute erreur de lecture le refuse
+        raise ErreurFichier(ILLISIBLE_XLSX) from erreur
     try:
         feuille = classeur.active
         # Doc openpyxl : certains logiciels écrivent de mauvaises dimensions.
         feuille.reset_dimensions()
-        lignes = feuille.iter_rows(max_col=COLONNES_MAX, values_only=True)
-        return [list(ligne) for _, ligne in zip(range(LIGNES_MAX + 2), lignes, strict=False)]
+        for ligne in feuille.iter_rows(max_col=COLONNES_MAX, values_only=True):
+            yield list(ligne)
+    except Exception as erreur:
+        raise ErreurFichier(ILLISIBLE_XLSX) from erreur
     finally:
         classeur.close()  # obligatoire en lecture seule
 
@@ -110,7 +139,11 @@ def _sans_cellules_vides_a_la_fin(ligne):
 
 
 def lire_fichier(fichier):
-    """Renvoie les lignes non vides du fichier, en-tête comprise : [(numéro, cellules)…]."""
+    """Renvoie les lignes non vides du fichier, en-tête comprise : [(numéro, cellules)…].
+
+    Le numéro est celui de la ligne dans le fichier, lignes vides comprises,
+    pour que l'aperçu renvoie à la bonne ligne.
+    """
     nom = (fichier.name or "").lower()
     if nom.endswith(".xls"):
         raise ErreurFichier(
@@ -121,19 +154,22 @@ def lire_fichier(fichier):
         raise ErreurFichier("Le fichier doit être un .csv ou un .xlsx.")
     if fichier.size > TAILLE_MAX:
         raise ErreurFichier("Le fichier dépasse 2 Mo. Une liste de résidents est bien plus petite.")
-    if nom.endswith(".csv"):
-        lignes = _lire_csv(fichier.read())
-    else:
-        lignes = _lire_xlsx(fichier)
-    # On garde le numéro de ligne du fichier, pour que l'aperçu renvoie à la bonne ligne.
-    lignes = [(n, _sans_cellules_vides_a_la_fin(c)) for n, c in enumerate(lignes, start=1)]
-    lignes = [(n, c) for n, c in lignes if c]
+    cellules = _cellules_csv(fichier.read()) if nom.endswith(".csv") else _cellules_xlsx(fichier)
+    trop_long = f"Le fichier dépasse {LIGNES_MAX} lignes. Découpez-le en plusieurs fichiers."
+    lignes = []
+    try:
+        for numero, brut in enumerate(cellules, start=1):
+            if numero > LIGNES_BRUTES_MAX:
+                raise ErreurFichier(trop_long)
+            ligne = _sans_cellules_vides_a_la_fin(brut)
+            if ligne:
+                lignes.append((numero, ligne))
+                if len(lignes) > LIGNES_MAX + 1:  # + 1 : la ligne des titres
+                    raise ErreurFichier(trop_long)
+    finally:
+        cellules.close()
     if not lignes:
         raise ErreurFichier("Le fichier est vide.")
-    if len(lignes) > LIGNES_MAX + 1:
-        raise ErreurFichier(
-            f"Le fichier dépasse {LIGNES_MAX} lignes. Découpez-le en plusieurs fichiers."
-        )
     return lignes
 
 
@@ -148,6 +184,8 @@ class LigneImport:
     telephone: str = ""  # E.164 si valide, sinon la saisie
     chambre: str = ""
     arrivee: str = ""  # AAAA-MM-JJ si valide, sinon la saisie
+    # Chambre sans date : arrivée le jour de l'import (pas le jour de l'aperçu).
+    arrivee_auto: bool = False
     email: str = ""
     # Erreurs de lecture (date illisible) : gardées entre l'aperçu et la confirmation.
     erreurs_forme: list = field(default_factory=list)
@@ -170,6 +208,8 @@ class LigneImport:
 
     @property
     def date_arrivee(self):
+        if self.arrivee_auto:
+            return timezone.localdate()
         try:
             return date.fromisoformat(self.arrivee)
         except ValueError:
@@ -221,9 +261,8 @@ def _colonnes(en_tete):
     return colonnes
 
 
-def analyser(lignes, aujourd_hui=None):
+def analyser(lignes):
     """Analyse les lignes lues par lire_fichier(). Renvoie une liste de LigneImport."""
-    aujourd_hui = aujourd_hui or timezone.localdate()
     colonnes = _colonnes(lignes[0][1])
     resultat = []
     for numero, cellules in lignes[1:]:
@@ -249,7 +288,7 @@ def analyser(lignes, aujourd_hui=None):
                     f"« {ligne.arrivee} » n'est pas une date. Écrivez-la comme 01/09/2026."
                 )
         elif ligne.chambre:
-            ligne.arrivee = aujourd_hui.isoformat()
+            ligne.arrivee_auto = True
         resultat.append(ligne)
     _verifier(resultat)
     return resultat
@@ -317,11 +356,23 @@ def _verifier(lignes):
                 ligne.erreurs.append(f"Même chambre que la ligne {chambres_vues[ligne.chambre]}.")
             else:
                 chambres_vues[ligne.chambre] = ligne.numero
-                occupant = next((s.resident for s in chambre.sejours.all() if s.en_cours), None)
+                sejours = chambre.sejours.all()
+                occupant = next((s.resident for s in sejours if s.en_cours), None)
+                jour = ligne.date_arrivee
+                # Un séjour terminé après la date d'arrivée voulue croise le nouveau.
+                fin = max(
+                    (s.depart for s in sejours if s.depart and jour and s.depart > jour),
+                    default=None,
+                )
                 if occupant:
                     ligne.erreurs.append(
                         f"La chambre {ligne.chambre} est déjà occupée par "
                         f"{occupant.get_full_name() or occupant}."
+                    )
+                elif fin:
+                    ligne.erreurs.append(
+                        f"La chambre {ligne.chambre} était occupée jusqu'au "
+                        f"{fin:%d/%m/%Y} : l'arrivée doit être à partir de cette date."
                     )
 
         if (ligne.prenom.casefold(), ligne.nom.casefold()) in noms_existants:
@@ -361,17 +412,24 @@ def importer(lignes):
     for ligne in lignes:
         if not ligne.prete:
             continue
-        resident = User(
-            username=nom_utilisateur_libre(ligne.prenom, ligne.nom),
-            first_name=ligne.prenom,
-            last_name=ligne.nom,
-            telephone=ligne.telephone,
-            email=ligne.email,
-        )
-        resident.set_unusable_password()
-        resident.full_clean(exclude=["password"])
-        resident.save()
-        if ligne.chambre:
-            affecter_chambre(resident, chambres[ligne.chambre], ligne.date_arrivee)
+        try:
+            _creer(ligne, chambres)
+        except ValidationError as erreur:
+            raise ValidationError(f"Ligne {ligne.numero} : {' '.join(erreur.messages)}") from erreur
         creees += 1
     return creees
+
+
+def _creer(ligne, chambres):
+    resident = User(
+        username=nom_utilisateur_libre(ligne.prenom, ligne.nom),
+        first_name=ligne.prenom,
+        last_name=ligne.nom,
+        telephone=ligne.telephone,
+        email=ligne.email,
+    )
+    resident.set_unusable_password()
+    resident.full_clean(exclude=["password"])
+    resident.save()
+    if ligne.chambre:
+        affecter_chambre(resident, chambres[ligne.chambre], ligne.date_arrivee)
