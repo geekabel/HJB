@@ -18,7 +18,7 @@ Le code est en anglais (carte T14b). Les noms des modèles, des champs et des va
 |---|---|
 | `accounts` | Utilisateur, rôles, code d'activation, vérification du téléphone, abonnements aux notifications |
 | `access` | Connexion par clé d'accès, confirmation avant une action sensible, durée des sessions. Les clés sont les modèles de la bibliothèque django-otp-webauthn |
-| `housing` | Étages, chambres, séjours, accès wifi, journal des consultations wifi |
+| `housing` | Étages, chambres, séjours, accès wifi (chaque affichage d'un mot de passe va dans le journal d'audit) |
 | `messaging` | Modèles de message, campagnes, envois, réponses de présence, notifications dans l'appli |
 | `polls` | Sondages, options, participations, votes |
 | `appointments` | Disponibilités, rendez-vous, réglages des éducateurs, messages directs |
@@ -34,8 +34,6 @@ erDiagram
     ROOM ||--o{ STAY : "accueille"
     FLOOR ||--o{ ROOM : "contient"
     ROOM ||--o{ WIFI_ACCESS : "possède"
-    WIFI_ACCESS ||--o{ WIFI_VIEW : "est consulté"
-    USER ||--o{ WIFI_VIEW : "consulte"
     USER ||--o{ ACTIVATION_CODE : "reçoit"
     USER ||--o{ PHONE_VERIFICATION : "vérifie"
     USER ||--o{ PASSKEY : "se connecte avec"
@@ -104,18 +102,14 @@ erDiagram
         int id PK
         int room_id FK
         string username
-        binary encrypted_password
-        date generated_on
-        date expires_on "generated_on + 1 an"
-        int generated_by_id FK
-        bool active
-    }
-    WIFI_VIEW {
-        int id PK
-        int access_id FK
-        int user_id FK
-        datetime viewed_at
-        string ip_address
+        text encrypted_password "Fernet, jamais en clair"
+        bool generated "mot de passe généré par l'application"
+        date created_on
+        date expires_on "created_on + 1 an par défaut"
+        int created_by_id FK
+        bool active "un seul actif par chambre"
+        datetime ended_at
+        string end_reason "renewed, departure, move"
     }
     ACTIVATION_CODE {
         int id PK
@@ -311,7 +305,7 @@ erDiagram
         datetime created_at
         int actor_id FK "vide si le compte est supprimé"
         string actor_label "nom gardé pour la lecture"
-        string action "roles_changed, activation_code_issued, wifi_password_shown, resident_departed, resident_returned, passkey_created, access_cut"
+        string action "roles_changed, activation_code_issued, wifi_password_shown, resident_departed, resident_returned, passkey_created, access_cut, wifi_access_set"
         int target_type_id FK "type de l'objet concerné"
         string target_id
         string target_label
@@ -362,6 +356,13 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - Aucun mot de passe (T14) : le backend `PermissionsOnlyBackend` lit les permissions des rôles et refuse toute connexion par mot de passe. L'espace équipe et l'administration exigent une session vérifiée par clé.
 - Un code d'activation `for_staff` ne sert qu'à un compte du personnel, un code de l'accueil qu'à un résident.
 - Durée des sessions (repart à chaque requête) : 90 jours sans activité pour un résident connecté par clé, 12 heures pour le personnel. Une action sensible demande une vérification par clé de moins de 10 minutes.
+
+## Accès wifi
+
+- Un accès par chambre, valable un an par défaut. Le renouvellement garde l'ancien, inactif, pour l'historique.
+- Le mot de passe est chiffré avec Fernet (bibliothèque cryptography). Les clés sont dans `DJANGO_WIFI_KEYS`, jamais dans le dépôt ; `python manage.py rotate_wifi_keys` chiffre de nouveau avec une nouvelle clé.
+- La fin d'un séjour (départ, changement de chambre) coupe l'accès de la chambre : il faut le changer sur le réseau.
+- Pas de table des consultations : chaque affichage d'un mot de passe est une entrée du journal d'audit (`wifi_password_shown`).
 
 ## Règles métier portées par le modèle
 
