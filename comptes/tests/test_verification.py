@@ -145,13 +145,44 @@ class VerificationTests(TestCase):
 
 
 class ChangementDeNumeroTests(TestCase):
-    def test_un_nouveau_numero_n_est_pas_verifie(self):
-        awa = creer_utilisateur("awa", telephone="+33612345647")
-        User.objects.filter(pk=awa.pk).update(telephone_verifie_le=timezone.now())
-        awa = User.objects.get(pk=awa.pk)
-        awa.first_name = "Awa"
-        awa.save()
-        self.assertIsNotNone(User.objects.get(pk=awa.pk).telephone_verifie_le)
+    """Le numéro vérifié est gardé : tout autre numéro n'est pas vérifié, quelle que
+    soit la façon dont il a changé."""
+
+    def setUp(self):
+        memoire.boite.clear()
+        self.awa = creer_utilisateur("awa", telephone="+33612345647")
+        v.envoyer_code(self.awa)
+        v.verifier_code(self.awa, dernier_code())
+        self.assertTrue(User.objects.get(pk=self.awa.pk).telephone_est_verifie)
+
+    def test_par_save(self):
+        awa = User.objects.get(pk=self.awa.pk)
+        awa.save(update_fields=["first_name"])
         awa.telephone = "+33781234588"
         awa.save(update_fields=["telephone"])
-        self.assertIsNone(User.objects.get(pk=awa.pk).telephone_verifie_le)
+        self.assertFalse(User.objects.get(pk=awa.pk).telephone_est_verifie)
+
+    def test_par_update_ou_chargement_partiel(self):
+        User.objects.filter(pk=self.awa.pk).update(telephone="+33781234588")
+        self.assertFalse(User.objects.get(pk=self.awa.pk).telephone_est_verifie)
+        awa = User.objects.only("username").get(pk=self.awa.pk)
+        awa.telephone = "+33612345647"
+        awa.save()
+        # Revenu au numéro vérifié : de nouveau vérifié, ce qui est juste.
+        self.assertTrue(User.objects.get(pk=self.awa.pk).telephone_est_verifie)
+
+    def test_une_instance_perimee_n_efface_pas_une_verification(self):
+        perimee = User.objects.get(pk=self.awa.pk)
+        perimee.refresh_from_db()
+        perimee.first_name = "Awa"
+        perimee.save()
+        self.assertTrue(User.objects.get(pk=self.awa.pk).telephone_est_verifie)
+
+    def test_envoi_sous_verrou(self):
+        # Les limites d'envoi sont vérifiées après avoir verrouillé la ligne du compte.
+        vieillir(61)
+        with mock.patch.object(
+            User.objects, "select_for_update", wraps=User.objects.select_for_update
+        ) as verrou:
+            v.envoyer_code(self.awa)
+        verrou.assert_called_once()

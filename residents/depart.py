@@ -136,8 +136,11 @@ def enregistrer_retour(resident, chambre, le, *, requete=None):
         # Le compte doit être activé de nouveau (code, téléphone, clé d'accès) :
         # sans cela, il paraîtrait « activé » à cause de l'ancienne connexion.
         resident.last_login = None
+        resident.telephone_verifie = ""
         resident.telephone_verifie_le = None
-        resident.save(update_fields=["is_active", "last_login", "telephone_verifie_le"])
+        resident.save(
+            update_fields=["is_active", "last_login", "telephone_verifie", "telephone_verifie_le"]
+        )
         sejour = affecter_chambre(resident, chambre, le)
         journaliser(
             Action.RETOUR_RESIDENT,

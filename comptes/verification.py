@@ -45,6 +45,14 @@ def derniere(utilisateur):
     return utilisateur.verifications_telephone.first()
 
 
+def renvoi_possible_le(utilisateur):
+    """Heure à partir de laquelle un nouveau code peut être demandé (None : tout de suite)."""
+    precedente = derniere(utilisateur)
+    if precedente is None or precedente.cree_le + DELAI_RENVOI <= timezone.now():
+        return None
+    return precedente.cree_le + DELAI_RENVOI
+
+
 def attente_avant_renvoi(utilisateur):
     """Secondes à attendre avant de pouvoir demander un nouveau code (0 si possible)."""
     precedente = derniere(utilisateur)
@@ -67,25 +75,27 @@ def envoyer_code(utilisateur):
             "Aucun numéro n'est enregistré pour vous. Passez à l'accueil pour le donner.",
             "sans_numero",
         )
-    attente = attente_avant_renvoi(utilisateur)
-    if attente:
-        raise ErreurVerification(
-            f"Patientez {attente} secondes avant de demander un nouveau code.",
-            "trop_tot",
-            attente=attente,
-        )
-    maintenant = timezone.now()
-    recents = utilisateur.verifications_telephone.filter(
-        cree_le__gte=maintenant - timedelta(hours=1)
-    )
-    if recents.count() >= ENVOIS_PAR_HEURE:
-        raise ErreurVerification(
-            "Trop de codes envoyés. Réessayez dans une heure, ou passez à l'accueil.",
-            "trop_d_envois",
-        )
-
     code = f"{secrets.randbelow(10**6):06d}"
     with transaction.atomic():
+        # Verrou sur la ligne du compte : des demandes simultanées passent une par une,
+        # et les limites (60 s, 3 par heure) tiennent même avec des clics en rafale.
+        type(utilisateur).objects.select_for_update().get(pk=utilisateur.pk)
+        attente = attente_avant_renvoi(utilisateur)
+        if attente:
+            raise ErreurVerification(
+                f"Patientez {attente} secondes avant de demander un nouveau code.",
+                "trop_tot",
+                attente=attente,
+            )
+        maintenant = timezone.now()
+        recents = utilisateur.verifications_telephone.filter(
+            cree_le__gte=maintenant - timedelta(hours=1)
+        )
+        if recents.count() >= ENVOIS_PAR_HEURE:
+            raise ErreurVerification(
+                "Trop de codes envoyés. Réessayez dans une heure, ou passez à l'accueil.",
+                "trop_d_envois",
+            )
         # Un seul code à la fois : les précédents expirent.
         utilisateur.verifications_telephone.filter(
             verifie_le__isnull=True, expire_le__gt=maintenant
@@ -162,6 +172,8 @@ def verifier_code(utilisateur, saisie):
             pk=verification.pk, verifie_le__isnull=True
         ).update(verifie_le=maintenant):
             raise ErreurVerification("Ce code a déjà servi.", "aucun")
+        # On garde le numéro vérifié : s'il change ensuite, il n'est plus vérifié.
+        utilisateur.telephone_verifie = verification.telephone
         utilisateur.telephone_verifie_le = maintenant
-        utilisateur.save(update_fields=["telephone_verifie_le"])
+        utilisateur.save(update_fields=["telephone_verifie", "telephone_verifie_le"])
     return verification

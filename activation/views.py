@@ -36,7 +36,7 @@ def saisie(request):
             request.session[CLE_ECHECS] = echecs
             formulaire.add_error("code", str(erreur))
         else:
-            parcours.demarrer(request, code.utilisateur)
+            parcours.demarrer(request, code)
             return redirect("activation:telephone")
     return render(request, "activation/saisie.html", {"formulaire": formulaire, "etape": 1})
 
@@ -48,7 +48,7 @@ def telephone(request):
     if personne is None:
         messages.info(request, "Pour commencer, saisissez le code remis par l'accueil.")
         return redirect("activation:saisie")
-    if parcours.etape_faite(request, "telephone_verifie"):
+    if parcours.etape_faite(request, "telephone_verifie") and personne.telephone_est_verifie:
         return redirect("activation:cle")
 
     formulaire = FormulaireCodeSms()
@@ -87,15 +87,17 @@ def telephone(request):
             "personne": personne,
             "formulaire": formulaire,
             "code_envoye": code_envoye,
-            "attente": verification.attente_avant_renvoi(personne),
+            "renvoi_le": verification.renvoi_possible_le(personne),
         },
     )
 
 
 @never_cache
 def mauvais_numero(request):
-    """« Ce n'est pas mon numéro » : seul l'accueil peut le corriger."""
-    parcours.terminer(request)
+    """« Ce n'est pas mon numéro » : seul l'accueil peut le corriger.
+
+    Simple page d'information : un affichage (GET) ne change rien.
+    """
     return render(request, "activation/mauvais_numero.html", {"etape": 2})
 
 
@@ -103,6 +105,11 @@ def mauvais_numero(request):
 def cle(request):
     """Étape 3 : clé d'accès (carte T13). En attendant, la vérification est confirmée."""
     personne = parcours.personne_en_cours(request)
-    if personne is None or not parcours.etape_faite(request, "telephone_verifie"):
+    # Le numéro a pu changer depuis la vérification : on le revérifie.
+    if (
+        personne is None
+        or not parcours.etape_faite(request, "telephone_verifie")
+        or not personne.telephone_est_verifie
+    ):
         return redirect("activation:telephone" if personne else "activation:saisie")
     return render(request, "activation/cle.html", {"etape": 3, "personne": personne})

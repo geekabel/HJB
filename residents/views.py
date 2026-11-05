@@ -208,6 +208,9 @@ def fiche(request, pk):
             "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
             "activation": etat_activation(resident),
+            "jeton_code": jeton_code_activation(request, resident)
+            if request.user.has_perm("comptes.generer_code_activation")
+            else "",
             "dernier_depart": resident.sejours.filter(depart__isnull=False)
             .order_by("-depart")
             .values_list("depart", flat=True)
@@ -278,46 +281,47 @@ def retour(request, pk):
     )
 
 
-CLE_CODE_A_AFFICHER = "code_activation_a_afficher"
+CLE_JETONS_CODE = "jetons_code_activation"
+JETONS_MAX = 10
+
+
+def jeton_code_activation(request, resident):
+    """Jeton à usage unique pour le bouton « Générer un code » de la fiche.
+
+    Recharger la page du code renvoie le même jeton, déjà consommé : aucun
+    nouveau code ne remplace celui déjà remis. Le code n'est jamais gardé en
+    clair, ni en base ni dans la session.
+    """
+    jeton = secrets.token_urlsafe(16)
+    jetons = request.session.get(CLE_JETONS_CODE, [])[-(JETONS_MAX - 1) :]
+    request.session[CLE_JETONS_CODE] = [*jetons, [jeton, resident.pk]]
+    return jeton
 
 
 @require_POST
 @login_required
 @permission_required("comptes.generer_code_activation", raise_exception=True)
 def code_activation(request, pk):
-    """Génère un code, puis redirige vers la page qui l'affiche (POST, puis GET).
-
-    Recharger la page ne renvoie donc pas le formulaire : le code déjà remis
-    n'est pas remplacé par erreur.
-    """
+    """Génère un code et l'affiche une seule fois, en page imprimable, jamais mise en cache."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
+    jetons = request.session.get(CLE_JETONS_CODE, [])
+    attendu = [request.POST.get("jeton", ""), resident.pk]
+    if attendu not in jetons:
+        messages.info(
+            request,
+            "Ce code a déjà été généré : il reste valable. "
+            "S'il ne s'est pas affiché ou s'il est perdu, générez-en un nouveau.",
+        )
+        return redirect("residents:fiche", pk=resident.pk)
+    request.session[CLE_JETONS_CODE] = [j for j in jetons if j != attendu]
     if not resident.is_active:
         messages.info(request, "Ce compte est désactivé : enregistrez d'abord le retour.")
         return redirect("residents:fiche", pk=resident.pk)
     code = generer_code(resident, par=request.user, requete=request)
-    # Gardé dans la session le temps d'un affichage, puis effacé.
-    request.session[CLE_CODE_A_AFFICHER] = {"resident": resident.pk, "code": code}
-    return redirect("residents:code_activation_feuille", pk=resident.pk)
-
-
-@login_required
-@permission_required("comptes.generer_code_activation", raise_exception=True)
-def code_activation_feuille(request, pk):
-    """Affiche le code une seule fois, en page imprimable, jamais mise en cache."""
-    resident = get_object_or_404(User.objects.residents(), pk=pk)
-    a_afficher = request.session.pop(CLE_CODE_A_AFFICHER, None)
-    if not a_afficher or a_afficher["resident"] != resident.pk:
-        messages.info(
-            request,
-            "Ce code a déjà été affiché. Il reste valable : s'il est perdu, générez-en un nouveau.",
-        )
-        return redirect("residents:fiche", pk=resident.pk)
-    code = a_afficher["code"]
     adresse = request.build_absolute_uri(reverse("activation:saisie"))
     qr = segno.make_qr(f"{adresse}#{code}", error="m").svg_inline(
         scale=4, title=f"Code QR pour activer le compte de {resident.get_full_name()}"
     )
-    dernier, _ = etat_activation(resident)
     reponse = render(
         request,
         "residents/code_activation.html",
@@ -326,7 +330,7 @@ def code_activation_feuille(request, pk):
             "resident": resident,
             "code": code,
             "adresse": adresse,
-            "expire_le": dernier.expire_le if dernier else timezone.now() + DUREE_VALIDITE,
+            "expire_le": timezone.now() + DUREE_VALIDITE,
             "qr": mark_safe(qr),  # SVG produit par segno à partir de notre propre lien
         },
     )

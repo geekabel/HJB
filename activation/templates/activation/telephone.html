@@ -21,7 +21,7 @@
 <form class="rangee" method="post">
   {% csrf_token %}
   <button class="bouton bouton--discret" type="submit" name="action" value="envoyer">Renvoyer un code</button>
-  {% if attente %}<span class="texte-doux texte-petit">Possible dans {{ attente }} seconde{{ attente|pluralize }}.</span>{% endif %}
+  {% if renvoi_le %}<span class="texte-doux texte-petit">Possible à partir de <time datetime="{{ renvoi_le|date:'Y-m-d\TH:i:sO' }}">{{ renvoi_le|time:"H:i:s" }}</time>.</span>{% endif %}
 </form>
 {% else %}
 <form class="pile" method="post">

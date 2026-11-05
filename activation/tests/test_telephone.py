@@ -13,7 +13,7 @@ from outils.capture_html import enregistrer_page
 from sms.fournisseurs import memoire
 
 
-class EtapeTelephoneTests(TestCase):
+class BaseTelephone(TestCase):
     def setUp(self):
         memoire.boite.clear()
         self.awa = creer_utilisateur("awa", first_name="Awa", telephone="+33612345647")
@@ -26,6 +26,8 @@ class EtapeTelephoneTests(TestCase):
     def code_recu(self):
         return re.search(r"\b(\d{6})\b", memoire.boite[-1].texte).group(1)
 
+
+class EtapeTelephoneTests(BaseTelephone):
     def test_avant_l_envoi(self):
         reponse = self.client.get(self.url)
         enregistrer_page("activation-telephone", reponse)
@@ -39,7 +41,7 @@ class EtapeTelephoneTests(TestCase):
         enregistrer_page("activation-telephone-code", reponse)
         self.assertContains(reponse, "Code envoyé.")
         self.assertContains(reponse, 'autocomplete="one-time-code"')
-        self.assertContains(reponse, "Possible dans")
+        self.assertContains(reponse, "Possible à partir de <time")
         reponse = self.client.post(
             self.url, {"action": "verifier", "code": self.code_recu()}, follow=True
         )
@@ -78,7 +80,8 @@ class EtapeTelephoneTests(TestCase):
         reponse = self.client.get(reverse("activation:mauvais_numero"))
         enregistrer_page("activation-mauvais-numero", reponse)
         self.assertContains(reponse, "Passez à l'accueil avec une pièce d'identité.")
-        self.assertNotIn(parcours.CLE, self.client.session)
+        # Un simple affichage ne change rien (préchargement de lien, image piégée…).
+        self.assertIn(parcours.CLE, self.client.session)
 
     def test_etape_3_sans_verification(self):
         self.assertRedirects(self.client.get(reverse("activation:cle")), self.url)
@@ -87,3 +90,30 @@ class EtapeTelephoneTests(TestCase):
         self.envoyer()
         code = self.code_recu()
         self.assertNotIn(code, VerificationTelephone.objects.get().empreinte)
+
+
+class RevueTests(BaseTelephone):
+    """Cas trouvés par la relecture indépendante (5 nov.)."""
+
+    def test_un_nouveau_code_d_activation_ferme_l_ancienne_session(self):
+        generer_code(self.awa)  # l'accueil remet un nouveau code (l'ancien a pu être volé)
+        reponse = self.client.post(self.url, {"action": "envoyer"})
+        self.assertRedirects(reponse, reverse("activation:saisie"))
+        self.assertEqual(memoire.boite, [])
+
+    def test_numero_change_apres_la_verification(self):
+        self.envoyer()
+        self.client.post(self.url, {"action": "verifier", "code": self.code_recu()})
+        self.awa.telephone = "+33781234588"
+        self.awa.save()
+        self.assertRedirects(self.client.get(reverse("activation:cle")), self.url)
+        reponse = self.client.get(self.url)
+        self.assertContains(reponse, "Recevoir le code par SMS")
+
+    def test_depart_pendant_l_activation(self):
+        from django.utils import timezone
+
+        from residents.depart import enregistrer_depart
+
+        enregistrer_depart(self.awa, timezone.localdate())
+        self.assertRedirects(self.client.get(self.url), reverse("activation:saisie"))

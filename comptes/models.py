@@ -64,39 +64,15 @@ class User(AbstractUser):
         validators=[valider_e164],
         help_text="Saisie libre (06 12 34 56 78) ; enregistré au format international.",
     )
-    telephone_verifie_le = models.DateTimeField(
-        "téléphone vérifié le",
-        null=True,
+    telephone_verifie = models.CharField(
+        "numéro vérifié",
+        max_length=16,
         blank=True,
-        help_text="Par code SMS, pendant l'activation. Remis à vide si le numéro change.",
+        help_text="Confirmé par code SMS. S'il diffère du numéro actuel, rien n'est vérifié.",
     )
+    telephone_verifie_le = models.DateTimeField("téléphone vérifié le", null=True, blank=True)
 
     objects = GestionnaireUtilisateurs()
-
-    # Doc « Customizing model loading » : on garde le numéro lu en base pour
-    # savoir, à l'enregistrement, s'il a changé.
-    @classmethod
-    def from_db(cls, db, field_names, values, **kwargs):
-        instance = super().from_db(db, field_names, values, **kwargs)
-        if "telephone" in field_names:
-            instance._telephone_charge = instance.telephone
-        return instance
-
-    def save(self, **kwargs):
-        update_fields = kwargs.get("update_fields")
-        change = (
-            not self._state.adding
-            and hasattr(self, "_telephone_charge")
-            and self.telephone != self._telephone_charge
-            and (update_fields is None or "telephone" in update_fields)
-        )
-        if change:
-            # Un nouveau numéro n'est pas vérifié.
-            self.telephone_verifie_le = None
-            if update_fields is not None:
-                kwargs["update_fields"] = {*update_fields, "telephone_verifie_le"}
-        super().save(**kwargs)
-        self._telephone_charge = self.telephone
 
     class Meta(AbstractUser.Meta):
         verbose_name = "utilisateur"
@@ -149,6 +125,20 @@ class User(AbstractUser):
         if not self.is_active:
             return EtatCompte.DESACTIVE
         return EtatCompte.ACTIVE if self.last_login else EtatCompte.EN_ATTENTE
+
+    @property
+    def telephone_est_verifie(self):
+        """Vrai seulement si le numéro actuel est celui qui a été vérifié.
+
+        On compare les numéros au lieu de surveiller les modifications : la règle
+        tient quelle que soit la façon dont le numéro change (fiche,
+        administration, import, update() en base).
+        """
+        return bool(
+            self.telephone
+            and self.telephone_verifie_le
+            and self.telephone_verifie == self.telephone
+        )
 
     @property
     def telephone_affiche(self):
