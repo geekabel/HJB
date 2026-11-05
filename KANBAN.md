@@ -53,6 +53,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | SMS | Couche « fournisseur » interchangeable | Console en développement, SMSGate pour les tests réels, OVHcloud ou Brevo en production |
 | Connexion | Code d'activation remis à l'accueil, code SMS, puis clé d'accès (passkey) | Le numéro de chambre n'est pas un secret |
 | Front | Gabarits Django, CSS natif, JavaScript léger | Moins de dépendances, validation W3C plus simple |
+| Import Excel | openpyxl en lecture seule, avec defusedxml | Lit les .xlsx sans Excel ; defusedxml bloque les fichiers XML piégés |
 
 ## Tableau
 
@@ -66,7 +67,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T08 | Import CSV et Excel des résidents | E1 Résidents | T07 |
 | T09 | Départ d'un résident | E1 Résidents | T06, T15 |
 | T10 | Couche fournisseur SMS | E4 Messages | T01 |
 | T11 | Code d'activation | E2 Connexion | T07 |
@@ -116,6 +116,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T05 | Journal d'audit | 5 nov. 2026 |
 | T06 | Étages, chambres et séjours | 5 nov. 2026 |
 | T07 | Liste et fiche des résidents (équipe) | 5 nov. 2026 |
+| T08 | Import CSV et Excel des résidents | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -199,12 +200,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Gabarits validés W3C ; rendu vérifié dans Chrome (mobile et ordinateur, clair et sombre), y compris les erreurs de saisie
 - **Notes** : l'état du compte vient pour l'instant de la première connexion (« Activé » ou « Pas encore activé ») ; T11 ajoutera l'invitation et son expiration. La colonne wifi de la maquette arrivera avec T15. Le compte d'un résident n'a pas de mot de passe utilisable : il se connectera par clé d'accès (T13). Correctif général : dans un tableau qui défile, les textes « visuellement cachés » élargissaient la page sur mobile ; le cadre du tableau les contient maintenant. Nombre de requêtes de la liste constant, quel que soit le nombre de résidents (testé).
 
-#### T08 Import CSV et Excel des résidents
-- **Docs** : module `csv` de Python, openpyxl, phonenumbers.
-- [ ] Envoi du fichier, aperçu ligne par ligne, erreurs expliquées
-- [ ] Numéros normalisés au format international
-- [ ] Import des seules lignes valides, dans une transaction
-- [ ] Option « envoyer un code d'activation aux nouveaux »
+#### T08 Import CSV et Excel des résidents (fait le 5 nov. 2026)
+- **Docs** : [module `csv` de Python](https://docs.python.org/3/library/csv.html), [openpyxl, mode lecture seule](https://openpyxl.readthedocs.io/en/3.1/optimized.html), [openpyxl et defusedxml](https://openpyxl.readthedocs.io/en/stable/), [phonenumbers](https://github.com/daviddrysdale/python-phonenumbers).
+- [x] Envoi du fichier (.csv ou .xlsx, 2 Mo et 500 lignes au plus), aperçu ligne par ligne, erreurs expliquées en clair (numéro, chambre prise ou fermée, doublons dans le fichier, date, e-mail)
+- [x] Titres de colonnes souples (accents, majuscules, ordre libre) et modèle CSV à télécharger
+- [x] Numéros normalisés au format international, y compris un 0 perdu par Excel (612345678)
+- [x] Import des seules lignes prêtes, dans une transaction (tout ou rien)
+- [x] Si la base change entre l'aperçu et la confirmation (chambre prise…), rien n'est importé et l'aperçu à jour s'affiche
+- [ ] Option « envoyer un code d'activation aux nouveaux » : déplacée en T11, car elle demande le code d'activation et l'envoi de SMS (T10)
+- **Notes** : le fichier n'est jamais enregistré ; seules les lignes analysées restent dans la session jusqu'à la confirmation ou l'annulation. openpyxl lit en mode lecture seule, et `defusedxml` est installé, comme le conseille sa doc contre les attaques XML. Le numéro de ligne affiché est celui du fichier, même s'il contient des lignes vides. Une fiche au même nom qu'une fiche existante est signalée sans bloquer. Fichiers d'essai : données inventées uniquement. 25 tests.
 
 #### T09 Départ d'un résident
 - [ ] Fin du séjour, compte désactivé, sessions fermées, accès wifi désactivé
@@ -226,6 +230,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Code haché en base, usage unique, valable 72 h
 - [ ] Impression du code ou affichage d'un QR code
 - [ ] Limite de tentatives
+- [ ] Import (T08) : option « envoyer un code d'activation aux nouveaux », par SMS
 
 #### T12 Vérification du téléphone par code SMS
 - **Maquette** : R0.
