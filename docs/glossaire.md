@@ -5,6 +5,15 @@ Les textes affichés restent en français, ainsi que les adresses visibles (/act
 /connexion/, /equipe/…). Ce glossaire relie les mots du métier (français) aux noms du code.
 Colonne de gauche : ancien nom ; colonne de droite : nouveau nom.
 
+## Règle de langue
+
+| En français | En anglais |
+|---|---|
+| Tout ce qu'une personne lit : pages, boutons, libellés des formulaires et de l'administration, messages, SMS | Noms dans le code : modules, classes, fonctions, variables, champs, noms d'URL, classes CSS |
+| Messages pour l'exploitant du serveur : contrôles (`manage.py check`), commandes, erreurs de configuration et d'envoi de SMS | Commentaires, docstrings et tests |
+| Chemins des adresses : /activer/, /connexion/, /equipe/… | Journaux techniques (logs) |
+| | Paramètres des filtres (`?floor=`, `?account=`, `?action=`) et adresses de l'administration Django (`/admin/accounts/user/`), qui suivent les noms des applications |
+
 ## Applications et modules
 
 | Ancien | Nouveau |
