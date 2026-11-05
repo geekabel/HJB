@@ -1414,13 +1414,14 @@
     flex: 1 1 16rem;
   }
 
-  /* Vote fields of the composer (card T25): only for a "Vote, avis" message */
-  .compose__poll {
+  /* Vote fields of the composer (card T25): hidden when another type is
+     chosen. Without :has (old browser), they simply stay visible. */
+  .compose:has(input[name="type"]:checked:not([value="vote"])) .compose__poll {
     display: none;
   }
 
-  .compose:has(input[name="type"][value="vote"]:checked) .compose__poll {
-    display: flex;
+  .vote__question {
+    font-weight: 700;
   }
 
   /* Results of a vote (card T25) */

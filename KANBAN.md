@@ -428,6 +428,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Clôture, résultats pour l'équipe sur la page de suivi : votants, barres, commentaires. Affichés seulement après la clôture et à partir de 3 votants
 - [x] Relance aux seuls non-votants, 24 h avant la clôture
 - **Notes** : la carte de vote de la maquette s'ouvre depuis la boîte de réception (page du message) au lieu d'y être dépliée. Limite écrite dans le README : quelqu'un qui copie la base après chaque vote peut retrouver un choix ; cela demande un accès au serveur.
+- **Revue** : corrigé après la revue indépendante. Faille grave corrigée (elle touchait aussi T22) : l'aperçu du composeur et le test d'envoi contenaient le vrai lien personnel d'un résident ; un membre de l'équipe pouvait voter ou répondre à sa place. Ils contiennent maintenant un lien de même longueur qui ne marche pas (testé). Un vote écrit toutes les lignes du sondage d'un coup (la base ne garde pas la trace du choix modifié) ; « lu » ne garde que le jour pour un vote par lien. Brouillon de vote incomplet enregistrable, vote gardé si l'on change de type par erreur (retiré à l'envoi), choix figés dès le premier vote. Relance entre 9 h et 20 h. Vote dont l'envoi arrive après la clôture : annulé. Pourcentages qui font 100. Accessibilité : la question est la légende, message de confirmation, commentaire gardé après une erreur. Champs du vote visibles même sans `:has`. Texte d'anonymat plus juste ; limites détaillées dans le README.
 
 ### E6 Rendez-vous
 

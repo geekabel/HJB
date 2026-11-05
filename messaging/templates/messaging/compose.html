@@ -29,7 +29,7 @@
 <form class="compose" method="post" action="{% if campaign.pk %}{% url 'messaging:compose' campaign.pk %}{% else %}{% url 'messaging:new' %}{% if campaign.template_id %}?modele={{ campaign.template_id }}{% endif %}{% endif %}" novalidate>
   {% csrf_token %}
   <div class="compose__main stack">
-    {% if form.errors or poll_form.errors %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p><strong>Rien n'a été enregistré, ajouté ni envoyé.</strong> Corrigez {% with count=form.errors|length|add:poll_form.errors|length %}{% if count > 1 %}les champs signalés{% else %}le champ signalé{% endif %}{% endwith %} ci-dessous.{% if form.non_field_errors %} {{ form.non_field_errors|join:" " }}{% endif %}</p></div>{% endif %}
+    {% if error_count %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p><strong>Rien n'a été enregistré, ajouté ni envoyé.</strong> Corrigez {% if error_count > 1 %}les champs signalés{% else %}le champ signalé{% endif %} ci-dessous.{% if form.non_field_errors %} {{ form.non_field_errors|join:" " }}{% endif %}</p></div>{% endif %}
 
     <fieldset class="card stack">
       <legend class="compose__step">1. Type de message</legend>

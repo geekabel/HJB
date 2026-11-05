@@ -26,7 +26,7 @@ from django.utils import timezone
 
 from audit.models import Action
 from audit.service import log_action
-from polls.models import Participation
+from polls.models import Participation, Poll
 from polls.services import MIN_OPTIONS, REMINDER_BEFORE_CLOSING, poll_of
 from push.models import PushSubscription
 from push.services import send_to_user
@@ -55,6 +55,9 @@ MAX_PUSH_ATTEMPTS = 3
 TOO_LATE = timedelta(hours=12)  # a message this late is not sent any more
 REMINDER_TOO_LATE = timedelta(hours=4)  # the reminder of 8:00, not after noon
 MIN_REMINDER_GAP = timedelta(hours=1)
+# A vote reminder goes between these hours, never at night (card T25).
+VOTE_REMINDER_EARLIEST = time(9, 0)
+VOTE_REMINDER_LATEST = time(20, 0)
 
 
 # --- Checks and scheduling -------------------------------------------------
@@ -68,10 +71,21 @@ def reminder_time(campaign):
         poll = poll_of(campaign)
         if poll is None or poll.closes_at is None:
             return None
-        return poll.closes_at - REMINDER_BEFORE_CLOSING
+        return _daytime(poll.closes_at - REMINDER_BEFORE_CLOSING)
     if not campaign.event_date:
         return None
     return timezone.make_aware(datetime.combine(campaign.event_date, REMINDER_HOUR))
+
+
+def _daytime(moment):
+    """The same moment, or earlier, between 9:00 and 20:00: never at night."""
+    local = timezone.localtime(moment)
+    if local.time() > VOTE_REMINDER_LATEST:
+        return timezone.make_aware(datetime.combine(local.date(), VOTE_REMINDER_LATEST))
+    if local.time() < VOTE_REMINDER_EARLIEST:
+        day = local.date() - timedelta(days=1)
+        return timezone.make_aware(datetime.combine(day, VOTE_REMINDER_LATEST))
+    return moment
 
 
 def _vote_problems(campaign, send_at):
@@ -172,6 +186,9 @@ def schedule(campaign, *, send_at, by, request=None):
         )
         if not updated:
             raise ValidationError("Ce message n'est plus un brouillon.")
+        if campaign.type != MessageType.VOTE:
+            # Kept in the draft after a change of type (card T25): not sent.
+            Poll.objects.filter(campaign=campaign).delete()
         campaign.refresh_from_db()
         targets = audience(campaign)
         log_action(
@@ -345,11 +362,32 @@ def record_planned_departures(now=None):
 # --- The task ---------------------------------------------------------------
 
 
+def _vote_already_closed(campaign, now):
+    """A vote whose sending comes too late (worker stopped for hours): cancelled."""
+    poll = poll_of(campaign) if campaign.type == MessageType.VOTE else None
+    if poll is None or poll.closes_at is None or poll.closes_at > now + MIN_REMINDER_GAP:
+        return False
+    # Only a sending that has not started: one under way goes on.
+    if not Campaign.objects.filter(pk=campaign.pk, status=Campaign.Status.SCHEDULED).update(
+        status=Campaign.Status.CANCELLED, send_at=None, remind_at=None
+    ):
+        return False
+    log_action(
+        Action.MESSAGE_CANCELLED,
+        target=campaign,
+        details={"reason": "Vote clos ou presque à l'heure de l'envoi : rien n'est parti."},
+    )
+    logger.warning("Vote %s cancelled: closed before its sending", campaign.pk)
+    return True
+
+
 def deliver(campaign_id, kind=Delivery.Kind.MESSAGE):
     """Send the message (or the reminder) of a campaign. Safe to run twice."""
     now = timezone.now()
     campaign = Campaign.objects.filter(pk=campaign_id).first()
     if campaign is None:
+        return
+    if kind == Delivery.Kind.MESSAGE and _vote_already_closed(campaign, now):
         return
     if kind == Delivery.Kind.MESSAGE:
         # The start and the list of deliveries go together: a campaign is never
@@ -390,7 +428,7 @@ def _create_deliveries(campaign, kind):
     rows = []
     for recipient in audience(campaign).recipients:
         values = values_for(campaign, recipient.user, recipient.room)
-        body, sms = rendered(campaign, recipient)
+        body, sms = rendered(campaign, recipient, live=True)
         rows.append(
             Delivery(
                 campaign=campaign,

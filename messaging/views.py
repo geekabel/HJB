@@ -105,6 +105,7 @@ def _compose_page(request, form, campaign, poll_form=None):
         "types": MessageType,
         "fields": FIELDS,
         "poll_form": poll_form or PollForm(poll=poll_of(campaign)),
+        "error_count": len(form.errors) + (len(poll_form.errors) if poll_form else 0),
     }
     if campaign.pk:
         rooms, people, excluded = _added(campaign)
@@ -156,7 +157,7 @@ def compose(request, pk=None):
         return _compose_page(request, CampaignForm(instance=campaign), campaign)
 
     form = CampaignForm(request.POST, instance=campaign)
-    poll_form = PollForm(request.POST)
+    poll_form = PollForm(request.POST, partial=True)
     is_vote = request.POST.get("type") == MessageType.VOTE
     if not form.is_valid() or (is_vote and not poll_form.is_valid()):
         if not is_vote:
@@ -184,9 +185,12 @@ def compose(request, pk=None):
 
 
 def _save_poll(campaign, poll_form):
-    """The poll of a vote (card T25); no poll for the other types."""
+    """The poll of a vote (card T25).
+
+    Another type keeps the poll of the draft, in case of a wrong click:
+    schedule() deletes it if the message is not a vote when it leaves.
+    """
     if poll_form is None:
-        Poll.objects.filter(campaign=campaign).delete()
         return
     poll, _ = Poll.objects.get_or_create(campaign=campaign)
     poll.closes_at = poll_form.cleaned_data["closes_at"]
@@ -303,9 +307,8 @@ def tracking(request, pk):
             "results": poll_results(poll),
             "closed": poll_closed(poll),
             "min_voters": MIN_VOTERS_FOR_RESULTS,
-            "reached": campaign.deliveries.filter(
-                kind=Delivery.Kind.MESSAGE, status=Delivery.Status.SENT
-            ).count(),
+            # Every recipient: an SMS marked failed may have arrived (and voted).
+            "reached": campaign.deliveries.filter(kind=Delivery.Kind.MESSAGE).count(),
             "voters": set(poll.participations.values_list("resident_id", flat=True)),
         }
     return render(

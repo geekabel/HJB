@@ -21,7 +21,7 @@ class PollForm(forms.Form):
         label="Permettre un commentaire pour l'équipe", required=False, initial=True
     )
 
-    def __init__(self, *args, poll=None, **kwargs):
+    def __init__(self, *args, poll=None, partial=False, **kwargs):
         if poll is not None and "initial" not in kwargs:
             kwargs["initial"] = {
                 "options": "\n".join(option.label for option in poll.options.all()),
@@ -30,11 +30,17 @@ class PollForm(forms.Form):
             }
         kwargs.setdefault("prefix", "poll")
         super().__init__(*args, **kwargs)
+        # A draft can stay incomplete: the check before sending lists what
+        # is missing (messaging.sending.problems). The labels stay "required".
+        self.partial = partial
+        if partial:
+            for field in self.fields.values():
+                field.required = False
 
     def clean_options(self):
         labels = clean_labels(self.cleaned_data["options"].splitlines())
         if len(labels) > MAX_OPTIONS:
             raise forms.ValidationError(f"{MAX_OPTIONS} choix au plus.")
-        if len(labels) < MIN_OPTIONS:
+        if len(labels) < MIN_OPTIONS and not self.partial:
             raise forms.ValidationError(f"Proposez au moins {MIN_OPTIONS} choix différents.")
         return labels

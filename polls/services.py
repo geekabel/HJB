@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import Case, F, Value, When
 from django.utils import timezone
 
 from .models import Option, Participation, Poll
@@ -54,6 +54,8 @@ def has_voted(poll, user):
 
 def set_options(poll, labels):
     """Replace the options of a poll that was not sent yet."""
+    if poll.participations.exists():
+        raise ValueError("Des personnes ont déjà voté : les choix ne changent plus.")
     labels = clean_labels(labels)
     with transaction.atomic():
         poll.options.all().delete()
@@ -95,11 +97,29 @@ def vote(poll, user, option_id, comment=""):
                 )
         except IntegrityError:
             raise VoteRefused("Vous avez déjà voté. Un seul vote par personne.") from None
-        Option.objects.filter(pk=option_id).update(votes=F("votes") + 1)
+        # Every option row is written, +1 or +0, and the poll row too: the
+        # database keeps no trace of which row this vote changed (PostgreSQL
+        # stamps each written row with the transaction id).
+        poll.options.update(
+            votes=F("votes") + Case(When(pk=option_id, then=Value(1)), default=Value(0))
+        )
         if comment and poll.allow_comment:
             # At a random place: the order of the list says nothing.
             poll.comments.insert(secrets.randbelow(len(poll.comments) + 1), comment)
-            poll.save(update_fields=["comments"])
+        poll.save(update_fields=["comments"])
+
+
+def _percents(counts):
+    """Whole percentages that add up to 100 (largest remainder method)."""
+    total = sum(counts)
+    if not total:
+        return [0] * len(counts)
+    exact = [100 * count / total for count in counts]
+    whole = [int(value) for value in exact]
+    by_remainder = sorted(range(len(counts)), key=lambda i: exact[i] - whole[i], reverse=True)
+    for index in by_remainder[: 100 - sum(whole)]:
+        whole[index] += 1
+    return whole
 
 
 @dataclass
@@ -115,10 +135,11 @@ def results(poll, now=None):
     shown = is_closed(poll, now) and voters >= MIN_VOTERS_FOR_RESULTS
     options, comments = [], []
     if shown:
-        total = sum(option.votes for option in poll.options.all()) or 1
+        found = list(poll.options.all())
+        percents = _percents([option.votes for option in found])
         options = [
-            (option.label, option.votes, round(100 * option.votes / total))
-            for option in poll.options.all()
+            (option.label, option.votes, percent)
+            for option, percent in zip(found, percents, strict=True)
         ]
         comments = list(Poll.objects.values_list("comments", flat=True).get(pk=poll.pk))
         secrets.SystemRandom().shuffle(comments)

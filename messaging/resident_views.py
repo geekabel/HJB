@@ -8,6 +8,8 @@
 - inbox_list(): the inbox, by kind; read_all() marks every message as read.
 """
 
+from datetime import datetime, time
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -17,6 +19,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 from access.session_policy import is_resident
@@ -57,6 +60,7 @@ def _private(response):
 # The link is the proof, not a session cookie: no CSRF token is needed, and the
 # buttons of a notification can answer without opening the application.
 @csrf_exempt
+@sensitive_post_parameters("option", "comment")  # never in an error report
 @require_http_methods(["GET", "POST"])
 def reply(request, token):
     found = replies.read_token(token)
@@ -104,19 +108,25 @@ def reply(request, token):
     )
 
 
+def _start_of_today():
+    """For a vote, "read" keeps the day only: not the time of the vote."""
+    return timezone.make_aware(datetime.combine(timezone.localdate(), time(0, 0)))
+
+
 def _vote_by_link(request, campaign, delivery, poll, resident):
-    thanks = error = ""
+    thanks = error = comment = ""
     status = 200
     if request.method == "POST":
+        comment = (request.POST.get("comment") or "")[: polls.MAX_COMMENT]
         try:
-            polls.vote(poll, resident, request.POST.get("option"), request.POST.get("comment"))
+            polls.vote(poll, resident, request.POST.get("option"), comment)
         except VoteRefused as refused:
             error = str(refused)
             status = 400 if polls.is_open(poll) else 409
         else:
-            thanks = VOTE_THANKS
+            thanks, comment = VOTE_THANKS, ""
         if delivery.read_at is None:
-            Delivery.objects.filter(pk=delivery.pk).update(read_at=timezone.now())
+            Delivery.objects.filter(pk=delivery.pk).update(read_at=_start_of_today())
     return _private(
         render(
             request,
@@ -129,6 +139,7 @@ def _vote_by_link(request, campaign, delivery, poll, resident):
                 "open": polls.is_open(poll),
                 "thanks": thanks,
                 "error": error,
+                "comment": comment,
             },
             status=status,
         )
@@ -136,6 +147,7 @@ def _vote_by_link(request, campaign, delivery, poll, resident):
 
 
 @login_required
+@sensitive_post_parameters("option", "comment")
 @require_http_methods(["GET", "POST"])
 def message(request, pk):
     campaign = get_object_or_404(Campaign, pk=pk)
@@ -145,13 +157,20 @@ def message(request, pk):
         raise Http404
     poll = poll_of(campaign)
     is_open = replies.is_open(campaign)
+    error = comment = ""
+    status = 200
     if request.method == "POST" and poll is not None:
+        comment = (request.POST.get("comment") or "")[: polls.MAX_COMMENT]
         try:
-            polls.vote(poll, request.user, request.POST.get("option"), request.POST.get("comment"))
+            polls.vote(poll, request.user, request.POST.get("option"), comment)
         except VoteRefused as refused:
-            messages.warning(request, str(refused))
-        return redirect("inbox:message", pk=campaign.pk)
-    if request.method == "POST":
+            # Shown on the page itself, with the comment kept.
+            error = str(refused)
+            status = 400 if polls.is_open(poll) else 409
+        else:
+            messages.success(request, VOTE_THANKS)
+            return redirect("inbox:message", pk=campaign.pk)
+    if request.method == "POST" and poll is None:
         answer = request.POST.get("answer", "")
         if not is_open:
             messages.warning(request, "Les réponses à ce message sont fermées.")
@@ -179,7 +198,10 @@ def message(request, pk):
             "poll": poll,
             "voted": poll is not None and polls.has_voted(poll, request.user),
             "open": poll is not None and polls.is_open(poll),
+            "error": error,
+            "comment": comment,
         },
+        status=status,
     )
     add_never_cache_headers(response)
     return response
