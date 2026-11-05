@@ -3,13 +3,15 @@ from django.test import TestCase
 
 from comptes.models import User
 from comptes.roles import (
-    GROUPE_MODERATEURS,
-    GROUPES_GERES,
+    GROUPE_PAR_ROLE,
     PERMISSIONS,
-    PERMISSIONS_PAR_GROUPE,
+    PERMISSIONS_PAR_ROLE,
     Role,
+    definir_roles,
     installer_groupes,
 )
+
+from .outils import creer_utilisateur
 
 
 def recharger(utilisateur):
@@ -17,9 +19,12 @@ def recharger(utilisateur):
     return User.objects.get(pk=utilisateur.pk)
 
 
-# Droits attendus par rôle (lecture humaine de roles.py).
+def droits(utilisateur):
+    return {code for code in PERMISSIONS if utilisateur.has_perm(f"comptes.{code}")}
+
+
+# Droits attendus par rôle seul (lecture humaine de roles.py).
 ATTENDU = {
-    Role.RESIDENT: set(),
     Role.ACCUEIL: {
         "acceder_espace_equipe",
         "gerer_residents",
@@ -30,18 +35,19 @@ ATTENDU = {
     Role.EDUCATEUR: {"acceder_espace_equipe", "envoyer_messages", "gerer_rendezvous"},
     Role.MAINTENANCE: {"acceder_espace_equipe", "envoyer_messages", "gerer_signalements"},
     Role.ADMIN: set(PERMISSIONS),
+    Role.MODERATEUR: {"moderer_discussion"},
 }
 
 
 class GroupesInstallesTests(TestCase):
-    def test_groupes_crees_par_migrate(self):
+    def test_un_groupe_par_role_cree_par_migrate(self):
         noms = set(Group.objects.values_list("name", flat=True))
-        self.assertTrue(set(GROUPES_GERES) <= noms)
+        self.assertTrue(set(GROUPE_PAR_ROLE.values()) <= noms)
 
     def test_permissions_des_groupes(self):
-        for nom, codes in PERMISSIONS_PAR_GROUPE.items():
-            with self.subTest(groupe=nom):
-                groupe = Group.objects.get(name=nom)
+        for role, codes in PERMISSIONS_PAR_ROLE.items():
+            with self.subTest(role=role):
+                groupe = Group.objects.get(name=GROUPE_PAR_ROLE[role])
                 self.assertEqual(
                     set(groupe.permissions.values_list("codename", flat=True)), set(codes)
                 )
@@ -59,51 +65,59 @@ class GroupesInstallesTests(TestCase):
 
 
 class DroitsParRoleTests(TestCase):
-    def test_chaque_role_a_exactement_ses_droits(self):
+    def test_resident_sans_aucun_droit(self):
+        resident = creer_utilisateur("awa")
+        self.assertEqual(resident.roles, set())
+        self.assertFalse(resident.est_equipe)
+        self.assertEqual(droits(resident), set())
+
+    def test_chaque_role_seul_a_exactement_ses_droits(self):
         for role, codes in ATTENDU.items():
             with self.subTest(role=role):
-                utilisateur = recharger(User.objects.create_user(username=role.lower(), role=role))
-                for code in PERMISSIONS:
-                    self.assertEqual(
-                        utilisateur.has_perm(f"comptes.{code}"),
-                        code in codes,
-                        f"{role} / {code}",
-                    )
+                self.assertEqual(droits(creer_utilisateur(role.lower(), role)), codes)
+
+    def test_plusieurs_roles_cumulent_les_droits(self):
+        marc = creer_utilisateur("marc", Role.ACCUEIL, Role.MAINTENANCE)
+        self.assertEqual(marc.roles, {Role.ACCUEIL, Role.MAINTENANCE})
+        self.assertEqual(droits(marc), ATTENDU[Role.ACCUEIL] | ATTENDU[Role.MAINTENANCE])
 
     def test_est_equipe(self):
-        self.assertFalse(User(role=Role.RESIDENT).est_equipe)
-        for role in (Role.ACCUEIL, Role.EDUCATEUR, Role.MAINTENANCE, Role.ADMIN):
-            self.assertTrue(User(role=role).est_equipe)
-
-    def test_changer_de_role_change_de_groupe(self):
-        utilisateur = User.objects.create_user(username="marc", role=Role.MAINTENANCE)
-        utilisateur.role = Role.ACCUEIL
-        utilisateur.save()
-        self.assertEqual(list(utilisateur.groups.values_list("name", flat=True)), ["Accueil"])
-        self.assertTrue(recharger(utilisateur).has_perm("comptes.gerer_residents"))
-
-    def test_retour_au_role_resident_retire_tous_les_droits(self):
-        utilisateur = User.objects.create_user(username="ines", role=Role.ACCUEIL)
-        utilisateur.role = Role.RESIDENT
-        utilisateur.save()
-        self.assertFalse(utilisateur.groups.exists())
-        self.assertFalse(recharger(utilisateur).has_perm("comptes.acceder_espace_equipe"))
+        self.assertTrue(creer_utilisateur("sam", Role.EDUCATEUR).est_equipe)
+        # Un résident modérateur n'est pas un membre du personnel.
+        self.assertFalse(creer_utilisateur("yanis", Role.MODERATEUR).est_equipe)
 
     def test_moderateur_designe_parmi_les_residents(self):
-        utilisateur = User.objects.create_user(username="yanis")
-        utilisateur.est_moderateur = True
-        utilisateur.save(update_fields=["est_moderateur"])
-        utilisateur = recharger(utilisateur)
-        self.assertTrue(utilisateur.has_perm("comptes.moderer_discussion"))
-        self.assertFalse(utilisateur.has_perm("comptes.acceder_espace_equipe"))
-        self.assertTrue(utilisateur.groups.filter(name=GROUPE_MODERATEURS).exists())
+        yanis = creer_utilisateur("yanis", Role.MODERATEUR)
+        self.assertEqual(droits(yanis), {"moderer_discussion"})
 
-    def test_derniere_connexion_ne_touche_pas_aux_groupes(self):
-        utilisateur = User.objects.create_user(username="sam", role=Role.EDUCATEUR)
-        with self.assertNumQueries(1):
-            utilisateur.save(update_fields=["last_login"])
+    def test_definir_roles_remplace_et_renvoie_avant_apres(self):
+        ines = creer_utilisateur("ines", Role.ACCUEIL, Role.MODERATEUR)
+        avant, apres = definir_roles(ines, [Role.EDUCATEUR])
+        self.assertEqual(avant, {Role.ACCUEIL, Role.MODERATEUR})
+        self.assertEqual(apres, {Role.EDUCATEUR})
+        ines = recharger(ines)
+        self.assertEqual(ines.roles, {Role.EDUCATEUR})
+        self.assertFalse(ines.has_perm("comptes.gerer_residents"))
+
+    def test_retirer_tous_les_roles(self):
+        ines = creer_utilisateur("ines", Role.ACCUEIL)
+        definir_roles(ines, [])
+        self.assertEqual(droits(recharger(ines)), set())
+
+    def test_les_autres_groupes_ne_sont_pas_touches(self):
+        autre = Group.objects.create(name="Groupe hors rôles")
+        ines = creer_utilisateur("ines", Role.ACCUEIL)
+        ines.groups.add(autre)
+        definir_roles(ines, [])
+        self.assertEqual(list(ines.groups.all()), [autre])
+
+    def test_avec_role(self):
+        creer_utilisateur("marc", Role.ACCUEIL, Role.MAINTENANCE)
+        creer_utilisateur("sam", Role.MAINTENANCE)
+        creer_utilisateur("awa")
+        noms = set(User.objects.avec_role(Role.MAINTENANCE).values_list("username", flat=True))
+        self.assertEqual(noms, {"marc", "sam"})
 
     def test_super_utilisateur_en_ligne_de_commande(self):
         admin = User.objects.create_superuser(username="admin", password="mot-de-passe-test")
-        self.assertEqual(admin.role, Role.ADMIN)
-        self.assertTrue(admin.groups.filter(name="Administration").exists())
+        self.assertEqual(recharger(admin).roles, {Role.ADMIN})

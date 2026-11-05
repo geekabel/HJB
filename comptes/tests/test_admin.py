@@ -4,6 +4,24 @@ from django.urls import reverse
 from comptes.models import User
 from comptes.roles import Role
 
+from .outils import creer_utilisateur
+
+
+def donnees(utilisateur, **champs):
+    """Données minimales du formulaire de modification de l'administration."""
+    base = {
+        "username": utilisateur.username,
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "telephone": "",
+        "is_active": "on",
+        "date_joined_0": "2026-11-05",
+        "date_joined_1": "09:00:00",
+    }
+    base.update(champs)
+    return base
+
 
 class AdministrationUtilisateursTests(TestCase):
     @classmethod
@@ -13,8 +31,8 @@ class AdministrationUtilisateursTests(TestCase):
     def setUp(self):
         self.client.force_login(self.admin)
 
-    def test_pages_de_creation_et_de_modification(self):
-        resident = User.objects.create_user(username="awa")
+    def test_pages_de_creation_de_modification_et_liste(self):
+        resident = creer_utilisateur("awa")
         for url in (
             reverse("admin:comptes_user_add"),
             reverse("admin:comptes_user_change", args=[resident.pk]),
@@ -23,40 +41,40 @@ class AdministrationUtilisateursTests(TestCase):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_changer_le_role_dans_l_admin_change_le_groupe(self):
-        marc = User.objects.create_user(username="marc", role=Role.MAINTENANCE)
+    def test_cocher_plusieurs_roles(self):
+        marc = creer_utilisateur("marc", Role.MAINTENANCE)
         reponse = self.client.post(
             reverse("admin:comptes_user_change", args=[marc.pk]),
+            donnees(marc, telephone="07 81 22 33 44", roles=[Role.ACCUEIL, Role.MAINTENANCE]),
+        )
+        self.assertEqual(reponse.status_code, 302)
+        marc = User.objects.get(pk=marc.pk)
+        self.assertEqual(marc.roles, {Role.ACCUEIL, Role.MAINTENANCE})
+        self.assertEqual(marc.telephone, "+33781223344")
+        self.assertTrue(marc.has_perm("comptes.gerer_residents"))
+
+    def test_decocher_tous_les_roles(self):
+        ines = creer_utilisateur("ines", Role.ACCUEIL)
+        self.client.post(reverse("admin:comptes_user_change", args=[ines.pk]), donnees(ines))
+        self.assertEqual(User.objects.get(pk=ines.pk).roles, set())
+
+    def test_creation_avec_roles(self):
+        reponse = self.client.post(
+            reverse("admin:comptes_user_add"),
             {
-                "username": "marc",
-                "first_name": "",
-                "last_name": "",
-                "email": "",
-                "telephone": "07 81 22 33 44",
-                "role": Role.ACCUEIL,
-                "is_active": "on",
-                "date_joined_0": "2026-11-05",
-                "date_joined_1": "09:00:00",
+                "username": "samia",
+                "telephone": "",
+                "roles": [Role.EDUCATEUR],
+                "usable_password": "false",
             },
         )
-        self.assertEqual(reponse.status_code, 302, getattr(reponse, "context", None))
-        marc.refresh_from_db()
-        self.assertEqual(marc.role, Role.ACCUEIL)
-        self.assertEqual(marc.telephone, "+33781223344")
-        self.assertEqual(list(marc.groups.values_list("name", flat=True)), ["Accueil"])
+        self.assertEqual(reponse.status_code, 302)
+        self.assertEqual(User.objects.get(username="samia").roles, {Role.EDUCATEUR})
 
     def test_numero_refuse_avec_message_clair(self):
-        marc = User.objects.create_user(username="marc")
+        marc = creer_utilisateur("marc")
         reponse = self.client.post(
-            reverse("admin:comptes_user_change", args=[marc.pk]),
-            {
-                "username": "marc",
-                "telephone": "06 12",
-                "role": Role.RESIDENT,
-                "is_active": "on",
-                "date_joined_0": "2026-11-05",
-                "date_joined_1": "09:00:00",
-            },
+            reverse("admin:comptes_user_change", args=[marc.pk]), donnees(marc, telephone="06 12")
         )
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, "Ce numéro n&#x27;existe pas")

@@ -3,16 +3,20 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
-from .roles import PERMISSIONS, Role, synchroniser_groupes
+from .roles import GROUPE_PAR_ROLE, PERMISSIONS, ROLES_EQUIPE, Role, definir_roles, roles_de
 from .telephone import normaliser_telephone, valider_e164
 
 
 class GestionnaireUtilisateurs(UserManager):
-    """Un super-utilisateur créé en ligne de commande a le rôle Administration."""
+    def avec_role(self, role):
+        """Les comptes qui ont ce rôle (parmi d'autres, éventuellement)."""
+        return self.filter(groups__name=GROUPE_PAR_ROLE[Role(role)])
 
     def create_superuser(self, username, email=None, password=None, **extra_fields):
-        extra_fields.setdefault("role", Role.ADMIN)
-        return super().create_superuser(username, email, password, **extra_fields)
+        """Un super-utilisateur créé en ligne de commande a le rôle Administration."""
+        utilisateur = super().create_superuser(username, email, password, **extra_fields)
+        definir_roles(utilisateur, roles_de(utilisateur) | {Role.ADMIN})
+        return utilisateur
 
 
 class User(AbstractUser):
@@ -22,23 +26,17 @@ class User(AbstractUser):
     documentation de Django :
     https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
-    Le compte appartient à la personne ; la chambre est portée par le séjour (carte T06).
+    Les rôles sont les groupes de l'utilisateur ; il peut en avoir plusieurs
+    (voir comptes/roles.py). Le compte appartient à la personne ; la chambre
+    est portée par le séjour (carte T06).
     """
 
-    role = models.CharField(
-        "rôle", max_length=12, choices=Role.choices, default=Role.RESIDENT, db_index=True
-    )
     telephone = models.CharField(
         "téléphone portable",
         max_length=16,
         blank=True,
         validators=[valider_e164],
         help_text="Saisie libre (06 12 34 56 78) ; enregistré au format international.",
-    )
-    est_moderateur = models.BooleanField(
-        "modérateur de la discussion",
-        default=False,
-        help_text="Donné par l'équipe à un membre du personnel ou à un résident.",
     )
 
     objects = GestionnaireUtilisateurs()
@@ -75,13 +73,15 @@ class User(AbstractUser):
         if erreurs:
             raise ValidationError(erreurs)
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        champs = kwargs.get("update_fields")
-        if champs is None or {"role", "est_moderateur"} & set(champs):
-            synchroniser_groupes(self)
+    @property
+    def roles(self):
+        """Ensemble des rôles (Role) de l'utilisateur."""
+        return roles_de(self)
+
+    def a_le_role(self, role):
+        return Role(role) in self.roles
 
     @property
     def est_equipe(self):
-        """Vrai pour tout membre du personnel, quel que soit son rôle."""
-        return self.role != Role.RESIDENT
+        """Vrai si l'utilisateur a au moins un rôle du personnel."""
+        return bool(self.roles & ROLES_EQUIPE)
