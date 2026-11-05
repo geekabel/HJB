@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_safe
 
 from access.session_policy import is_resident
@@ -126,8 +127,11 @@ def book(request):
                 "reasons": Appointment.Reason.choices,
                 "upcoming": booking.upcoming(request.user),
                 "conversations": direct.with_unread(
-                    request.user.conversations.select_related("educator"), request.user
+                    direct.resident_conversations(request.user).select_related("educator"),
+                    request.user,
                 ),
+                # Write to any educator, even one without open times (card T28).
+                "writable": direct.educators(),
             },
         )
     )
@@ -149,6 +153,7 @@ def detail(request, pk):
 
 
 @login_required
+@sensitive_post_parameters("text")  # never in an error report
 @require_http_methods(["GET", "POST"])
 def write(request, educator_pk):
     """Direct messages with one educator (card T28)."""
@@ -165,9 +170,8 @@ def write(request, educator_pk):
             messages.warning(request, str(refused))
         else:
             messages.success(request, "Message envoyé.")
-            return redirect("rdv:write", educator_pk=educator.pk)
-    if conversation is not None:
-        direct.mark_read(conversation, request.user)
+            return redirect(reverse("rdv:write", args=[educator.pk]) + "#last-message")
+    new_ids = direct.mark_read(conversation, request.user) if conversation else []
     return _page(
         render(
             request,
@@ -179,6 +183,7 @@ def write(request, educator_pk):
                 "thread": conversation.messages.select_related("author") if conversation else [],
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
+                "new_ids": new_ids,
             },
         )
     )

@@ -25,7 +25,7 @@
     </li>
     {% if perms.accounts.manage_appointments %}
     {% with direct=unread_direct %}
-    <li><a href="{% url 'appointments:availability' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>Rendez-vous{% if direct %} <span class="counter">{{ direct }}<span class="visually-hidden"> message{{ direct|pluralize }} non lu{{ direct|pluralize }}</span></span>{% endif %}</a></li>
+    <li><a href="{% url 'appointments:availability' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>Rendez-vous{% if direct %}<span class="visually-hidden">, </span> <span class="counter"><span aria-hidden="true">{% if direct > 99 %}99+{% else %}{{ direct }}{% endif %}</span><span class="visually-hidden">{{ direct }} message{{ direct|pluralize }} non lu{{ direct|pluralize }}</span></span>{% endif %}</a></li>
     {% endwith %}
     {% endif %}
     {% if perms.accounts.view_residents %}

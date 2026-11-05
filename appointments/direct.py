@@ -3,16 +3,19 @@
 A resident writes to an educator (any active educator); the educator answers
 in the same conversation. Each side sees what is unread. The other person gets
 a notification that says who wrote, never the text: a notification can show on
-a locked screen.
+a locked screen. The background task only receives the message id: no name is
+stored in the task queue (its rows show in the admin site).
 """
 
+import re
+import unicodedata
 from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Count, Q
-from django.urls import reverse
 from django.utils import timezone
 
+from access.session_policy import is_resident
 from accounts.models import User
 from accounts.roles import GROUP_BY_ROLE, Role
 
@@ -20,6 +23,8 @@ from .models import Conversation, DirectMessage
 
 MAX_LENGTH = 2000
 MAX_PER_DAY = 30  # messages one person sends in one conversation, in 24 hours
+MAX_PER_DAY_IN_ALL = 60  # the same, across all conversations of that person
+MANY_NEWLINES = re.compile(r"\n{3,}")
 
 
 class MessageRefused(Exception):
@@ -41,59 +46,85 @@ def conversation_of(resident, educator):
     return Conversation.objects.filter(resident=resident, educator=educator).first()
 
 
+def resident_conversations(resident):
+    """The conversations a resident can still open: with an active educator."""
+    return Conversation.objects.filter(resident=resident, educator__in=educators())
+
+
+def clean(text):
+    """The text as saved: one kind of line break, no invisible-only message."""
+    text = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+    if "\x00" in text:
+        raise MessageRefused("Le message contient un caractère interdit.")
+    text = MANY_NEWLINES.sub("\n\n", text).strip()
+    visible = "".join(c for c in text if unicodedata.category(c) != "Cf").strip()
+    if not visible:
+        raise MessageRefused("Écrivez un message avant d'envoyer.")
+    if len(text) > MAX_LENGTH:
+        raise MessageRefused("Le message est trop long (2 000 caractères au plus).")
+    return text
+
+
 def send(conversation_or_none, author, text, *, resident=None, educator=None):
     """Save the message and notify the other person. Return the DirectMessage.
 
     A first message creates the conversation (``resident`` and ``educator``).
     """
-    text = (text or "").strip()
-    if not text:
-        raise MessageRefused("Écrivez un message avant d'envoyer.")
-    if len(text) > MAX_LENGTH:
-        raise MessageRefused(f"Le message est trop long ({MAX_LENGTH} caractères au plus).")
+    text = clean(text)
     with transaction.atomic():
         conversation = conversation_or_none
         if conversation is None:
             conversation, _ = Conversation.objects.get_or_create(
                 resident=resident, educator=educator
             )
-        conversation = Conversation.objects.select_for_update().get(pk=conversation.pk)
+        conversation = (
+            Conversation.objects.select_for_update()
+            .select_related("resident", "educator")
+            .get(pk=conversation.pk)
+        )
+        if author.pk not in (conversation.resident_id, conversation.educator_id):
+            raise MessageRefused("Vous ne faites pas partie de cette conversation.")
+        other = (
+            conversation.educator
+            if author.pk == conversation.resident_id
+            else conversation.resident
+        )
+        if not other.is_active:
+            raise MessageRefused(
+                f"{first_name(other)} n'a plus de compte actif : le message ne serait pas lu."
+            )
         since = timezone.now() - timedelta(days=1)
-        if conversation.messages.filter(author=author, sent_at__gte=since).count() >= MAX_PER_DAY:
+        mine = DirectMessage.objects.filter(author=author, sent_at__gte=since)
+        if (
+            mine.filter(conversation=conversation).count() >= MAX_PER_DAY
+            or mine.count() >= MAX_PER_DAY_IN_ALL
+        ):
             raise MessageRefused(
                 "Vous avez envoyé beaucoup de messages aujourd'hui. Réessayez demain, "
                 "ou passez à l'accueil."
             )
+        # One notification until the other person reads: no flood of them.
+        already_waiting = conversation.messages.filter(author=author, read_at__isnull=True).exists()
         message = DirectMessage.objects.create(conversation=conversation, author=author, text=text)
         Conversation.objects.filter(pk=conversation.pk).update(updated_at=message.sent_at)
-        other = conversation.educator if author == conversation.resident else conversation.resident
-        transaction.on_commit(lambda: _notify(conversation, author, other))
+        if not already_waiting:
+            # robust: a queue failure never turns a saved message into an error page.
+            transaction.on_commit(lambda: _notify(message.pk), robust=True)
     return message
 
 
-def _notify(conversation, author, other):
-    from .tasks import notify_task
+def _notify(message_id):
+    from .tasks import notify_message_task
 
-    if other == conversation.educator:
-        url = reverse("appointments:conversation", args=[conversation.pk])
-    else:
-        url = reverse("rdv:write", args=[conversation.educator_id])
-    notify_task.enqueue(
-        user_id=other.pk,
-        title="Nouveau message",
-        body=f"{first_name(author)} vous a écrit.",
-        url=url,
-        tag=f"conversation-{conversation.pk}",
-    )
+    notify_message_task.enqueue(message_id=message_id)
 
 
 def mark_read(conversation, reader):
-    """The messages of the other person, now read by ``reader``."""
-    return (
-        conversation.messages.exclude(author=reader)
-        .filter(read_at__isnull=True)
-        .update(read_at=timezone.now())
-    )
+    """The messages of the other person, now read by ``reader``. Return their ids."""
+    unread = conversation.messages.exclude(author=reader).filter(read_at__isnull=True)
+    ids = list(unread.values_list("pk", flat=True))
+    unread.update(read_at=timezone.now())
+    return ids
 
 
 def with_unread(conversations, reader):
@@ -107,14 +138,15 @@ def with_unread(conversations, reader):
 
 
 def unread_count(user):
-    """Unread direct messages of ``user``, as a resident or as an educator."""
+    """Unread direct messages of ``user``: as a resident, or as an educator."""
     if not user.is_authenticated:
         return 0
+    if is_resident(user):
+        conversations = resident_conversations(user)
+    else:
+        conversations = Conversation.objects.filter(educator=user)
     return (
-        DirectMessage.objects.filter(
-            Q(conversation__resident=user) | Q(conversation__educator=user),
-            read_at__isnull=True,
-        )
+        DirectMessage.objects.filter(conversation__in=conversations, read_at__isnull=True)
         .exclude(author=user)
         .count()
     )

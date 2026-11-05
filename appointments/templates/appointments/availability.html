@@ -55,6 +55,7 @@
       {{ form.reply_hours.as_field_group }}
       <button class="button" type="submit">{% icon "check" %}Enregistrer</button>
     </section>
+    {% if is_educator %}
     <section class="card stack" aria-labelledby="direct-title">
       <h2 id="direct-title" class="card__title">Messages directs</h2>
       {% if conversations %}
@@ -68,6 +69,7 @@
       {% endif %}
       <a href="{% url 'appointments:conversations' %}">Tous les messages directs</a>
     </section>
+    {% endif %}
   </aside>
 </form>
 

@@ -1831,6 +1831,10 @@
     overflow-wrap: anywhere;
   }
 
+  .thread__new {
+    color: var(--warning-text);
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;

@@ -5,8 +5,10 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.roles import Role
@@ -87,10 +89,11 @@ def my_availability(request):
                 educator=educator, last_day__gte=timezone.localdate()
             ),
             "absence_form": AbsenceForm(),
+            # Unread first: an unread conversation never drops off the card.
             "conversations": direct.with_unread(
                 Conversation.objects.filter(educator=educator).select_related("resident"),
                 educator,
-            )[:5],
+            ).order_by("-unread", "-updated_at")[:5],
         },
     )
     # Names, rooms and reasons: never kept by the browser or a proxy.
@@ -177,6 +180,7 @@ def conversations(request):
 
 @login_required
 @permission_required(PERMISSION, raise_exception=True)
+@sensitive_post_parameters("text")  # never in an error report
 @require_http_methods(["GET", "POST"])
 def conversation(request, pk):
     # Only the educator of the conversation: the rest of the staff gets a 404.
@@ -192,8 +196,8 @@ def conversation(request, pk):
             messages.warning(request, str(refused))
         else:
             messages.success(request, "Réponse envoyée.")
-            return redirect("appointments:conversation", pk=found.pk)
-    direct.mark_read(found, request.user)
+            return redirect(reverse("appointments:conversation", args=[found.pk]) + "#last-message")
+    new_ids = direct.mark_read(found, request.user)
     stays = Stay.objects.current().filter(resident=found.resident).select_related("room")
     stay = stays.first()
     return _private(
@@ -208,6 +212,8 @@ def conversation(request, pk):
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "reply_hours": availability.settings_of(request.user).reply_hours,
+                "new_ids": new_ids,
+                "left": not found.resident.is_active,
             },
         )
     )

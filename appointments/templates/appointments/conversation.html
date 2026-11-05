@@ -1,6 +1,6 @@
 {% extends "ui/staff.html" %}
 {% load icons %}
-{% block title %}{{ conversation.resident.get_full_name|default:conversation.resident.get_username }}{% endblock %}
+{% block title %}Message direct{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'appointments:conversations' %}">{% icon "back" %}Messages directs</a>
 <header class="page-header">
@@ -13,6 +13,9 @@
   <section class="card stack" aria-labelledby="thread-title">
     <h2 id="thread-title" class="card__title">Conversation</h2>
     {% include "appointments/_thread.html" with me=user %}
+    {% if left %}
+    <p class="alert alert--info">{% icon "info" %}<span>Cette personne a quitté la résidence : elle ne peut plus lire de message.</span></p>
+    {% else %}
     <form class="stack" method="post">
       {% csrf_token %}
       <div class="field">
@@ -21,6 +24,7 @@
       </div>
       <button class="button" type="submit">{% icon "send" %}Répondre</button>
     </form>
+    {% endif %}
   </section>
   <aside class="card stack">
     <p class="text-small">Heures de réponse montrées aux résidents : {{ reply_hours }}. Vous pouvez les changer dans <a href="{% url 'appointments:availability' %}#settings-title">vos réglages</a>.</p>

@@ -48,7 +48,9 @@ class ConversationTests(DirectTestCase):
                 self.write_url(self.samia),
                 {"text": "Bonjour, je peux venir avec mon dossier CAF ?"},
             )
-        self.assertRedirects(response, self.write_url(self.samia), fetch_redirect_response=False)
+        self.assertRedirects(
+            response, self.write_url(self.samia) + "#last-message", fetch_redirect_response=False
+        )
         conversation = Conversation.objects.get()
         self.assertEqual((conversation.resident, conversation.educator), (self.ines, self.samia))
         # The notification says who wrote, never the text (locked screens).
@@ -66,7 +68,8 @@ class ConversationTests(DirectTestCase):
         url = reverse("appointments:availability")
         self.assertContains(
             self.client.get(url),
-            '<span class="counter">1<span class="visually-hidden"> message non lu',
+            '<span class="counter"><span aria-hidden="true">1</span>'
+            '<span class="visually-hidden">1 message non lu</span></span>',
         )
         page = reverse("appointments:conversation", args=[conversation.pk])
         response = self.client.get(page)
@@ -157,13 +160,114 @@ class ConversationTests(DirectTestCase):
     def test_notification_task_is_best_effort(self):
         from django.core.exceptions import ImproperlyConfigured
 
-        from ..tasks import notify_task
+        from ..tasks import notify_message_task
 
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        message = DirectMessage.objects.create(
+            conversation=conversation, author=self.samia, text="x"
+        )
         self.push.side_effect = ImproperlyConfigured("no VAPID key")
         with self.assertLogs("appointments.tasks", "WARNING"):
-            notify_task.call(user_id=self.ines.pk, title="t", body="b", url="/", tag="x")
+            notify_message_task.call(message_id=message.pk)
         self.ines.is_active = False
         self.ines.save()
         self.push.reset_mock()
-        notify_task.call(user_id=self.ines.pk, title="t", body="b", url="/", tag="x")
+        notify_message_task.call(message_id=message.pk)
         self.push.assert_not_called()
+        notify_message_task.call(message_id=999999)  # deleted meanwhile: nothing
+
+
+class ReviewTests(DirectTestCase):
+    """Cases raised by the independent review of T28."""
+
+    def test_the_task_queue_holds_no_name(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        with mock.patch("appointments.tasks.notify_message_task") as task:
+            with self.captureOnCommitCallbacks(execute=True):
+                direct.send(conversation, self.ines, "Bonjour")
+        self.assertEqual(
+            task.enqueue.call_args.kwargs, {"message_id": DirectMessage.objects.get().pk}
+        )
+
+    def test_one_notification_until_read(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        with self.captureOnCommitCallbacks(execute=True):
+            direct.send(conversation, self.ines, "Un")
+            direct.send(conversation, self.ines, "Deux")
+        self.assertEqual(self.push.call_count, 1)
+        direct.mark_read(conversation, self.samia)
+        with self.captureOnCommitCallbacks(execute=True):
+            direct.send(conversation, self.ines, "Trois")
+        self.assertEqual(self.push.call_count, 2)
+
+    def test_counters_follow_the_role_and_the_educator(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        DirectMessage.objects.create(conversation=conversation, author=self.samia, text="x")
+        self.assertEqual(direct.unread_count(self.ines), 1)
+        self.samia.is_active = False
+        self.samia.save()
+        self.assertEqual(direct.unread_count(self.ines), 0)  # cannot be opened any more
+        self.samia.is_active = True
+        self.samia.save()
+        # Inès joins the staff: her resident conversations no longer count.
+        from accounts.roles import set_roles
+
+        set_roles(self.ines, [Role.FRONT_DESK])
+        self.assertEqual(direct.unread_count(type(self.ines).objects.get(pk=self.ines.pk)), 0)
+
+    def test_no_message_to_someone_who_left(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        DirectMessage.objects.create(conversation=conversation, author=self.ines, text="x")
+        self.ines.is_active = False
+        self.ines.save()
+        with self.assertRaisesMessage(direct.MessageRefused, "n'a plus de compte actif"):
+            direct.send(conversation, self.samia, "Réponse")
+        log_in_verified(self.client, self.samia)
+        page = reverse("appointments:conversation", args=[conversation.pk])
+        response = self.client.get(page)
+        self.assertContains(response, "Cette personne a quitté la résidence")
+        self.assertNotContains(response, "Votre réponse")
+        self.assertContains(response, "<title>Message direct")  # never the name in history
+
+    def test_hostile_text(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        for text in ("a\x00b", "\u200b\u200b", "\u2066 \u2069"):
+            with self.assertRaises(direct.MessageRefused):
+                direct.send(conversation, self.ines, text)
+        message = direct.send(conversation, self.ines, "a\r\n\r\n\r\n\r\nb")
+        self.assertEqual(message.text, "a\n\nb")
+        # Windows line breaks count once, as in the browser.
+        text = ("x" * 99 + "\r\n") * 19 + "x" * 99
+        self.assertEqual(len(direct.send(conversation, self.ines, text).text), 1999)
+        with self.assertRaises(direct.MessageRefused):
+            direct.send(conversation, self.yanis, "Je ne suis pas dans cette conversation")
+
+    def test_limit_across_conversations(self):
+        conversations = [
+            Conversation.objects.create(resident=self.ines, educator=educator)
+            for educator in (self.samia, self.julien)
+        ]
+        for conversation in conversations:
+            DirectMessage.objects.bulk_create(
+                DirectMessage(conversation=conversation, author=self.ines, text="x")
+                for _ in range(direct.MAX_PER_DAY_IN_ALL // 2)
+            )
+        third = make_user("karim", Role.EDUCATOR, first_name="Karim")
+        with self.assertRaisesMessage(direct.MessageRefused, "beaucoup de messages"):
+            direct.send(None, self.ines, "Bonjour", resident=self.ines, educator=third)
+
+    def test_write_to_an_educator_without_open_times(self):
+        log_in_verified(self.client, self.ines)
+        response = self.client.get(reverse("rdv:book"))
+        self.assertContains(response, "Écrire à un éducateur")
+        self.assertContains(response, f'href="{self.write_url(self.samia)}"')
+
+    def test_new_marker_and_cache_headers(self):
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        DirectMessage.objects.create(conversation=conversation, author=self.samia, text="Nouvelle")
+        log_in_verified(self.client, self.ines)
+        response = self.client.get(self.write_url(self.samia))
+        self.assertContains(response, '<strong class="thread__new">Nouveau</strong>')
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotContains(self.client.get(self.write_url(self.samia)), "thread__new")
+        self.assertIn("no-store", self.client.get(reverse("rdv:book"))["Cache-Control"])
