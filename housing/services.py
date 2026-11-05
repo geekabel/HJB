@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Stay
+from .models import Stay, WifiAccess
 
 
 def current_stay(resident):
@@ -17,7 +17,7 @@ def assign_room(resident, room, on=None):
 
     - No current stay: a stay starts.
     - Current stay in another room: it ends that day and a new one
-      starts (internal move).
+      starts (internal move). The wifi access of the old room is cut.
     - Stay started the same day: we simply fix the room.
     Return the current stay.
     """
@@ -39,6 +39,10 @@ def assign_room(resident, room, on=None):
         current.departure = on
         current.full_clean()
         current.save()
+        # The person leaves this room: its wifi access must be renewed (T15).
+        from .wifi import end_access
+
+        end_access(current.room, WifiAccess.EndReason.MOVE)
     new = Stay(resident=resident, room=room, arrival=on)
     new.full_clean()
     new.save()

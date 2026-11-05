@@ -25,6 +25,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
 from django_otp_webauthn.utils import get_credential_model
 
+from access.decorators import recent_confirmation_required
 from accounts.activation_codes import (
     VALIDITY,
     activation_state,
@@ -33,8 +34,10 @@ from accounts.activation_codes import (
 )
 from accounts.models import ACCOUNT_STATE_FILTERS, AccountState, User
 from accounts.roles import Role
-from housing.models import Floor, Stay
+from housing import wifi
+from housing.models import Floor, Stay, WifiAccess
 from housing.services import current_stay
+from housing.wifi_crypto import WifiDecryptionError
 
 from .bulk_import import (
     HEADERS,
@@ -46,7 +49,7 @@ from .bulk_import import (
     to_session,
 )
 from .departure import has_left, record_departure, record_return
-from .forms import DepartureForm, ImportForm, ResidentForm, ReturnForm
+from .forms import DepartureForm, ImportForm, ResidentForm, ReturnForm, WifiAccessForm
 from .models import ResidentImport
 
 logger = logging.getLogger(__name__)
@@ -56,7 +59,18 @@ NO_ROOM = "none"
 
 
 def _current_stays():
-    return Stay.objects.current().select_related("room__floor")
+    # The active wifi access of each room comes in one more query (card T15).
+    return (
+        Stay.objects.current()
+        .select_related("room__floor")
+        .prefetch_related(
+            Prefetch(
+                "room__wifi_accesses",
+                queryset=WifiAccess.objects.active(),
+                to_attr="active_wifi",
+            )
+        )
+    )
 
 
 def _residents():
@@ -128,6 +142,11 @@ def resident_list(request):
     page = Paginator(residents, RESIDENTS_PER_PAGE).get_page(request.GET.get("page"))
     for resident in page:
         resident.stay = resident.current_stays[0] if resident.current_stays else None
+        resident.wifi = (
+            resident.stay.room.active_wifi[0]
+            if resident.stay and resident.stay.room.active_wifi
+            else None
+        )
         resident.is_moderator = Role.MODERATOR in resident.roles
 
     filters = request.GET.copy()
@@ -197,6 +216,7 @@ def detail(request, pk):
         resident.refresh_from_db()  # the form may have changed the object without saving it
     elif request.method == "POST":
         raise PermissionDenied
+    stay = current_stay(resident)
     return render(
         request,
         "residents/detail.html",
@@ -204,8 +224,9 @@ def detail(request, pk):
             "active_nav": "residents",
             "form": form,
             "resident": resident,
-            "stay": current_stay(resident),
+            "stay": stay,
             "stays": resident.stays.select_related("room__floor"),
+            "wifi_access": wifi.current_access(stay.room) if stay else None,
             "activation": activation_state(resident),
             "code_token": activation_code_token(request, resident)
             if request.user.has_perm("accounts.issue_activation_codes")
@@ -239,7 +260,7 @@ def departure(request, pk):
     form = DepartureForm(request.POST or None, stay=stay)
     if request.method == "POST" and form.is_valid():
         try:
-            record_departure(resident, form.cleaned_data["departure"], request=request)
+            ended = record_departure(resident, form.cleaned_data["departure"], request=request)
         except ValidationError as error:
             if error.code == "already_left":
                 messages.info(request, error.messages[0])
@@ -247,9 +268,13 @@ def departure(request, pk):
             form.add_error("departure", error.messages)
         else:
             name = resident.get_full_name() or resident.get_username()
-            messages.success(
-                request, f"Le départ de {name} est enregistré. Son compte est désactivé."
-            )
+            text = f"Le départ de {name} est enregistré. Son compte est désactivé."
+            if ended is not None:
+                text += (
+                    f" L'accès wifi de la chambre {ended.room.number} est coupé : "
+                    "changez-le sur le réseau avant l'arrivée du prochain résident."
+                )
+            messages.success(request, text)
             return redirect("residents:detail", pk=resident.pk)
     return render(
         request,
@@ -365,6 +390,132 @@ def activation_sheet(request, user, code, back_url):
             "qr": mark_safe(qr),  # SVG made by segno from our own link
             "back_url": back_url,
         },
+    )
+    add_never_cache_headers(response)
+    return response
+
+
+# --- Wifi access of the room (card T15) ----------------------------------------
+
+WIFI_TOKENS_KEY = "wifi_form_tokens"
+
+
+def _wifi_token(request, resident):
+    """Single-use token of the wifi form: a reload never records (or generates) twice."""
+    token = secrets.token_urlsafe(16)
+    tokens = request.session.get(WIFI_TOKENS_KEY, [])[-(MAX_TOKENS - 1) :]
+    request.session[WIFI_TOKENS_KEY] = [*tokens, [token, resident.pk]]
+    return token
+
+
+def _resident_room(request, pk):
+    """The resident and their current stay, or a redirection if they have no room."""
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    stay = current_stay(resident)
+    if stay is None:
+        messages.info(request, "Cette personne n'a pas de chambre : pas d'accès wifi à gérer.")
+    return resident, stay
+
+
+@login_required
+@permission_required("accounts.manage_residents", raise_exception=True)
+@recent_confirmation_required
+def wifi_access(request, pk):
+    """Record the wifi access of the resident's room: typed, or generated."""
+    resident, stay = _resident_room(request, pk)
+    if stay is None:
+        return redirect("residents:detail", pk=resident.pk)
+    current = wifi.current_access(stay.room)
+    form = WifiAccessForm(
+        request.POST or None,
+        initial={
+            "username": current.username if current else wifi.suggest_username(stay.room, resident),
+            "expires_on": wifi.default_expiry(),
+        },
+    )
+    if request.method == "POST":
+        tokens = request.session.get(WIFI_TOKENS_KEY, [])
+        expected = [request.POST.get("token", ""), resident.pk]
+        if expected not in tokens:
+            messages.info(request, "Cet accès wifi est déjà enregistré.")
+            return redirect("residents:detail", pk=resident.pk)
+        if form.is_valid():
+            request.session[WIFI_TOKENS_KEY] = [t for t in tokens if t != expected]
+            password = form.cleaned_data["password"]
+            generated = not password
+            if generated:
+                password = wifi.generate_password()
+            access = wifi.set_access(
+                stay.room,
+                username=form.cleaned_data["username"],
+                password=password,
+                expires_on=form.cleaned_data["expires_on"],
+                generated=generated,
+                by=request.user,
+                request=request,
+            )
+            if not generated:
+                messages.success(
+                    request,
+                    f"L'accès wifi de la chambre {stay.room.number} est enregistré, valable "
+                    f"jusqu'au {access.expires_on:%d/%m/%Y}.",
+                )
+                return redirect("residents:detail", pk=resident.pk)
+            # Shown once, never cached: the person copies it on the network.
+            response = render(
+                request,
+                "residents/wifi_generated.html",
+                {
+                    "active_nav": "residents",
+                    "resident": resident,
+                    "access": access,
+                    "password": password,
+                },
+            )
+            add_never_cache_headers(response)
+            return response
+    return render(
+        request,
+        "residents/wifi_access.html",
+        {
+            "active_nav": "residents",
+            "resident": resident,
+            "stay": stay,
+            "current": current,
+            "form": form,
+            "token": _wifi_token(request, resident),
+        },
+    )
+
+
+@login_required
+@permission_required("accounts.view_wifi_password", raise_exception=True)
+@recent_confirmation_required
+def wifi_password(request, pk):
+    """Show the stored password: administrators only, each display goes to the audit log."""
+    resident, stay = _resident_room(request, pk)
+    if stay is None:
+        return redirect("residents:detail", pk=resident.pk)
+    access = wifi.current_access(stay.room)
+    if access is None:
+        messages.info(request, "Cette chambre n'a pas d'accès wifi actif.")
+        return redirect("residents:detail", pk=resident.pk)
+    password = None
+    if request.method == "POST":
+        try:
+            password = wifi.reveal_password(access, by=request.user, request=request)
+        except WifiDecryptionError:
+            logger.exception("Wifi password of room %s cannot be decrypted", stay.room.number)
+            messages.warning(
+                request,
+                "Ce mot de passe ne peut pas être déchiffré avec les clés actuelles. "
+                "Enregistrez un nouvel accès.",
+            )
+            return redirect("residents:detail", pk=resident.pk)
+    response = render(
+        request,
+        "residents/wifi_password.html",
+        {"active_nav": "residents", "resident": resident, "access": access, "password": password},
     )
     add_never_cache_headers(response)
     return response

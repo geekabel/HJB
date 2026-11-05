@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Exists, OuterRef
 
-from .models import Floor, Room, Stay
+from .models import Floor, Room, Stay, WifiAccess
 
 
 class RoomInline(admin.TabularInline):
@@ -74,3 +74,23 @@ class StayAdmin(admin.ModelAdmin):
     search_fields = ("resident__first_name", "resident__last_name", "room__number")
     autocomplete_fields = ("resident", "room")
     date_hierarchy = "arrival"
+
+
+@admin.register(WifiAccess)
+class WifiAccessAdmin(admin.ModelAdmin):
+    """Read only, and never the password: accesses are recorded from the resident page."""
+
+    list_display = ("room", "username", "created_on", "expires_on", "active", "end_reason")
+    list_filter = ("active",)
+    list_select_related = ("room",)
+    search_fields = ("room__number", "username")
+    exclude = ("encrypted_password",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

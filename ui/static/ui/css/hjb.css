@@ -1192,6 +1192,20 @@
     margin: 0;
   }
 
+  /* A secret shown once (wifi password, card T15): easy to read and to copy */
+  .secret-value {
+    margin: 0;
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+    font-family: var(--font-code);
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
   .code-sheet svg {
     max-width: 100%;
     height: auto;

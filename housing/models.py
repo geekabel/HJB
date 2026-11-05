@@ -170,3 +170,83 @@ class Stay(models.Model):
             )
         if errors:
             raise ValidationError(errors)
+
+
+WIFI_VALIDITY_DAYS = 365
+# Below this many days, staff see "renew soon" in the lists (card T15).
+WIFI_RENEWAL_WARNING_DAYS = 30
+
+
+class WifiAccessQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(active=True)
+
+
+class WifiAccess(models.Model):
+    """Wifi username and password of a room, valid for about one year (card T15).
+
+    The password is stored encrypted (housing/wifi_crypto.py), never in clear.
+    A room has at most one active access; renewing it keeps the old one,
+    inactive, for history.
+    """
+
+    class EndReason(models.TextChoices):
+        RENEWED = "renewed", "Remplacé par un nouvel accès"
+        DEPARTURE = "departure", "Départ du résident"
+        MOVE = "move", "Changement de chambre"
+
+    room = models.ForeignKey(
+        Room, on_delete=models.PROTECT, related_name="wifi_accesses", verbose_name="chambre"
+    )
+    username = models.CharField("identifiant", max_length=64)
+    encrypted_password = models.TextField("mot de passe chiffré", editable=False)
+    generated = models.BooleanField("mot de passe généré par l'application", default=False)
+    created_on = models.DateField("enregistré le", default=timezone.localdate)
+    expires_on = models.DateField("expire le")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="+",
+        verbose_name="enregistré par",
+    )
+    active = models.BooleanField("actif", default=True)
+    ended_at = models.DateTimeField("coupé le", null=True, blank=True)
+    end_reason = models.CharField(
+        "raison de la coupure", max_length=20, choices=EndReason.choices, blank=True
+    )
+
+    objects = WifiAccessQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "accès wifi"
+        verbose_name_plural = "accès wifi"
+        ordering = ["-created_on", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["room"],
+                condition=Q(active=True),
+                name="one_active_wifi_per_room",
+                violation_error_message="Cette chambre a déjà un accès wifi actif.",
+            ),
+            models.CheckConstraint(
+                condition=Q(expires_on__gt=F("created_on")),
+                name="wifi_expires_after_creation",
+                violation_error_message="L'expiration doit suivre la date d'enregistrement.",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Wifi de la chambre {self.room.number}"
+
+    @property
+    def days_left(self):
+        return (self.expires_on - timezone.localdate()).days
+
+    @property
+    def is_expired(self):
+        return self.days_left < 0
+
+    @property
+    def renew_soon(self):
+        return 0 <= self.days_left <= WIFI_RENEWAL_WARNING_DAYS

@@ -225,3 +225,12 @@ TEST_RUNNER = "tools.test_runner.HJBTestRunner"
 
 OTP_WEBAUTHN_RP_NAME = "Habitat Jeunes Belfort"
 OTP_WEBAUTHN_HELPER_CLASS = "access.webauthn.HJBWebAuthnHelper"
+
+
+# Wifi passwords, card T15
+# They are encrypted with Fernet (cryptography library); the keys never live
+# in the repository. WIFI_ENCRYPTION_KEYS is a list: the first key encrypts,
+# all of them decrypt (key rotation, see housing/wifi_crypto.py).
+# https://cryptography.io/en/latest/fernet/
+
+WIFI_ENCRYPTION_KEYS = []
