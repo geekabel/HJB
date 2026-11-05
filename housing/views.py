@@ -14,7 +14,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_variables
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 
 from access.decorators import recent_confirmation_required
 
@@ -108,10 +108,15 @@ def my_wifi_password(request):
     return _page(request, stay, access, password=password)
 
 
-@require_POST
+@require_http_methods(["GET", "POST"])
 @login_required
 def my_wifi_reminder(request):
-    """Turn the reminder before the end of the access on or off (card T17)."""
+    """Turn the reminder before the end of the access on or off (card T17).
+
+    A GET (back here after a login) only shows the wifi page.
+    """
+    if request.method == "GET":
+        return redirect("housing:my_wifi")
     wanted = request.POST.get("reminder") == "on"
     request.user.wifi_expiry_reminder = wanted
     request.user.save(update_fields=["wifi_expiry_reminder"])

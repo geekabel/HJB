@@ -99,14 +99,18 @@ Les notifications Web Push sont signées avec une clé VAPID. En production, `DJ
 
 ## Tâches quotidiennes
 
-À planifier sur le serveur (cron ou minuterie systemd), une fois par jour :
+Deux commandes à lancer une fois par jour sur le serveur, en journée (par exemple à 10 h, heure de Paris) :
+
+- `send_wifi_reminders` : rappel aux résidents 15 jours avant la fin de leur accès wifi ;
+- `prune_push_subscriptions` : retire les appareils des comptes désactivés.
+
+Elles doivent tourner avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID). Exemple de ligne cron, avec le fichier d'environnement du service et `flock` pour qu'une exécution ne commence pas avant la fin de la précédente :
 
 ```sh
-python manage.py send_wifi_reminders        # rappel 15 jours avant la fin d'un accès wifi
-python manage.py prune_push_subscriptions   # appareils des comptes désactivés
+0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions'
 ```
 
-Les deux commandes peuvent être relancées sans risque : un rappel déjà envoyé ne repart pas.
+Le chemin et le fichier d'environnement seront fixés avec le déploiement (T38). Un rappel déjà envoyé ne repart pas, même si la commande est relancée.
 
 ## Envoi de SMS
 
