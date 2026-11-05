@@ -1596,6 +1596,88 @@
     }
   }
 
+  /* Weekly grid of an educator (card T26): one checkbox per half hour */
+  .slot-grid {
+    width: 100%;
+    min-width: 36rem;
+    border-collapse: separate;
+    border-spacing: var(--s-1) 2px;
+    font-size: var(--t-small);
+  }
+
+  .slot-grid thead th {
+    padding: var(--s-1);
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: start;
+  }
+
+  .slot-grid tbody th {
+    padding-inline-end: var(--s-2);
+    color: var(--text-muted);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .slot-grid__hour th,
+  .slot-grid__hour td {
+    padding-block-start: var(--s-2);
+  }
+
+  .slot {
+    display: block;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .slot__face {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    padding-inline: var(--s-2);
+    border: 1px solid transparent;
+    border-radius: var(--r-small);
+    background: var(--bg);
+    color: var(--action);
+  }
+
+  .slot__text {
+    visibility: hidden;
+  }
+
+  /* Open: a color and the word "Libre" (not color alone) */
+  .slot input:checked + .slot__face {
+    border-color: var(--action);
+    background: var(--action-soft);
+  }
+
+  .slot input:checked + .slot__face .slot__text {
+    visibility: visible;
+  }
+
+  .slot input:focus-visible + .slot__face {
+    outline: 3px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .slot:hover .slot__face {
+    border-color: var(--control);
+  }
+
+  .slot-key {
+    display: inline-block;
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 4px;
+  }
+
+  .slot-key--open {
+    border: 1px solid var(--action);
+    background: var(--action-soft);
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;

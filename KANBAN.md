@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T26 | Disponibilités des éducateurs | E6 Rendez-vous | T04 |
 | T27 | Réservation d'un rendez-vous | E6 Rendez-vous | T26, T13 |
 | T28 | Messages directs avec un éducateur | E6 Rendez-vous | T13 |
 | T29 | Rappels et annulation de rendez-vous | E6 Rendez-vous | T27, T19 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T23 | Boîte de réception du résident | 5 nov. 2026 |
 | T24 | Statuts de livraison des SMS | 5 nov. 2026 |
 | T25 | Sondages anonymes | 5 nov. 2026 |
+| T26 | Disponibilités des éducateurs | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -432,10 +432,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E6 Rendez-vous
 
-#### T26 Disponibilités des éducateurs
-- **Maquette** : P4.
-- [ ] Grille hebdomadaire, créneaux répétés chaque semaine
-- [ ] Réglages : durée, délai minimum
+#### T26 Disponibilités des éducateurs (fait le 5 nov. 2026)
+- **Maquette** : P4 (« Mes disponibilités »).
+- **Docs** : [`bulk_create`](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#bulk-create), [contraintes](https://docs.djangoproject.com/en/6.1/ref/models/constraints/), [`ModelForm`](https://docs.djangoproject.com/en/6.1/topics/forms/modelforms/), [Pointer events (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events).
+- [x] Nouvelle application `appointments`. Grille de la semaine par demi-heure, de 8 h à 19 h, du lundi au vendredi ; les cases ouvertes se répètent chaque semaine. Les cases qui se touchent forment un seul créneau en base (`Availability`)
+- [x] Chaque case est une vraie case à cocher (clavier, écran tactile, sans script) avec un nom lu par les lecteurs d'écran (« Lundi de 10:00 à 10:30 »). Un petit script ajoute le « cliquer-glisser » de la maquette à la souris. Ouvert : couleur et mot « Libre »
+- [x] Réglages : durée d'un rendez-vous (30, 45 min ou 1 h) et délai pour réserver (2 heures avant, ou la veille)
+- [x] Calcul des créneaux réservables d'un jour (`bookable()`), utilisé par T27
+- **Notes** : les rappels (« la veille et 1 h avant ») viennent avec T29, les messages directs avec T28. Les rendez-vous pris s'afficheront dans la grille avec T27. Un compte sans le rôle Éducateur (Administration) peut ouvrir des créneaux, mais un message dit que les résidents ne le verront pas.
 
 #### T27 Réservation d'un rendez-vous
 - **Maquette** : R5.

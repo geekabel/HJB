@@ -335,6 +335,15 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Classes CSS | `chips`, `inbox` (`__item`, `__item--unread`, `__top`, `__title`, `__when`, `__kind`, `__excerpt`, `__status`, `__answer`), `inbox-tools`, `button--text` (action discrète en forme de lien) |
 | Départ prévu | `Stay.planned_departure`, `residents.departure.plan_departure()`, `cancel_planned_departure()`, `messaging.sending.record_planned_departures()` |
 
+## Rendez-vous (cartes T26 à T29)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Disponibilité (créneau ouvert chaque semaine) | `appointments.models.Availability` (`educator`, `weekday`, `start`, `end`) |
+| Réglages de l'éducateur | `appointments.models.EducatorSettings` (`slot_minutes`, `notice` : `2h` « 2 heures avant », `day_before` « La veille ») |
+| Grille de la semaine | `appointments.availability` (`DAYS`, `FIRST`, `LAST`, `STEP`, `cell_times()`, `cell_key()`, `open_cells()`, `ranges()`, `save_grid()`, `settings_of()`, `earliest_start()`, `bookable()`, `Slot`) |
+| Page « Mes disponibilités » | `appointments:availability` (`/equipe/rendez-vous/`), gabarit `appointments/availability.html`, script `appointments/grid.js` ; classes CSS `slot-grid`, `slot`, `slot__face`, `slot__text`, `slot-key` |
+
 ## Votes (carte T25)
 
 | Mot du métier | Nom dans le code |

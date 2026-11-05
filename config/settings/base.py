@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "messaging",
     # Anonymous polls (card T25).
     "polls",
+    # Appointments with an educator (cards T26 to T29).
+    "appointments",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
