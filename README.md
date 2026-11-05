@@ -45,6 +45,14 @@ Si le dossier `.venv` a été créé avec un Python trop ancien, le supprimer (`
 
 Il n'y a aucun mot de passe : le premier administrateur active son compte comme tout le monde. Ouvrez http://localhost:8000/activer/, saisissez le code affiché, puis le code SMS (en développement, il s'affiche dans la console du serveur), et créez votre clé d'accès.
 
+En local, pour entrer tout de suite sans créer de clé d'accès :
+
+```sh
+python manage.py dev_login marie
+```
+
+La commande affiche un lien valable 10 minutes, une seule fois, qui ouvre la session de ce compte (espace équipe compris). Elle ne marche qu'en développement (`DEBUG`) : en production, la commande refuse et le lien répond « page introuvable ». La connexion des comptes en production reste la clé d'accès.
+
 `manage.py` utilise les réglages de développement (`config.settings.dev`) par défaut. L'administration est sur http://localhost:8000/admin/. En production, son adresse vient de `DJANGO_ADMIN_URL`.
 
 ## Tests et contrôles
