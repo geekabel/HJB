@@ -36,6 +36,7 @@ erDiagram
     UTILISATEUR ||--o{ CODE_ACTIVATION : "reçoit"
     UTILISATEUR ||--o{ VERIFICATION_TELEPHONE : "vérifie"
     UTILISATEUR ||--o{ ABONNEMENT_PUSH : "s'abonne"
+    UTILISATEUR }o--o{ GROUPE_ROLE : "a pour rôles"
 
     MODELE_MESSAGE ||--o{ CAMPAGNE : "sert de base"
     UTILISATEUR ||--o{ CAMPAGNE : "rédige"
@@ -71,8 +72,6 @@ erDiagram
         string last_name
         string telephone UK "portable, format E.164, unique s'il est renseigné"
         string email "facultatif"
-        string role "RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN"
-        bool est_moderateur "donné par l'équipe"
         bool is_active
         datetime telephone_verifie_le "carte T12"
     }
@@ -286,7 +285,9 @@ erDiagram
 
 ## Rôles, groupes et permissions
 
-Le rôle est un champ du compte. Chaque rôle du personnel correspond à un groupe Django, qui porte les permissions. Le compte est placé dans le bon groupe à chaque enregistrement. Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `post_migrate`) : le code de `comptes/roles.py` fait foi, un ajout fait à la main est retiré.
+**Un rôle est un groupe Django** (table `auth_group`, liée au compte par `groups`). Une personne peut avoir plusieurs rôles, par exemple Accueil et Maintenance : ses droits sont la somme de ceux de ses groupes. Un résident est un compte sans rôle du personnel. Dans l'administration, les rôles se choisissent par cases à cocher.
+
+Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `post_migrate`) : le code de `comptes/roles.py` fait foi, un ajout fait à la main est retiré.
 
 | Permission (`comptes.…`) | Accueil | Éducateurs | Maintenance | Administration | Modérateurs |
 |---|:-:|:-:|:-:|:-:|:-:|
@@ -301,8 +302,8 @@ Le rôle est un champ du compte. Chaque rôle du personnel correspond à un grou
 | `voir_journal` | | | | oui | |
 | `gerer_roles` | | | | oui | |
 
-- Un résident n'a aucune permission, sauf s'il est désigné modérateur.
-- `is_staff` (accès à l'administration Django) reste séparé du rôle et se règle à la main.
+- Un résident n'a aucune permission, sauf s'il a le rôle Modérateur. Ce rôle ne donne pas accès à l'espace équipe.
+- `is_staff` (accès à l'administration Django) reste séparé des rôles et se règle à la main.
 - Un super-utilisateur créé avec `createsuperuser` reçoit le rôle Administration.
 
 ## Règles métier portées par le modèle

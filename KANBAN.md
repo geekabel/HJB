@@ -159,10 +159,11 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 #### T04 Rôles et permissions (fait le 5 nov. 2026)
 - **Docs** : [permissions et autorisation](https://docs.djangoproject.com/en/6.1/topics/auth/default/#permissions-and-authorization), [signal `post_migrate`](https://docs.djangoproject.com/en/6.1/ref/signals/#post-migrate), [RunPython](https://docs.djangoproject.com/en/6.1/ref/migration-operations/#runpython), [phonenumbers](https://github.com/daviddrysdale/python-phonenumbers).
-- [x] Champ `role` : RESIDENT, ACCUEIL, EDUCATEUR, MAINTENANCE, ADMIN
+- [x] Rôles : Accueil, Éducateur, Maintenance, Administration, Modérateur. **Une personne peut en avoir plusieurs** (ajout du 5 nov.) : un rôle est un groupe Django, les droits se cumulent. Aucun rôle du personnel : résident
 - [x] Groupes et permissions créés au `migrate`, par un gestionnaire `post_migrate` (voir la note)
-- [x] Champs `telephone` (portable, E.164, unique s'il est renseigné) et `est_moderateur`
-- [x] Tests d'accès par rôle : chaque rôle a exactement ses droits, changement de rôle, modérateur, administration Django
+- [x] Champ `telephone` (portable, E.164, unique s'il est renseigné)
+- [x] Tests d'accès par rôle : chaque rôle a exactement ses droits, cumul de plusieurs rôles, modérateur résident, cases à cocher de l'administration
+- [x] Migration `0003` : les anciens rôles (champ unique) sont recopiés dans les groupes avant la suppression du champ. Vérifié sur une base à l'état `0002`
 - [x] Guide de style réservé aux rôles du personnel : un résident connecté reçoit un 403
 - **Notes** : la carte prévoyait une migration de données. La doc de Django indique que les permissions sont créées par le signal `post_migrate`, donc après les migrations : sur une base neuve, une migration ne pourrait pas les attribuer. Les groupes sont donc créés dans ce même signal, à chaque `migrate`, et le code de `comptes/roles.py` fait foi. Le numéro est normalisé dans `clean_fields()`, avant les validateurs, car `full_clean()` les lance avant `clean()`. Connexion provisoire par la page de l'administration jusqu'à T13 : elle n'accepte que les comptes `is_staff`. Table des droits dans [docs/modele-de-donnees.md](docs/modele-de-donnees.md#rôles-groupes-et-permissions).
 
