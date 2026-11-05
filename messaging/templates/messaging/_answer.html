@@ -1,0 +1,20 @@
+{% load icons %}
+{% comment %}
+"Présent" / "Absent" buttons (card T22). Variables: campaign, current, closed,
+closes_at, thanks, action (address of the form, "" for the same page).
+{% endcomment %}
+<section class="card stack" aria-labelledby="answer-title">
+  <h2 id="answer-title">Serez-vous présent ?</h2>
+  {% if thanks %}<p class="alert alert--success" role="status">{% icon "check" %}<span>{{ thanks }}</span></p>
+  {% elif current %}<p class="icon-text">{% icon "check" %}<span>Votre réponse : <strong>{{ current.get_answer_display }}</strong>.{% if not closed %} Vous pouvez encore la changer.{% endif %}</span></p>{% endif %}
+  {% if closed %}
+  <p class="text-muted">Les réponses à ce message sont fermées.</p>
+  {% else %}
+  <form class="answer" method="post"{% if action %} action="{{ action }}"{% endif %}>
+    {% csrf_token %}
+    <button class="button{% if current.answer == 'present' %} button--selected{% endif %}" type="submit" name="answer" value="present"{% if current.answer == 'present' %} aria-pressed="true"{% endif %}>{% icon "check" %}Présent</button>
+    <button class="button button--secondary{% if current.answer == 'absent' %} button--selected{% endif %}" type="submit" name="answer" value="absent"{% if current.answer == 'absent' %} aria-pressed="true"{% endif %}>Absent</button>
+  </form>
+  <p class="text-muted text-small">{% if campaign.event_date %}Réponse possible jusqu'au <time datetime="{{ campaign.event_date|date:'Y-m-d' }}">{{ campaign.event_date|date:"l j F" }}</time> au soir.{% else %}Réponse possible jusqu'au <time datetime="{{ closes_at|date:'Y-m-d\TH:i:sO' }}">{{ closes_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
+  {% endif %}
+</section>

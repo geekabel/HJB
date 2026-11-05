@@ -258,3 +258,9 @@ VAPID_CONTACT = ""
 # ("manage.py db_worker") runs them.
 
 TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
+
+
+# Address of the site, for the links written outside a request: the personal
+# reply link of an SMS (card T22), sent by the task worker.
+
+SITE_URL = ""

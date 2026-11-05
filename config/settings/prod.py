@@ -114,6 +114,12 @@ VAPID_PRIVATE_KEY = os.environ["DJANGO_VAPID_PRIVATE_KEY"]
 VAPID_CONTACT = os.environ["DJANGO_VAPID_CONTACT"]
 
 
+# Address of the site in the SMS links (T22). By default, the passkey origin.
+SITE_URL = os.environ.get("DJANGO_SITE_URL") or (
+    OTP_WEBAUTHN_ALLOWED_ORIGINS[0] if OTP_WEBAUTHN_ALLOWED_ORIGINS else ""
+)
+
+
 # Background tasks (T21): a durable queue in the database, run by
 # "python manage.py db_worker" (a service of its own, see the README).
 TASKS = {

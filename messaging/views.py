@@ -19,7 +19,7 @@ from housing.models import Room
 from sms.segments import analyze
 from sms.service import MAX_SEGMENTS
 
-from . import sending
+from . import replies, sending
 from .audience import audience, rendered
 from .forms import CampaignForm, TemplateForm
 from .models import Campaign, Delivery, MessageTemplate, MessageType, ReplyType
@@ -281,6 +281,7 @@ def tracking(request, pk):
             "deliveries": deliveries,
             "stats": sending.summary(campaign),
             "reminder_stats": sending.summary(campaign, Delivery.Kind.REMINDER),
+            "answers": replies.counts(campaign) if campaign.reply_type == "attendance" else None,
             "audience": audience(campaign)
             if campaign.status == Campaign.Status.SCHEDULED
             else None,

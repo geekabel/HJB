@@ -18,6 +18,8 @@ RESERVED_SEGMENTS = {
     "hors-ligne",
     "installer",
     "notifications",
+    "messages",
+    "r",
     "manifest.webmanifest",
     "sw.js",
     "favicon.ico",

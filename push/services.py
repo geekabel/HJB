@@ -139,23 +139,32 @@ class SendResult:
     removed: int = 0
 
 
-def _payload(title, body, url, tag):
-    if not url.startswith("/") or url.startswith("//"):
-        raise ValueError("url must be a path of this site")
+def _is_path(value):
+    return value.startswith("/") and not value.startswith("//") and "\\" not in value
+
+
+def _payload(title, body, url, tag, reply=""):
+    if not _is_path(url) or (reply and not _is_path(reply)):
+        raise ValueError("url and reply must be paths of this site")
     data = {"title": title[:TITLE_LENGTH], "body": body[:BODY_LENGTH], "url": url}
     if tag:
         data["tag"] = tag
+    if reply:
+        # "Présent" / "Absent" buttons on the notification (card T22), where the
+        # browser shows them (Chrome, Edge, Firefox on a computer; not Safari).
+        data["reply"] = reply
     return json.dumps(data, ensure_ascii=False)
 
 
-def send_to_user(user, *, title, body, url="/", tag="", urgency="normal"):
+def send_to_user(user, *, title, body, url="/", tag="", urgency="normal", reply=""):
     """Send one notification to each device of the person. Return a SendResult.
 
     ``url``: the page opened by a tap on the notification (a path of this site).
     ``tag``: a new message with the same tag replaces the previous one on the device.
     ``urgency``: "very-low", "low", "normal" or "high" (RFC 8030).
+    ``reply``: path of the personal reply link (card T22): adds the answer buttons.
     """
-    payload = _payload(title, body, url, tag)
+    payload = _payload(title, body, url, tag, reply)
     key = vapid()
     result = SendResult()
     with requests.Session() as session:

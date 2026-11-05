@@ -1,0 +1,15 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}{{ delivery.title }}{% endblock %}
+{% block content %}
+<article class="card stack">
+  <header class="stack stack--tight">
+    <p class="text-muted text-small">{{ campaign.get_type_display }}{% if delivery.sent_at %} · <time datetime="{{ delivery.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ delivery.sent_at|date:"j F à H:i" }}</time>{% endif %}</p>
+    <h1>{{ delivery.title }}</h1>
+  </header>
+  <p class="compose__text">{{ delivery.body }}</p>
+</article>
+
+{% include "messaging/_answer.html" with action="" %}
+{% endblock %}
+{% block nav %}{% endblock %}

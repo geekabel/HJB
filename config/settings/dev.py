@@ -54,3 +54,5 @@ VAPID_PRIVATE_KEY = os.environ.get("DJANGO_VAPID_PRIVATE_KEY") or (
     base64.urlsafe_b64encode(_dev_scalar.to_bytes(32, "big")).rstrip(b"=").decode()
 )
 VAPID_CONTACT = os.environ.get("DJANGO_VAPID_CONTACT", "mailto:dev@example.org")
+
+SITE_URL = os.environ.get("DJANGO_SITE_URL", "http://localhost:8000")
