@@ -33,7 +33,17 @@
   <div class="card stat"><span class="text-muted text-small">Échecs</span><span class="stat__value">{{ stats.failed }}</span></div>
 </div>
 {% if campaign.status == "sending" %}<p class="alert alert--info" role="status">{% icon "clock" %}<span>Envoi en cours. Rechargez la page pour suivre l'avancée.</span></p>{% endif %}
-{% if campaign.remind_at %}<p class="text-muted">Relance de ceux qui n'ont pas répondu : {% if campaign.reminder_started_at %}partie le <time datetime="{{ campaign.reminder_started_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.reminder_started_at|date:"j F à H:i" }}</time>, {{ reminder_stats.recipients }} personne{{ reminder_stats.recipients|pluralize }}.{% else %}prévue le <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.{% endif %}</p>{% endif %}
+{% if campaign.remind_at %}
+<div class="row row--between">
+  <p class="text-muted">Relance de ceux qui n'ont pas répondu : {% if campaign.reminder_started_at %}partie le <time datetime="{{ campaign.reminder_started_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.reminder_started_at|date:"j F à H:i" }}</time>, {{ reminder_stats.recipients }} personne{{ reminder_stats.recipients|pluralize }}.{% else %}prévue le <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
+  {% if not campaign.reminder_started_at %}
+  <form method="post" action="{% url 'messaging:cancel_reminder' campaign.pk %}">
+    {% csrf_token %}
+    <button class="button button--quiet" type="submit">Annuler la relance</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
 
 {% if deliveries %}
 <div class="table-scroll" role="region" aria-labelledby="deliveries-caption" tabindex="0">

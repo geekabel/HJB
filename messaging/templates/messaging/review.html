@@ -34,7 +34,8 @@
       <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
       {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }} : prévenez-{% if audience.unreachable > 1 %}les{% else %}la{% endif %} autrement</dd>{% endif %}
     </dl>
-    <p class="text-muted text-small">Une personne dont aucun appareil ne répond reçoit le SMS à la place, si elle a un numéro.</p>
+    <p class="text-muted text-small">Une notification qui ne passe pas est réessayée. Le SMS ne part que pour les personnes sans aucun appareil.</p>
+    {% if remind_at %}<p class="text-small">La relance ira à ceux qui n'auront pas répondu{% if reminder_sms %} : jusqu'à {{ reminder_sms }} SMS de plus{% endif %}.</p>{% endif %}
   </section>
 </div>
 

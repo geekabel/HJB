@@ -99,6 +99,7 @@ erDiagram
         int room_id FK
         date arrival
         date departure "vide si en cours"
+        date planned_departure "départ prévu, enregistré ce jour-là à midi"
     }
     WIFI_ACCESS {
         int id PK
@@ -197,7 +198,12 @@ erDiagram
         bool everyone "tout le monde"
         string status "draft, scheduled, sending, sent, cancelled"
         datetime send_at
+        bool remind "relance le jour J à 8 h"
         datetime remind_at
+        datetime started_at
+        datetime sent_at
+        datetime reminder_started_at
+        datetime reminder_sent_at
         int author_id FK
         int template_id FK
     }
@@ -205,11 +211,19 @@ erDiagram
         int id PK
         int campaign_id FK
         int recipient_id FK
-        string channel "push, sms"
-        string status "pending, sent, delivered, failed, read"
-        string provider_message_id
+        string kind "message, reminder"
+        string channel "push, sms, none"
+        string status "pending, sending, sent, failed"
+        string room_number
+        string title "texte envoyé"
+        text body
+        text sms_text
         int segments
+        string provider_message_id
         string error
+        int attempts
+        datetime next_attempt_at
+        datetime claimed_at
         datetime sent_at
         datetime read_at
     }
@@ -385,6 +399,12 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - La liste existante s'importe depuis un fichier CSV ou Excel, avec aperçu puis confirmation (administrateurs seulement).
 - Le résident voit l'accès de sa chambre sur `/wifi/`. Le mot de passe s'affiche après une confirmation par clé d'accès ; chaque affichage va au journal, comme pour l'équipe.
 - Rappel au résident 15 jours avant la fin, par notification (commande quotidienne `send_wifi_reminders`), sauf s'il l'a désactivé (`User.wifi_expiry_reminder`). L'équipe a la liste des accès à renouveler dans les 30 jours.
+
+## Envois
+
+- Un `DELIVERY` par personne, par message et par sorte (le message, puis la relance) : la contrainte unique empêche tout doublon, même avec deux *workers*. Chaque envoi est réservé (`sending`) avant de partir ; un envoi resté réservé plus de 10 minutes passe en échec, jamais renvoyé.
+- Le texte envoyé (champs remplis) est gardé dans `DELIVERY` : il servira à la boîte de réception (T23).
+- La relance va seulement à ceux qui n'ont pas de `ATTENDANCE_REPLY`.
 
 ## Notifications
 

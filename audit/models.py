@@ -18,6 +18,7 @@ class Action(models.TextChoices):
     MESSAGE_CANCELLED = "message_cancelled", "Envoi d'un message annulé"
     MESSAGE_SENT = "message_sent", "Message envoyé"
     DEPARTURE_PLANNED = "departure_planned", "Départ prévu"
+    DEPARTURE_PLAN_CANCELLED = "departure_plan_cancelled", "Départ prévu annulé"
 
 
 class AuditEntryImmutable(Exception):

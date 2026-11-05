@@ -125,6 +125,10 @@ class Campaign(models.Model):
     reminder_started_at = models.DateTimeField("relance partie le", null=True, blank=True)
     started_at = models.DateTimeField("envoi commencé le", null=True, blank=True)
     sent_at = models.DateTimeField("envoi terminé le", null=True, blank=True)
+    reminder_sent_at = models.DateTimeField("relance terminée le", null=True, blank=True)
+    # Last task put in the queue (run_due() does not pile them up).
+    enqueued_at = models.DateTimeField(null=True, blank=True, editable=False)
+    reminder_enqueued_at = models.DateTimeField(null=True, blank=True, editable=False)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

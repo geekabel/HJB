@@ -49,7 +49,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | Langage | Python 3.13 | Supporté par Django 6.1 (3.12 à 3.15) |
 | Framework | Django 6.1 | Dernière version, support jusqu'en décembre 2027. Passage à 6.2 LTS (avril 2027) prévu en fin de projet |
 | Base de données | SQLite en développement, PostgreSQL en production | Django 6.1 demande SQLite 3.37 ou plus et PostgreSQL 15 ou plus |
-| Tâches en arrière-plan | Framework de tâches de Django + un backend avec worker | Les backends livrés avec Django servent au développement et aux tests seulement. Le backend de production sera choisi en T21, après lecture de sa doc |
+| Tâches en arrière-plan | Framework de tâches de Django + django-tasks-db (choisi en T21) | File d'attente dans la base, *worker* `db_worker`. Les backends livrés avec Django servent au développement et aux tests |
 | Notifications | Web Push (application web installable, PWA) | Gratuit. Le SMS ne sert que de secours |
 | SMS | Couche « fournisseur » interchangeable | Console en développement, SMSGate pour les tests réels, OVHcloud ou Brevo en production |
 | Connexion | Code d'activation remis à l'accueil, code SMS, puis clé d'accès (passkey) | Le numéro de chambre n'est pas un secret |
@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
 | T22 | Réponse Présent ou Absent | E4 Messages | T21 |
 | T23 | Boîte de réception du résident | E4 Messages | T21 |
 | T24 | Statuts de livraison des SMS | E4 Messages | T21 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T19 | Notifications Web Push | 5 nov. 2026 |
 | T17 | Rappels d'expiration du wifi | 5 nov. 2026 |
 | T20 | Modèles de message et composeur | 5 nov. 2026 |
+| T21 | Envoi programmé et relances | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -375,14 +375,17 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : le composeur enregistre des brouillons ; l'envoi aux résidents, maintenant ou programmé, arrive avec T21. Aperçus calculés pour le premier destinataire.
 - **Revue indépendante (5 nov.)** : rien ne fuit vers les résidents. Corrigé : « Remettre » ne ramenait pas une personne ajoutée par son nom ; quand le formulaire avait une erreur, le bouton pressé ne faisait rien sans le dire (résumé des erreurs en haut) ; « n° », les traits d'union du téléphone et les ligatures restaient hors de l'alphabet SMS, et un caractère pouvait changer de sens ; une personne ajoutée devenue membre de l'équipe restait destinataire ; Entrée dans un champ lançait « Ajouter » ; un brouillon perdait son lien avec le modèle ; les champs du titre n'étaient ni vérifiés ni remplis ; l'aperçu SMS montre maintenant le plus long ; accords (« recevra », « Voir le destinataire ») ; suppression confirmée ; pas d'essai tant qu'une date ou une heure manque ; nombre de requêtes constant quel que soit le nombre de personnes ajoutées. 547 tests.
 
-#### T21 Envoi programmé et relances
-- **Docs** : [framework de tâches de Django](https://docs.djangoproject.com/en/6.0/topics/tasks/), doc du backend choisi.
-- [ ] Choix du backend de tâches pour la production, après lecture de sa doc
-- [ ] Commande périodique qui lance les campagnes arrivées à l'heure
-- [ ] Notification push d'abord, SMS seulement sans abonnement push
-- [ ] Envois sans doublon (contrainte unique sur `Envoi`)
-- [ ] Relance automatique de ceux qui n'ont pas répondu
-- [ ] Départ prévu (T09) : saisi à l'avance, enregistré automatiquement le jour venu
+#### T21 Envoi programmé et relances (fait le 5 nov. 2026)
+- **Docs** : [framework de tâches de Django](https://docs.djangoproject.com/en/6.1/topics/tasks/), [django-tasks-db](https://github.com/RealOrangeOne/django-tasks-db) 0.13.0 (code lu : file d'attente en base, *worker* `db_worker`, verrou exclusif sur SQLite, pas de nouvel essai automatique), réglages SQLite `transaction_mode` et `init_command` de Django.
+- [x] Backend de production : **django-tasks-db**. La file d'attente vit dans la base existante (SQLite convient), sans Redis ni autre service, et son *worker* tourne comme un service. En développement et dans les tests : `ImmediateBackend`
+- [x] Commande `run_scheduled`, chaque minute : lance les messages et relances arrivés à l'heure, reprend les envois interrompus ou en attente d'un nouvel essai, enregistre les départs prévus. Une tâche n'est remise dans la file que si la précédente date de plus de 10 minutes : rien ne s'empile quand le *worker* est arrêté. Un message en retard de plus de 12 heures, ou une relance de 8 h encore pas partie à midi, ne part plus et c'est noté dans le journal
+- [x] Notification d'abord. SMS seulement pour une personne sans aucun appareil. Une notification qui ne passe pas (service d'envoi en panne) est réessayée trois fois, jamais remplacée par un SMS payant
+- [x] Sans doublon : un `Delivery` par personne et par sorte (message, relance), contrainte unique, et chaque envoi est « réservé » avant de partir. Un envoi coupé en plein milieu n'est jamais renvoyé : il passe en échec « état inconnu ». Un SMS en échec passager est réessayé, un SMS « incertain » jamais
+- [x] Relance le jour J à 8 h de ceux qui n'ont pas répondu (`AttendanceReply`, les boutons pour répondre arrivent avec T22), par leur canal du jour. Elle peut être annulée tant qu'elle n'est pas partie
+- [x] Écrans : section « 4. Quand ? » du composeur, page de confirmation (destinataires, coût, problèmes qui bloquent l'envoi), page de suivi (bilan, état de chaque envoi, annulation ou retour au brouillon d'un envoi programmé), liste « À venir », « Brouillons », « Envoyés »
+- [x] Départ prévu (T09) : une date future dans le formulaire de départ le prévoit. Il est enregistré automatiquement ce jour-là à midi, garde sa date après un changement de chambre, et peut être déplacé ou annulé. Journal : « Départ prévu », « Départ prévu annulé »
+- **Notes** : tant que les résidents ne peuvent pas répondre (T22), la relance va à tous ceux qui ont reçu le message ; la page de confirmation donne son coût en SMS. La chambre reste occupée jusqu'à midi le jour du départ prévu. L'exploitation (service du *worker*, lignes cron, nettoyage des tâches) est décrite dans le README.
+- **Revue indépendante (5 nov.)** : corrigé : une notification en échec passager devenait un SMS payant, parfois en double (nouvel essai de la notification) ; un message pouvait passer « Envoyé » sans aucun destinataire si l'écriture des envois échouait (démarrage et liste des envois dans une même transaction) ; certains départs prévus n'étaient jamais enregistrés (date avant l'arrivée, changement de chambre) ; « Changer la date » pouvait enregistrer le départ tout de suite (le formulaire part de la date prévue) ; titre de la page des messages cassé ; relance trop tardive, impossible à annuler, ou sur un ancien canal ; tâches empilées quand le *worker* est arrêté ; SMS non configuré non signalé ; date saisie sans « Programmer » ignorée ; un brouillon confirmé dans un autre onglet pouvait redevenir brouillon. 581 tests.
 
 #### T22 Réponse Présent ou Absent
 - **Docs** : [signature cryptographique](https://docs.djangoproject.com/en/6.1/topics/signing/).

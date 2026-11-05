@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -151,7 +152,19 @@ def compose(request, pk=None):
     form = CampaignForm(request.POST, instance=campaign)
     if not form.is_valid():
         return _compose_page(request, form, campaign)
-    campaign = form.save()
+    with transaction.atomic():
+        # Confirmed in another tab meanwhile: a late save must not turn it back into a draft.
+        if (
+            campaign.pk
+            and not Campaign.objects.select_for_update()
+            .filter(pk=campaign.pk, status=Campaign.Status.DRAFT)
+            .exists()
+        ):
+            messages.warning(
+                request, "Ce message vient d'être confirmé : il n'est plus modifiable."
+            )
+            return redirect("messaging:tracking", pk=campaign.pk)
+        campaign = form.save()
     action = request.POST.get("action", "save")
     done = _apply(request, campaign, action, form.cleaned_data.get("add", ""))
     if done is not None:
@@ -230,6 +243,7 @@ def review(request, pk):
                 messages.success(request, "Envoi en cours.")
             return redirect("messaging:tracking", pk=campaign.pk)
     audience_ = audience(campaign)
+    sms = _sms_report(campaign, audience_)
     return render(
         request,
         "messaging/review.html",
@@ -239,7 +253,9 @@ def review(request, pk):
             "send_at": campaign.send_at,
             "remind_at": sending.reminder_time(campaign),
             "audience": audience_,
-            "sms": _sms_report(campaign, audience_),
+            "sms": sms,
+            # Until residents can answer (card T22), the reminder goes to everyone reached.
+            "reminder_sms": sms["total_segments"] if sending.reminder_time(campaign) else 0,
             "problems": found,
         },
     )
@@ -270,6 +286,18 @@ def tracking(request, pk):
             else None,
         },
     )
+
+
+@require_POST
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+def cancel_reminder(request, pk):
+    campaign = get_object_or_404(Campaign, pk=pk)
+    if sending.cancel_reminder(campaign, by=request.user, request=request):
+        messages.success(request, "Relance annulée.")
+    else:
+        messages.warning(request, "Trop tard : la relance est déjà partie.")
+    return redirect("messaging:tracking", pk=campaign.pk)
 
 
 @require_POST

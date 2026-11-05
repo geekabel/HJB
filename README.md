@@ -102,22 +102,31 @@ Les notifications Web Push sont signées avec une clé VAPID. En production, `DJ
 Les envois de messages passent par le [framework de tâches de Django](https://docs.djangoproject.com/en/6.1/topics/tasks/). En production, les tâches sont gardées dans la base de données par [django-tasks-db](https://github.com/RealOrangeOne/django-tasks-db) et exécutées par son *worker*, un service à part qui tourne en permanence :
 
 ```sh
-DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py db_worker
+DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py db_worker --no-reload
 ```
 
 En développement et dans les tests, les tâches s'exécutent tout de suite, dans la requête.
+
+Pour le service du *worker* :
+
+- le relancer à chaque déploiement : il garde l'ancien code tant qu'il tourne ;
+- ajouter `--no-reload` (le rechargement automatique suit `DEBUG` et n'est pas fait pour la production) ;
+- lui laisser le temps de finir un envoi à l'arrêt (systemd : `TimeoutStopSec=300`). Un envoi coupé en plein milieu reprend tout seul avec `run_scheduled`, sans renvoyer ce qui est déjà parti.
+
+En production avec SQLite, trois processus écrivent dans la base (le site, le *worker* et `run_scheduled`) : `config/settings/prod.py` active le mode WAL, les transactions `IMMEDIATE` et une attente de 20 secondes sur le verrou.
 
 Trois commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
 
 - chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus et enregistre les départs prévus (le jour venu, à midi) ;
 - chaque jour vers 10 h, heure de Paris, `send_wifi_reminders` : rappel aux résidents 15 jours avant la fin de leur accès wifi ;
-- chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés.
+- chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés ;
+- chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours.
 
 Exemple de lignes cron, avec le fichier d'environnement du service et `flock` pour qu'une exécution ne commence pas avant la fin de la précédente :
 
 ```sh
 * * * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-minute.lock .venv/bin/python manage.py run_scheduled
-0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions'
+0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions && .venv/bin/python manage.py prune_db_task_results'
 ```
 
 Le chemin, le fichier d'environnement et le service du *worker* seront fixés avec le déploiement (T38). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.

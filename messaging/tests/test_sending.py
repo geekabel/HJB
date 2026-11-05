@@ -123,13 +123,31 @@ class SendNowTests(SendingTestCase):
         sending.deliver(campaign.pk)
         self.push.assert_not_called()  # another worker is on it
 
-    def test_push_unreachable_falls_back_to_sms(self):
+    def test_no_device_left_falls_back_to_sms(self):
+        # All devices answered "gone" (404/410): the SMS takes over.
         self.ines.phone = "+33622222222"
         self.ines.save()
-        self.push.return_value = NOT_PUSHED
+        self.push.return_value = SendResult(removed=1)
         campaign = self.send_now(self.campaign())
         delivery = campaign.deliveries.get(recipient=self.ines)
         self.assertEqual((delivery.channel, delivery.status), ("sms", "sent"))
+
+    def test_push_failing_for_a_while_is_retried_never_a_paid_sms(self):
+        # Review of T21: push service down, or a refused key.
+        self.ines.phone = "+33622222222"
+        self.ines.save()
+        self.push.return_value = SendResult(failed=1)
+        campaign = self.send_now(self.campaign())
+        delivery = campaign.deliveries.get(recipient=self.ines)
+        self.assertEqual((delivery.channel, delivery.status), ("push", "pending"))
+        self.assertEqual(campaign.status, "sending")
+        for minutes in (10, 30):
+            later = timezone.now() + timedelta(minutes=minutes)
+            with mock.patch("django.utils.timezone.now", return_value=later):
+                sending.run_due(later)
+        delivery.refresh_from_db()
+        self.assertEqual((delivery.channel, delivery.status), ("push", "failed"))
+        self.assertNotIn("+33622222222", [c.args[0] for c in self.sms.call_args_list])
 
     def test_sms_retried_then_sent(self):
         self.sms.side_effect = [SendError("Réseau", temporary=True), SMS_OK]
@@ -212,7 +230,7 @@ class ScheduleTests(SendingTestCase):
         )
         late = at(timezone.localdate(), 9)
         self.assertIn(
-            "La relance (le jour J à 8 h) tomberait avant l'envoi.",
+            "La relance (le jour J à 8 h) doit venir au moins une heure après l'envoi.",
             sending.problems(campaign, late),
         )
         with self.assertRaises(ValidationError):
@@ -393,3 +411,154 @@ class PagesTests(SendingTestCase):
         self.assertRedirects(response, reverse("messaging:review", args=[campaign.pk]))
         campaign.refresh_from_db()
         self.assertEqual(campaign.send_at, later)
+
+
+class ReviewTests(SendingTestCase):
+    """Cases found by the independent review of T21."""
+
+    def due_campaign(self, **kwargs):
+        campaign = self.campaign(**kwargs)
+        Campaign.objects.filter(pk=campaign.pk).update(
+            status=Campaign.Status.SCHEDULED, send_at=timezone.now()
+        )
+        return campaign
+
+    def test_start_and_deliveries_go_together(self):
+        campaign = self.due_campaign()
+        with (
+            mock.patch.object(Delivery.objects, "bulk_create", side_effect=RuntimeError("locked")),
+            self.assertRaises(RuntimeError),
+        ):
+            sending.deliver(campaign.pk)
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.status, "scheduled")  # tried again, never "sent" to nobody
+
+    def test_tasks_do_not_pile_up(self):
+        self.due_campaign()
+        with mock.patch.object(sending, "_enqueue") as enqueue:
+            for minute in range(5):
+                now = timezone.now() + timedelta(minutes=minute)
+                sending.run_due(now)
+        self.assertEqual(enqueue.call_count, 1)
+
+    def test_far_too_late_is_not_sent(self):
+        campaign = self.campaign()
+        Campaign.objects.filter(pk=campaign.pk).update(
+            status=Campaign.Status.SCHEDULED, send_at=timezone.now() - timedelta(hours=13)
+        )
+        self.assertEqual(sending.run_due()["late"], 1)
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.status, "cancelled")
+        self.push.assert_not_called()
+        entry = AuditEntry.objects.get(action=Action.MESSAGE_CANCELLED)
+        self.assertTrue(entry.details["too_late"])
+
+    def test_reminder_too_late_or_cancelled(self):
+        event = timezone.localdate() + timedelta(days=3)
+        campaign = self.send_now(
+            self.campaign(remind=True, reply_type=ReplyType.ATTENDANCE, event_date=event)
+        )
+        self.assertTrue(sending.cancel_reminder(campaign, by=self.nadia))
+        campaign.refresh_from_db()
+        self.assertIsNone(campaign.remind_at)
+        campaign = self.send_now(
+            self.campaign(remind=True, reply_type=ReplyType.ATTENDANCE, event_date=event)
+        )
+        noon = at(event, 12, 30)
+        with mock.patch("django.utils.timezone.now", return_value=noon):
+            counts = sending.run_due(noon)
+        self.assertEqual((counts["reminders"], counts["late"]), (0, 1))
+        self.assertFalse(campaign.deliveries.filter(kind=Delivery.Kind.REMINDER).exists())
+
+    def test_reminder_uses_the_channel_of_today(self):
+        event = timezone.localdate() + timedelta(days=3)
+        campaign = self.send_now(
+            self.campaign(remind=True, reply_type=ReplyType.ATTENDANCE, event_date=event)
+        )
+        PushSubscription.objects.create(
+            user=self.yanis, endpoint="https://web.push.apple.com/y", p256dh="x", auth="y"
+        )
+        when = at(event, 8, 1)
+        with mock.patch("django.utils.timezone.now", return_value=when):
+            sending.run_due(when)
+        reminder = campaign.deliveries.get(kind=Delivery.Kind.REMINDER, recipient=self.yanis)
+        self.assertEqual(reminder.channel, "push")
+        campaign.refresh_from_db()
+        self.assertIsNotNone(campaign.reminder_sent_at)
+
+    def test_reminder_prefix_never_costs_one_more_sms(self):
+        short = "x" * 100
+        self.assertEqual(sending.reminder_sms(short), "Rappel : " + short)
+        full = "x" * 155
+        self.assertEqual(sending.reminder_sms(full), full)
+
+    def test_sms_not_configured(self):
+        with override_settings(SMS={"BACKEND": "sms.providers.disabled.DisabledProvider"}):
+            found = sending.problems(self.campaign(), timezone.now())
+        self.assertIn("L'envoi de SMS n'est pas configuré", " ".join(found))
+
+    def test_planned_departure_kept_after_a_move(self):
+        from housing.services import assign_room
+        from residents.departure import plan_departure
+
+        day = timezone.localdate() + timedelta(days=20)
+        plan_departure(self.yanis, day, by=self.nadia)
+        assign_room(self.yanis, Room.objects.create(number="306", floor=self.f3))
+        self.assertEqual(self.yanis.stays.get(departure__isnull=True).planned_departure, day)
+
+    def test_planned_departure_that_cannot_be_recorded_is_dropped(self):
+        from residents.departure import plan_departure
+
+        day = timezone.localdate() + timedelta(days=2)
+        plan_departure(self.yanis, day, by=self.nadia)
+        # The arrival is changed afterwards to a later date.
+        self.yanis.stays.update(arrival=day + timedelta(days=1))
+        later = at(day + timedelta(days=1), 13)
+        with (
+            mock.patch("django.utils.timezone.now", return_value=later),
+            self.assertLogs("messaging.sending", "WARNING"),
+        ):
+            self.assertEqual(sending.record_planned_departures(), 0)
+        self.assertIsNone(self.yanis.stays.get().planned_departure)
+        self.assertTrue(AuditEntry.objects.filter(action=Action.DEPARTURE_PLAN_CANCELLED).exists())
+
+    def test_planned_departure_pages(self):
+        from residents.departure import plan_departure
+
+        log_in_verified(self.client, self.nadia)
+        url = reverse("residents:departure", args=[self.yanis.pk])
+        response = self.client.post(url, {"departure": "2026-08-31"})
+        self.assertContains(response, "avant l&#x27;arrivée")
+        day = timezone.localdate() + timedelta(days=20)
+        plan_departure(self.yanis, day, by=self.nadia)
+        response = self.client.get(url)
+        save_page("residents-departure-planned", response)
+        self.assertContains(response, f'value="{day.isoformat()}"')  # never today by mistake
+        self.assertContains(response, "Départ déjà prévu le")
+
+    def test_list_title(self):
+        log_in_verified(self.client, self.nadia)
+        self.send_now(self.campaign())
+        response = self.client.get(reverse("messaging:list"))
+        self.assertContains(response, "<title>Messages · HJB Résidence</title>")
+
+    def test_composer_date_without_programmer_and_late_save(self):
+        log_in_verified(self.client, self.nadia)
+        campaign = self.campaign()
+        data = {
+            "type": "visit",
+            "title": "Visite",
+            "body": "Bonjour",
+            "everyone": "on",
+            "when": "now",
+            "send_at": "2026-12-01T10:00",
+            "action": "save",
+        }
+        url = reverse("messaging:compose", args=[campaign.pk])
+        self.assertContains(self.client.post(url, data), "Choisissez « Programmer »")
+        Campaign.objects.filter(pk=campaign.pk).update(status=Campaign.Status.SCHEDULED)
+        data["send_at"] = ""
+        response = self.client.post(url, data)
+        self.assertRedirects(response, reverse("messaging:tracking", args=[campaign.pk]))
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.status, "scheduled")

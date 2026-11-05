@@ -169,7 +169,9 @@ class DepartureForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.stay = stay
         today = timezone.localdate()
-        self.fields["departure"].initial = today
+        # A planned departure: the form starts at its date, so that "change the
+        # date" never records an immediate departure by mistake.
+        self.fields["departure"].initial = (stay.planned_departure if stay else None) or today
         self.fields["departure"].help_text = (
             "Aujourd'hui ou avant : enregistré tout de suite. Plus tard : départ prévu, "
             "enregistré automatiquement ce jour-là à midi."
@@ -189,6 +191,11 @@ class DepartureForm(forms.Form):
                 )
             if on > timezone.localdate() + timedelta(days=365):
                 raise ValidationError("La date est à plus d'un an.", code="too_far")
+            if on < self.stay.arrival:
+                raise ValidationError(
+                    f"La date est avant l'arrivée dans la chambre ({self.stay.arrival:%d/%m/%Y}).",
+                    code="departure_before_arrival",
+                )
             return on  # planned departure (card T21)
         check_date(on, self.stay)
         return on

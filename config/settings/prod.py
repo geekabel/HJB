@@ -52,6 +52,14 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": os.environ.get("DJANGO_SQLITE_PATH", BASE_DIR / "db.sqlite3"),  # noqa: F405
+            # Three processes write (site, task worker, run_scheduled): WAL lets reads
+            # go on during a write, IMMEDIATE takes the write lock at the start of a
+            # transaction, and the timeout waits for it instead of failing at once.
+            "OPTIONS": {
+                "init_command": "PRAGMA journal_mode=WAL;",
+                "transaction_mode": "IMMEDIATE",
+                "timeout": 20,
+            },
         }
     }
 

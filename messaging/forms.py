@@ -97,6 +97,11 @@ class CampaignForm(forms.ModelForm):
         if data.get("when") == "later" and not data.get("send_at"):
             self.add_error("send_at", "Indiquez la date et l'heure de l'envoi.")
         if data.get("when") != "later":
+            if data.get("send_at"):
+                self.add_error(
+                    "send_at",
+                    "Choisissez « Programmer » pour envoyer à cette date, ou videz le champ.",
+                )
             data["send_at"] = None
         if data.get("remind") and not data.get("ask_reply"):
             self.add_error("remind", "La relance demande une réponse « Présent » ou « Absent ».")

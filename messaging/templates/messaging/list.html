@@ -1,34 +1,6 @@
 {% extends "ui/staff.html" %}
 {% load icons %}
-{% block title %}Messages
-{% if sent %}
-<section class="stack" aria-labelledby="sent-title">
-  <h2 id="sent-title">Envoyés</h2>
-  <div class="table-scroll" role="region" aria-labelledby="sent-title" tabindex="0">
-    <table class="table">
-      <thead>
-        <tr>
-          <th scope="col">Titre</th>
-          <th scope="col">Type</th>
-          <th scope="col">État</th>
-          <th scope="col">Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for campaign in sent %}
-        <tr>
-          <th scope="row" class="table__row-header"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a></th>
-          <td>{{ campaign.get_type_display }}</td>
-          <td>{{ campaign.get_status_display }}</td>
-          <td class="table__number">{% if campaign.sent_at %}<time datetime="{{ campaign.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.sent_at|date:"j F à H:i" }}</time>{% else %}–{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
-{% endif %}
-{% endblock %}
+{% block title %}Messages{% endblock %}
 {% block content %}
 <header class="page-header">
   <div class="stack stack--tight">

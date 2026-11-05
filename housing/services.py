@@ -46,7 +46,14 @@ def assign_room(resident, room, on=None):
         current.save()
         # The person leaves this room: its wifi access must be renewed (T15).
         end_access(current.room, WifiAccess.EndReason.MOVE)
-    new = Stay(resident=resident, room=room, arrival=on)
+    # A departure planned in advance (card T21) still holds after a move.
+    planned = current.planned_departure if current is not None else None
+    new = Stay(
+        resident=resident,
+        room=room,
+        arrival=on,
+        planned_departure=planned if planned and planned > on else None,
+    )
     new.full_clean()
     new.save()
     return new

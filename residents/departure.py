@@ -147,6 +147,13 @@ def plan_departure(resident, on, *, by, request=None):
             )
         if on > timezone.localdate() + timedelta(days=PLANNED_LIMIT_DAYS):
             raise ValidationError("La date est à plus d'un an.", code="too_far")
+        if on <= timezone.localdate():
+            raise ValidationError("Un départ prévu est dans le futur.", code="not_future")
+        if on < stay.arrival:
+            raise ValidationError(
+                f"La date est avant l'arrivée dans la chambre ({stay.arrival:%d/%m/%Y}).",
+                code="departure_before_arrival",
+            )
         stay.planned_departure = on
         stay.save(update_fields=["planned_departure"])
         log_action(
@@ -164,13 +171,14 @@ def cancel_planned_departure(resident, *, by, request=None):
         stay = current_stay(resident)
         if stay is None or stay.planned_departure is None:
             return False
+        planned = stay.planned_departure
         stay.planned_departure = None
         stay.save(update_fields=["planned_departure"])
         log_action(
-            Action.DEPARTURE_PLANNED,
+            Action.DEPARTURE_PLAN_CANCELLED,
             actor=by,
             target=resident,
-            details={"room": stay.room.number, "planned_departure": None},
+            details={"room": stay.room.number, "planned_departure": planned.isoformat()},
             request=request,
         )
     return True

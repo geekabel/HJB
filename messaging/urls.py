@@ -12,6 +12,7 @@ urlpatterns = [
     path("<int:pk>/envoyer/", views.review, name="review"),
     path("<int:pk>/suivi/", views.tracking, name="tracking"),
     path("<int:pk>/annuler/", views.cancel, name="cancel"),
+    path("<int:pk>/relance/annuler/", views.cancel_reminder, name="cancel_reminder"),
     path("modeles/", views.template_list, name="templates"),
     path("modeles/nouveau/", views.template_edit, name="template_new"),
     path("modeles/<int:pk>/", views.template_edit, name="template_edit"),
