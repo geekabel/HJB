@@ -53,6 +53,26 @@ class AdministrationUtilisateursTests(TestCase):
         self.assertEqual(marc.telephone, "+33781223344")
         self.assertTrue(marc.has_perm("comptes.gerer_residents"))
 
+    def test_changer_les_roles_ferme_les_sessions_et_annule_le_code(self):
+        """Revue T13 : un résident promu à l'accueil se reconnecte (droits, durée de session)."""
+        from django.test import Client
+
+        from comptes.activation import generer_code
+        from comptes.models import CodeActivation
+
+        awa = creer_utilisateur("awa")
+        generer_code(awa)
+        session_awa = Client()
+        session_awa.force_login(awa)
+        self.client.post(
+            reverse("admin:comptes_user_change", args=[awa.pk]),
+            donnees(awa, roles=[Role.ACCUEIL]),
+        )
+        self.assertEqual(session_awa.get("/").status_code, 302)  # renvoyée vers la connexion
+        self.assertFalse(CodeActivation.objects.valides().exists())
+        # La session de l'administrateur qui fait la modification reste ouverte.
+        self.assertEqual(self.client.get(reverse("admin:index")).status_code, 200)
+
     def test_decocher_tous_les_roles(self):
         ines = creer_utilisateur("ines", Role.ACCUEIL)
         self.client.post(reverse("admin:comptes_user_change", args=[ines.pk]), donnees(ines))

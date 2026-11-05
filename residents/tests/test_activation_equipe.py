@@ -124,6 +124,34 @@ class CodeActivationTests(EquipeTestCase):
         self.assertNotContains(reponse, "pas allée jusqu")
         self.assertContains(reponse, "Clé d'accès créée le <time")
 
+    def test_couper_l_acces(self):
+        """Téléphone perdu : l'accueil déconnecte l'appareil tout de suite (revue T13)."""
+        from django.test import Client
+
+        from connexion.tests.authentificateur import Authentificateur
+
+        Authentificateur().enregistrer(self.awa)
+        telephone_perdu = Client()
+        telephone_perdu.force_login(self.awa)
+        self.generer()  # un code en attente, qui ne doit plus servir
+        url = reverse("residents:couper_acces", args=[self.awa.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        reponse = self.client.post(url, follow=True)
+        self.assertContains(
+            reponse, "Accès coupé : 1 clé d&#x27;accès supprimée, 1 session fermée."
+        )
+        self.assertFalse(self.awa.webauthncredential_set.exists())
+        self.assertFalse(CodeActivation.objects.valides().exists())
+        self.assertEqual(telephone_perdu.get("/").status_code, 302)
+        entree = EntreeJournal.objects.get(action=Action.ACCES_COUPE)
+        self.assertEqual(entree.resume(), "1 clé d'accès supprimée, 1 session fermée.")
+
+    def test_couper_l_acces_reserve(self):
+        educ = creer_utilisateur("eli", Role.EDUCATEUR)
+        self.client.force_login(educ)
+        url = reverse("residents:couper_acces", args=[self.awa.pk])
+        self.assertEqual(self.client.post(url).status_code, 403)
+
     def test_jamais_en_get(self):
         self.assertEqual(self.client.get(self.url_code()).status_code, 405)
 

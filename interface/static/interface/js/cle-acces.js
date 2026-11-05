@@ -68,16 +68,26 @@
   }
 
   async function appeler(adresse, corps) {
-    const reponse = await fetch(adresse, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "X-CSRFToken": jeton.value,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: corps === undefined ? "" : JSON.stringify(corps),
-    });
+    let reponse;
+    try {
+      reponse = await fetch(adresse, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "X-CSRFToken": jeton.value,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: corps === undefined ? "" : JSON.stringify(corps),
+      });
+    } catch {
+      // fetch() échoue (TypeError) quand le réseau ne répond pas.
+      throw new ErreurServeur(
+        "Pas de connexion au réseau. Vérifiez votre wifi ou vos données, puis réessayez.",
+        0,
+        "reseau",
+      );
+    }
     let donnees = null;
     try {
       donnees = await reponse.json();
@@ -85,11 +95,14 @@
       // Pas de JSON : erreur du serveur, traitée ci-dessous.
     }
     if (!reponse.ok || !donnees) {
-      throw new ErreurServeur(
-        (donnees && donnees.detail) || "Le serveur ne répond pas. Réessayez dans un instant.",
-        reponse.status,
-        donnees && donnees.code,
-      );
+      let message = "Le serveur ne répond pas. Réessayez dans un instant.";
+      if (donnees && donnees.detail) {
+        message = donnees.detail;
+      } else if (reponse.status === 403) {
+        // Page HTML de refus CSRF : le jeton a changé (connexion dans un autre onglet).
+        message = "La page a expiré. Rechargez-la, puis réessayez.";
+      }
+      throw new ErreurServeur(message, reponse.status, donnees && donnees.code);
     }
     return donnees;
   }
@@ -149,8 +162,6 @@
         return creation
           ? "La création a été annulée, ou le délai est dépassé. Réessayez quand vous êtes prêt."
           : "La vérification a été annulée, ou le délai est dépassé. Réessayez. Pas de clé sur cet appareil ? Utilisez le téléphone où vous l'avez créée.";
-      case "InvalidStateError":
-        return "Cet appareil a déjà une clé d'accès pour votre compte. Essayez de vous connecter.";
       case "SecurityError":
         return "Les clés d'accès ne marchent pas à cette adresse. Prévenez l'accueil.";
       case "AbortError":

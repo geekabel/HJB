@@ -74,9 +74,10 @@ class Authentificateur:
             discoverable=True,
         )
 
-    def creer(self, options, *, verification=True, origine=None):
+    def creer(self, options, *, verification=True, origine=None, identifiant=None):
         """Réponse à navigator.credentials.create() pour ces options."""
-        privee, cle_cose, identifiant = self._nouvelle_cle()
+        privee, cle_cose, nouvel_identifiant = self._nouvelle_cle()
+        identifiant = identifiant or nouvel_identifiant
         self.cles[identifiant] = (privee, base64url_to_bytes(options["user"]["id"]))
         drapeaux = PRESENCE | DONNEES_CLE | (VERIFICATION if verification else 0)
         suite = bytes(16) + struct.pack(">H", len(identifiant)) + identifiant + cle_cose

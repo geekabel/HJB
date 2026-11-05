@@ -69,6 +69,9 @@ def generer_code(utilisateur, *, par=None, requete=None):
         code = "".join(secrets.choice(ALPHABET) for _ in range(LONGUEUR))
         try:
             with transaction.atomic():
+                # Même verrou que la création de clé (activation/views.py) : un code
+                # remis pendant la création de la clé l'annule à coup sûr.
+                type(utilisateur).objects.select_for_update().get(pk=utilisateur.pk)
                 CodeActivation.objects.valides().filter(utilisateur=utilisateur).update(
                     annule_le=maintenant
                 )

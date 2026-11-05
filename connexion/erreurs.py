@@ -21,6 +21,7 @@ MESSAGES = {
     ),
     "not_authenticated": "Connectez-vous d'abord.",
     "user_not_verified": "Confirmez d'abord votre identité avec votre clé d'accès.",
+    "credential_exists": "Cette clé d'accès est déjà enregistrée. Essayez de vous connecter.",
 }
 MESSAGE_PAR_DEFAUT = "La clé d'accès n'a pas pu être vérifiée. Réessayez."
 

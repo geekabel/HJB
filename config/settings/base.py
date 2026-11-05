@@ -94,6 +94,8 @@ AUTHENTICATION_BACKENDS = [
 # Durée d'une session sans activité. Les résidents connectés par clé d'accès
 # gardent la leur bien plus longtemps (voir connexion/session.py).
 SESSION_COOKIE_AGE = 12 * 60 * 60
+# La durée repart à chaque requête : c'est bien une durée « sans activité ».
+SESSION_SAVE_EVERY_REQUEST = True
 
 AUTH_USER_MODEL = "comptes.User"
 

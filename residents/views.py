@@ -309,6 +309,24 @@ def jeton_code_activation(request, resident):
 @require_POST
 @login_required
 @permission_required("comptes.generer_code_activation", raise_exception=True)
+def couper_acces(request, pk):
+    """Téléphone perdu ou volé : l'appareil est déconnecté tout de suite (carte T13)."""
+    from connexion.services import couper_acces as couper
+
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    cles, sessions = couper(resident, par=request.user, requete=request)
+    sc, ss = ("s" if cles > 1 else ""), ("s" if sessions > 1 else "")
+    messages.success(
+        request,
+        f"Accès coupé : {cles} clé{sc} d'accès supprimée{sc}, {sessions} session{ss} "
+        f"fermée{ss}. Vérifiez le numéro de téléphone, puis générez un nouveau code.",
+    )
+    return redirect("residents:fiche", pk=resident.pk)
+
+
+@require_POST
+@login_required
+@permission_required("comptes.generer_code_activation", raise_exception=True)
 def code_activation(request, pk):
     """Génère un code et l'affiche une seule fois, en page imprimable, jamais mise en cache."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)

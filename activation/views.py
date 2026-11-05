@@ -10,7 +10,7 @@ import time
 
 from django.contrib import messages
 from django.contrib.auth import login
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -157,6 +157,10 @@ def cle(request):
     )
 
 
+class ParcoursFini(Exception):
+    """Le parcours n'est plus valable (départ, nouveau code…) : tout est annulé."""
+
+
 PARCOURS_FINI = (
     "Votre activation a expiré. Recommencez avec le code remis par l'accueil, "
     "ou demandez-en un nouveau."
@@ -191,12 +195,17 @@ def cle_fin(request):
         return reponse_erreur("malformed_request", 400)
 
     try:
-        with rewrite_exceptions(logger=journal_webauthn), transaction.atomic():
-            # Verrou sur le compte : deux créations simultanées passent l'une après l'autre.
+        with transaction.atomic():
+            # Verrou sur le compte : une création, un départ ou un nouveau code passent
+            # l'un après l'autre. Tout est revérifié une fois le verrou pris.
             User.objects.select_for_update().get(pk=personne.pk)
-            cle_acces = AideActivation(request).register_complete(
-                user=personne, state=etat, data=donnees
-            )
+            personne = _personne_prete(request)
+            if personne is None:
+                raise ParcoursFini
+            with rewrite_exceptions(logger=journal_webauthn):
+                cle_acces = AideActivation(request).register_complete(
+                    user=personne, state=etat, data=donnees
+                )
             # Récupération (téléphone perdu ou changé) : les anciennes clés ne servent plus.
             anciennes = (
                 get_credential_model().objects.filter(user=personne).exclude(pk=cle_acces.pk)
@@ -210,6 +219,11 @@ def cle_fin(request):
                 details={"anciennes_retirees": nombre},
                 requete=request,
             )
+    except ParcoursFini:
+        return reponse_erreur("parcours", 403, PARCOURS_FINI)
+    except IntegrityError:
+        # Identifiant de clé déjà enregistré (réponse rejouée ou forgée).
+        return reponse_erreur("credential_exists", 422)
     except OTPWebAuthnApiError as erreur:
         return reponse_erreur(erreur.code, erreur.status_code)
 

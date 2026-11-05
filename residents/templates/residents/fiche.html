@@ -113,15 +113,19 @@
       {% else %}
       <p class="texte-doux">Aucun code remis pour l'instant.</p>
       {% endif %}
-      {% if cle_acces %}
-      <p class="texte-doux">Clé d'accès créée le <time datetime="{{ cle_acces.created_at|date:'Y-m-d\TH:i:sO' }}">{{ cle_acces.created_at|date:"j F Y" }}</time>. Téléphone perdu ou changé : un nouveau code permet d'en créer une autre, qui remplace celle-ci.</p>
-      {% endif %}
       <p class="texte-doux texte-petit">À générer quand la personne est devant vous, après avoir vérifié son identité.</p>
       <form method="post" action="{% url 'residents:code_activation' resident.pk %}">
         {% csrf_token %}
         <input type="hidden" name="jeton" value="{{ jeton_code }}">
         <button class="bouton" type="submit">{% if code %}Générer un nouveau code{% else %}Générer un code d'activation{% endif %}</button>
       </form>
+      {% if cle_acces %}
+      <p class="texte-doux">Clé d'accès créée le <time datetime="{{ cle_acces.created_at|date:'Y-m-d\TH:i:sO' }}">{{ cle_acces.created_at|date:"j F Y" }}</time>. Téléphone perdu ou volé : coupez l'accès tout de suite, puis générez un nouveau code.</p>
+      <form method="post" action="{% url 'residents:couper_acces' resident.pk %}">
+        {% csrf_token %}
+        <button class="bouton bouton--danger" type="submit">Couper l'accès</button>
+      </form>
+      {% endif %}
       {% endif %}
     </section>
     {% endwith %}

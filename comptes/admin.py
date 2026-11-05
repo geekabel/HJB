@@ -2,12 +2,14 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
+from django.utils import timezone
 
 from journal.models import Action
 from journal.service import journaliser
 
 from .models import CodeActivation, User
-from .roles import Role, definir_roles
+from .roles import ROLES_EQUIPE, Role, definir_roles
+from .sessions import fermer_toutes
 
 
 class ChampRoles(forms.TypedMultipleChoiceField):
@@ -77,6 +79,13 @@ class UtilisateurAdmin(UserAdmin):
         super().save_related(request, form, formsets, change)
         avant, apres = definir_roles(form.instance, form.cleaned_data.get("roles", []))
         if avant != apres:
+            # Les droits et la durée de session changent : la personne se reconnecte.
+            fermer_toutes(form.instance, sauf=request.session.session_key)
+            if apres & ROLES_EQUIPE:
+                # Les codes d'activation sont réservés aux résidents (voir T14).
+                CodeActivation.objects.valides().filter(utilisateur=form.instance).update(
+                    annule_le=timezone.now()
+                )
             journaliser(
                 Action.ROLES_MODIFIES,
                 cible=form.instance,

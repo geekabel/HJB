@@ -106,10 +106,15 @@ class EtapeCleTests(BaseCle):
         self.assertEqual(self.client.get(reverse("activation:cle_fin")).status_code, 405)
 
     def test_csrf_obligatoire(self):
-        # Même session (téléphone vérifié), mais sans jeton CSRF : refusé.
+        # Même session (téléphone vérifié), mais sans jeton CSRF : refusé par le
+        # contrôle CSRF (page HTML), pas par la vue (réponse JSON).
         client = Client(enforce_csrf_checks=True)
         client.cookies = self.client.cookies
-        self.assertEqual(json_post(client, reverse("activation:cle_debut")).status_code, 403)
+        for nom in ("activation:cle_debut", "activation:cle_fin"):
+            with self.subTest(nom=nom):
+                reponse = json_post(client, reverse(nom), {})
+                self.assertEqual(reponse.status_code, 403)
+                self.assertNotEqual(reponse["Content-Type"], "application/json")
 
 
 class EtapeCleRefusTests(BaseCle):
@@ -205,3 +210,67 @@ class RecuperationTests(BaseCle):
         self.assertEqual(nouveau_telephone.get(reverse("accueil")).status_code, 200)
         entree = EntreeJournal.objects.filter(action=Action.CLE_ACCES_CREEE).latest("pk")
         self.assertEqual(entree.resume(), "Remplace 1 ancienne clé, désormais inutilisable.")
+
+
+class RevueCleTests(BaseCle):
+    """Cas trouvés par la relecture indépendante (5 nov.)."""
+
+    def test_verification_exigee_des_la_creation(self):
+        options = json_post(self.client, reverse("activation:cle_debut")).json()
+        self.assertEqual(options["authenticatorSelection"]["userVerification"], "required")
+        # Une clé créée sans Face ID, empreinte ni code ne pourrait jamais servir : refusée.
+        with self.assertLogs("django_otp_webauthn", "ERROR"):
+            reponse = json_post(
+                self.client,
+                reverse("activation:cle_fin"),
+                self.telephone.creer(options, verification=False),
+            )
+        self.assertEqual(reponse.status_code, 422)
+        self.assertFalse(Cle.objects.exists())
+
+    def test_tout_est_reverifie_sous_le_verrou(self):
+        """Un départ validé juste avant le verrou : aucune clé n'est créée."""
+        from unittest import mock
+
+        from activation import views
+
+        options = json_post(self.client, reverse("activation:cle_debut")).json()
+        vraie = views._personne_prete
+        appels = []
+
+        def personne_puis_rien(request):
+            appels.append(1)
+            return vraie(request) if len(appels) == 1 else None
+
+        with mock.patch.object(views, "_personne_prete", personne_puis_rien):
+            reponse = json_post(
+                self.client, reverse("activation:cle_fin"), self.telephone.creer(options)
+            )
+        self.assertEqual(reponse.status_code, 403)
+        self.assertEqual(len(appels), 2)
+        self.assertFalse(Cle.objects.exists())
+        self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_compte_devenu_membre_du_personnel(self):
+        from comptes.roles import Role, definir_roles
+
+        definir_roles(self.awa, {Role.ACCUEIL})
+        reponse = json_post(self.client, reverse("activation:cle_debut"))
+        self.assertEqual(reponse.status_code, 403)
+        self.assertRedirects(
+            self.client.get(reverse("activation:cle")), reverse("activation:saisie")
+        )
+
+    def test_identifiant_de_cle_deja_enregistre(self):
+        creer_cle(self.client, self.telephone)
+        existante = Cle.objects.get()
+        VerificationTelephone.objects.update(cree_le=F("cree_le") - timedelta(minutes=2))
+        autre = Client()
+        activer_jusqu_au_telephone(autre, self.awa)
+        options = json_post(autre, reverse("activation:cle_debut")).json()
+        piege = Authentificateur().creer(options, identifiant=bytes(existante.credential_id))
+        with self.assertLogs("django_otp_webauthn", "ERROR"):
+            reponse = json_post(autre, reverse("activation:cle_fin"), piege)
+        self.assertEqual(reponse.status_code, 422)
+        self.assertEqual(reponse.json()["code"], "credential_exists")
+        self.assertTrue(Cle.objects.filter(pk=existante.pk).exists())

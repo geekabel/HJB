@@ -179,7 +179,8 @@ class ListeTests(ResidentsTestCase):
     def test_nombre_de_requetes_stable(self):
         url = reverse("residents:liste")
         self.client.get(url)
-        with self.assertNumQueries(11):
+        # Dont 3 pour la session, enregistrée à chaque requête (SESSION_SAVE_EVERY_REQUEST).
+        with self.assertNumQueries(14):
             self.client.get(url)
         for i in range(10):
             resident = User.objects.create_user(f"x{i}", first_name="X", last_name=str(i))
@@ -188,7 +189,7 @@ class ListeTests(ResidentsTestCase):
                 chambre=Chambre.objects.create(numero=f"2{i:02}", etage=self.e1),
                 arrivee=J1,
             )
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(14):
             self.client.get(url)
 
 

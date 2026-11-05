@@ -6,9 +6,18 @@ Toute la cryptographie reste dans py_webauthn, appelée par la bibliothèque.
 """
 
 from django_otp_webauthn.helpers import WebAuthnHelper
+from webauthn.helpers.structs import UserVerificationRequirement
 
 
 class AideWebAuthn(WebAuthnHelper):
+    def get_generate_registration_options_kwargs(self, *, user):
+        options = super().get_generate_registration_options_kwargs(user=user)
+        # La connexion exige Face ID, l'empreinte ou le code de l'appareil. La
+        # création l'exige aussi : sinon une clé sans vérification serait
+        # enregistrée (et remplacerait les autres) sans jamais pouvoir servir.
+        options["authenticator_selection"].user_verification = UserVerificationRequirement.REQUIRED
+        return options
+
     def get_credential_display_name(self, user):
         # Montré par le téléphone dans sa liste de clés : le nom, pas l'identifiant technique.
         return user.get_full_name() or user.get_username()

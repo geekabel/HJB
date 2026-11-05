@@ -9,6 +9,7 @@ personne (un code volé ne garde pas la main) ou si elle part.
 import time
 
 from comptes.models import CodeActivation, User
+from connexion.session import est_resident
 
 CLE = "activation"
 DUREE = 60 * 60  # secondes
@@ -38,7 +39,10 @@ def personne_en_cours(request):
             utilisateur_id=donnees["utilisateur"], cree_le__gt=code.cree_le
         ).exists()
     )
-    if time.time() - donnees.get("debut", 0) > DUREE or personne is None or remplace:
+    # Les codes ne sont remis qu'aux résidents : un compte devenu membre du
+    # personnel entre-temps n'est pas activé par ce chemin (carte T14).
+    personnel = personne is not None and not est_resident(personne)
+    if time.time() - donnees.get("debut", 0) > DUREE or personne is None or remplace or personnel:
         del request.session[CLE]
         return None
     return personne

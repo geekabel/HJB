@@ -12,6 +12,7 @@ class Action(models.TextChoices):
     DEPART_RESIDENT = "DEPART_RESIDENT", "Départ d'un résident"
     RETOUR_RESIDENT = "RETOUR_RESIDENT", "Retour d'un ancien résident"
     CLE_ACCES_CREEE = "CLE_ACCES_CREEE", "Clé d'accès créée"
+    ACCES_COUPE = "ACCES_COUPE", "Accès coupé (téléphone perdu)"
 
 
 class EntreeJournalNonModifiable(Exception):
@@ -112,6 +113,11 @@ class EntreeJournal(models.Model):
                 s = "s" if cles > 1 else ""
                 texte += f" {cles} clé{s} d'accès supprimée{s}."
             return texte.strip()
+        if self.action == Action.ACCES_COUPE:
+            cles = self.details.get("cles_retirees", 0)
+            sessions = self.details.get("sessions_fermees", 0)
+            sc, ss = ("s" if cles > 1 else ""), ("s" if sessions > 1 else "")
+            return f"{cles} clé{sc} d'accès supprimée{sc}, {sessions} session{ss} fermée{ss}."
         if self.action == Action.CLE_ACCES_CREEE:
             anciennes = self.details.get("anciennes_retirees", 0)
             if not anciennes:

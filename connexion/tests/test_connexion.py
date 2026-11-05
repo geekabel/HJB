@@ -301,7 +301,36 @@ class AdministrationTests(TestCase):
         self.assertTrue(cle.confirmed)
 
 
-class DureesTests(TestCase):
-    def test_durees(self):
-        self.assertEqual(session.DUREE_RESIDENT, timedelta(days=90))
-        self.assertEqual(settings.SESSION_COOKIE_AGE, 12 * 3600)
+class RevueSessionsTests(BaseConnexion):
+    """Cas trouvés par la relecture indépendante (5 nov.)."""
+
+    def test_duree_sans_activite(self):
+        """La date de fin repart à chaque requête (SESSION_SAVE_EVERY_REQUEST)."""
+        from django.contrib.sessions.models import Session
+
+        self.se_connecter()
+        cle = self.client.session.session_key
+        Session.objects.filter(pk=cle).update(expire_date=timezone.now() + timedelta(days=1))
+        self.client.get(reverse("accueil"))
+        reste = Session.objects.get(pk=cle).expire_date - timezone.now()
+        self.assertGreater(reste, session.DUREE_RESIDENT - timedelta(minutes=1))
+
+    def test_supprimer_la_cle_dans_l_administration_ferme_les_sessions(self):
+        self.se_connecter()
+        admin = creer_utilisateur("admin", Role.ADMIN, is_staff=True, is_superuser=True)
+        equipe = Client()
+        equipe.force_login(admin)
+        url = reverse("admin:django_otp_webauthn_webauthncredential_delete", args=[self.cle.pk])
+        with self.captureOnCommitCallbacks(execute=True):
+            reponse = equipe.post(url, {"post": "yes"})
+        self.assertEqual(reponse.status_code, 302)
+        self.assertRedirects(
+            self.client.get(reverse("accueil")), f"{reverse('connexion:connexion')}?next=/"
+        )
+        self.assertEqual(equipe.get(reverse("admin:index")).status_code, 200)
+
+    def test_csrf_sur_la_fin(self):
+        client = Client(enforce_csrf_checks=True)
+        reponse = json_post(client, FIN, {})
+        self.assertEqual(reponse.status_code, 403)
+        self.assertNotEqual(reponse["Content-Type"], "application/json")
