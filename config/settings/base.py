@@ -1,10 +1,10 @@
-"""Réglages communs à tous les environnements.
+"""Settings shared by all environments.
 
-Les fichiers ``dev.py`` et ``prod.py`` importent ce module puis ajoutent
-leurs propres valeurs. Le module actif est choisi par la variable
-d'environnement ``DJANGO_SETTINGS_MODULE``.
+The ``dev.py`` and ``prod.py`` files import this module, then add
+their own values. The active module is chosen by the
+``DJANGO_SETTINGS_MODULE`` environment variable.
 
-Documentation :
+Documentation:
 https://docs.djangoproject.com/en/6.1/topics/settings/
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
@@ -12,33 +12,33 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
-from django.contrib.messages import constants as niveaux
+from django.contrib.messages import constants as message_levels
 from django.core.exceptions import ImproperlyConfigured
 
-# Racine du dépôt : config/settings/base.py -> trois niveaux au-dessus.
+# Repository root: config/settings/base.py -> three levels up.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # Applications
 
 INSTALLED_APPS = [
-    # Site d'administration réservé au personnel vérifié par clé d'accès (T14).
-    "config.apps.AdminHJBConfig",
+    # Admin site for staff verified by passkey only (T14).
+    "config.apps.HJBAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Applications du projet
-    "comptes",
-    "interface",
-    "journal",
-    "logement",
+    # Project apps
+    "accounts",
+    "ui",
+    "audit",
+    "housing",
     "residents",
     "sms",
     "activation",
-    "connexion",
-    # Clés d'accès (carte T13) : django-otp et son extension WebAuthn.
+    "access",
+    # Passkeys (card T13): django-otp and its WebAuthn extension.
     # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
     "django_otp",
     "django_otp_webauthn",
@@ -50,10 +50,10 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # Après AuthenticationMiddleware (doc de django-otp) : request.user.is_verified().
+    # After AuthenticationMiddleware (django-otp docs): request.user.is_verified().
     "django_otp.middleware.OTPMiddleware",
-    # Espace équipe et administration : personnel avec clé d'accès (T14).
-    "connexion.middleware.EspaceEquipeMiddleware",
+    # Staff area and admin: staff with a passkey (T14).
+    "access.middleware.StaffAreaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -75,37 +75,37 @@ TEMPLATES = [
     },
 ]
 
-# Formulaires : gabarit de champ du système de design (interface/formulaires.py).
-FORM_RENDERER = "interface.formulaires.RenduHJB"
+# Forms: field template of the design system (ui/forms.py).
+FORM_RENDERER = "ui.forms.HJBFormRenderer"
 
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# Utilisateurs
-# Modèle personnalisé, défini avant la première migration :
+# Users
+# Custom model, defined before the first migration:
 # https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
-# Connexion par clé d'accès seulement (cartes T13 et T14) : aucun mot de passe,
-# pour les résidents comme pour le personnel.
-LOGIN_URL = "connexion:connexion"
-LOGIN_REDIRECT_URL = "accueil"
+# Login by passkey only (cards T13 and T14): no password,
+# for residents as well as for staff.
+LOGIN_URL = "access:login"
+LOGIN_REDIRECT_URL = "home"
 AUTHENTICATION_BACKENDS = [
     "django_otp_webauthn.backends.WebAuthnBackend",
-    # Permissions des rôles seulement : ce backend refuse tout mot de passe.
-    "comptes.backends.PermissionsSansMotDePasse",
+    # Role permissions only: this backend refuses any password.
+    "accounts.backends.PermissionsOnlyBackend",
 ]
 
-# Adresse de l'administration Django. En production, elle vient de
-# DJANGO_ADMIN_URL (voir prod.py) : on évite l'adresse « admin/ », la plus visée.
+# Address of the Django admin. In production, it comes from
+# DJANGO_ADMIN_URL (see prod.py): we avoid "admin/", the most targeted address.
 ADMIN_URL = "admin/"
 
-# Durée d'une session sans activité. Les résidents connectés par clé d'accès
-# gardent la leur bien plus longtemps (voir connexion/session.py).
+# Length of a session without activity. Residents logged in by passkey
+# keep theirs much longer (see access/session_policy.py).
 SESSION_COOKIE_AGE = 12 * 60 * 60
-# La durée repart à chaque requête : c'est bien une durée « sans activité ».
+# The timer restarts on each request: it really is a length "without activity".
 SESSION_SAVE_EVERY_REQUEST = True
 
-AUTH_USER_MODEL = "comptes.User"
+AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -123,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Langue et fuseau horaire
+# Language and time zone
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
 LANGUAGE_CODE = "fr-fr"
@@ -135,27 +135,27 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Fichiers statiques
+# Static files
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
-# Messages : les niveaux prennent le nom des bandeaux du système de design
-# (classes alerte--succes, alerte--info, alerte--attention).
+# Messages: the levels take the names of the design system banners
+# (classes alert--success, alert--info, alert--warning).
 # https://docs.djangoproject.com/en/6.1/ref/contrib/messages/#message-tags
 
 MESSAGE_TAGS = {
-    niveaux.DEBUG: "info",
-    niveaux.INFO: "info",
-    niveaux.SUCCESS: "succes",
-    niveaux.WARNING: "attention",
-    niveaux.ERROR: "attention",
+    message_levels.DEBUG: "info",
+    message_levels.INFO: "info",
+    message_levels.SUCCESS: "success",
+    message_levels.WARNING: "warning",
+    message_levels.ERROR: "warning",
 }
 
 
-# E-mail : affiché dans la console tant que le fournisseur n'est pas choisi.
+# E-mail: shown in the console until the provider is chosen.
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 MAILERS = {
@@ -165,63 +165,63 @@ MAILERS = {
 }
 
 
-# SMS : fournisseur interchangeable (application sms, carte T10).
-# DJANGO_SMS_FOURNISSEUR : console (rien n'est envoyé), smsgate, ovh ou aucun.
-# Les identifiants viennent toujours de l'environnement (voir .env.example).
+# SMS: swappable provider (sms app, card T10).
+# DJANGO_SMS_PROVIDER: console (nothing is sent), smsgate, ovh or disabled.
+# Credentials always come from the environment (see .env.example).
 
-FOURNISSEURS_SMS = {
-    "aucun": ("sms.fournisseurs.aucun.FournisseurAucun", {}),
-    "console": ("sms.fournisseurs.console.FournisseurConsole", {}),
+SMS_PROVIDERS = {
+    "disabled": ("sms.providers.disabled.DisabledProvider", {}),
+    "console": ("sms.providers.console.ConsoleProvider", {}),
     "smsgate": (
-        "sms.fournisseurs.smsgate.FournisseurSmsGate",
+        "sms.providers.smsgate.SmsGateProvider",
         {
             "url": "SMSGATE_URL",
-            "jeton": "SMSGATE_JETON",
-            "identifiant": "SMSGATE_IDENTIFIANT",
-            "mot_de_passe": "SMSGATE_MOT_DE_PASSE",
+            "token": "SMSGATE_TOKEN",
+            "username": "SMSGATE_USERNAME",
+            "password": "SMSGATE_PASSWORD",
             "sim": "SMSGATE_SIM",
         },
     ),
     "ovh": (
-        "sms.fournisseurs.ovh.FournisseurOvh",
+        "sms.providers.ovh.OvhProvider",
         {
             "endpoint": "OVH_ENDPOINT",
             "service": "OVH_SMS_SERVICE",
             "application_key": "OVH_APPLICATION_KEY",
             "application_secret": "OVH_APPLICATION_SECRET",
             "consumer_key": "OVH_CONSUMER_KEY",
-            "expediteur": "OVH_SMS_EXPEDITEUR",
+            "sender": "OVH_SMS_SENDER",
         },
     ),
 }
 
 
-def reglage_sms(par_defaut):
-    """Réglage SMS lu dans l'environnement. ``par_defaut`` : console ou aucun."""
-    choix = os.environ.get("DJANGO_SMS_FOURNISSEUR") or par_defaut
-    if choix not in FOURNISSEURS_SMS:
+def sms_setting(default):
+    """SMS setting read from the environment. ``default``: console or disabled."""
+    choice = os.environ.get("DJANGO_SMS_PROVIDER") or default
+    if choice not in SMS_PROVIDERS:
         raise ImproperlyConfigured(
-            f"DJANGO_SMS_FOURNISSEUR={choix!r} : valeurs possibles {', '.join(FOURNISSEURS_SMS)}."
+            f"DJANGO_SMS_PROVIDER={choice!r}: possible values {', '.join(SMS_PROVIDERS)}."
         )
-    classe, variables = FOURNISSEURS_SMS[choix]
+    backend, variables = SMS_PROVIDERS[choice]
     return {
-        "BACKEND": classe,
-        "OPTIONS": {cle: os.environ.get(variable, "") for cle, variable in variables.items()},
+        "BACKEND": backend,
+        "OPTIONS": {key: os.environ.get(variable, "") for key, variable in variables.items()},
     }
 
 
-# En développement, la console affiche les SMS. La production refuse d'envoyer
-# tant qu'aucun fournisseur n'est choisi (voir prod.py).
-SMS = reglage_sms("console")
+# In development, the console shows the SMS. Production refuses to send
+# until a provider is chosen (see prod.py).
+SMS = sms_setting("console")
 
-# Tests : aucun vrai SMS, voir outils/lanceur_tests.py.
-TEST_RUNNER = "outils.lanceur_tests.LanceurTests"
+# Tests: no real SMS, see tools/test_runner.py.
+TEST_RUNNER = "tools.test_runner.HJBTestRunner"
 
 
-# Clés d'accès (passkeys), carte T13
+# Passkeys, card T13
 # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
-# Le domaine (RP ID) et les origines autorisées dépendent de l'adresse du site :
-# ils sont dans dev.py et prod.py. Changer de domaine rend les clés inutilisables.
+# The domain (RP ID) and the allowed origins depend on the site address:
+# they are in dev.py and prod.py. Changing the domain makes the passkeys unusable.
 
 OTP_WEBAUTHN_RP_NAME = "Habitat Jeunes Belfort"
-OTP_WEBAUTHN_HELPER_CLASS = "connexion.webauthn.AideWebAuthn"
+OTP_WEBAUTHN_HELPER_CLASS = "access.webauthn.HJBWebAuthnHelper"

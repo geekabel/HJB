@@ -5,10 +5,10 @@ from . import views
 app_name = "activation"
 
 urlpatterns = [
-    path("", views.saisie, name="saisie"),
-    path("telephone/", views.telephone, name="telephone"),
-    path("telephone/pas-mon-numero/", views.mauvais_numero, name="mauvais_numero"),
-    path("cle/", views.cle, name="cle"),
-    path("cle/debut/", views.cle_debut, name="cle_debut"),
-    path("cle/fin/", views.cle_fin, name="cle_fin"),
+    path("", views.enter_code, name="enter_code"),
+    path("telephone/", views.phone, name="phone"),
+    path("telephone/pas-mon-numero/", views.wrong_number, name="wrong_number"),
+    path("cle/", views.passkey, name="passkey"),
+    path("cle/debut/", views.passkey_begin, name="passkey_begin"),
+    path("cle/fin/", views.passkey_complete, name="passkey_complete"),
 ]

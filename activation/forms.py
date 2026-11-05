@@ -1,7 +1,7 @@
 from django import forms
 
 
-class FormulaireCode(forms.Form):
+class ActivationCodeForm(forms.Form):
     code = forms.CharField(
         label="Code d'activation",
         max_length=20,
@@ -11,13 +11,13 @@ class FormulaireCode(forms.Form):
                 "autocomplete": "off",
                 "autocapitalize": "characters",
                 "spellcheck": "false",
-                "class": "champ-code",
+                "class": "code-field",
             }
         ),
     )
 
 
-class FormulaireCodeSms(forms.Form):
+class SmsCodeForm(forms.Form):
     code = forms.CharField(
         label="Code reçu par SMS",
         max_length=12,
@@ -26,7 +26,7 @@ class FormulaireCodeSms(forms.Form):
             attrs={
                 "autocomplete": "one-time-code",
                 "inputmode": "numeric",
-                "class": "champ-code",
+                "class": "code-field",
             }
         ),
     )

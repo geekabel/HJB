@@ -1,0 +1,18 @@
+{% extends "activation/base.html" %}
+{% load static %}
+{% block title %}Activer mon compte{% endblock %}
+{% block head %}<script src="{% static 'activation/code-from-link.js' %}" defer></script>{% endblock %}
+{% block step %}
+<header class="stack stack--tight">
+  <h1>Activer mon compte</h1>
+  <p class="text-muted">Saisissez le code que l'accueil vous a remis, sur papier ou en code QR.</p>
+</header>
+
+<form class="stack" method="post" novalidate>
+  {% csrf_token %}
+  {{ form.code.as_field_group }}
+  <button class="button button--block" type="submit">Continuer</button>
+</form>
+
+<p class="text-muted text-small">Pas de code, ou code expiré ? Passez à l'accueil avec une pièce d'identité : un nouveau code vous sera remis.</p>
+{% endblock %}

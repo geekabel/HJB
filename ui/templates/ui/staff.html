@@ -1,0 +1,49 @@
+{% extends "ui/base.html" %}
+{% load icons %}
+{% comment %}
+  Section template for the staff area (desktop, folds down on phones).
+  Variables: ``active_nav`` (dashboard, messages, reports, appointments, residents, audit).
+  The "#" links will be replaced by the real pages (cards T20, T26, T31, T35).
+{% endcomment %}
+{% block body_class %}staff-page{% endblock %}
+{% block body %}
+<nav class="staff-menu" aria-label="Menu de l'équipe">
+  <div class="staff-menu__brand">
+    <span class="logo-tile">{% roofs %}</span>
+    Espace équipe
+  </div>
+  <ul>
+    <li><a href="#"{% if active_nav == "dashboard" %} aria-current="page"{% endif %}>Tableau de bord</a></li>
+    <li><a href="#"{% if active_nav == "messages" %} aria-current="page"{% endif %}>Messages</a></li>
+    <li>
+      <a href="#"{% if active_nav == "reports" %} aria-current="page"{% endif %}>Signalements
+        {% if reports_to_handle %}<span class="counter">{{ reports_to_handle }}<span class="visually-hidden"> à traiter</span></span>{% endif %}
+      </a>
+    </li>
+    <li><a href="#"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>Rendez-vous</a></li>
+    {% if perms.accounts.view_residents %}
+    <li><a href="{% url 'residents:list' %}"{% if active_nav == "residents" %} aria-current="page"{% endif %}>Résidents et wifi</a></li>
+    {% endif %}
+    {% if perms.accounts.view_audit_log %}
+    <li><a href="{% url 'audit:list' %}"{% if active_nav == "audit" %} aria-current="page"{% endif %}>Journal d'audit</a></li>
+    {% endif %}
+  </ul>
+  {% if user.is_authenticated %}
+  <div class="staff-menu__person">
+    <span>{{ user.get_full_name|default:user.get_username }}</span>
+    <span>{{ user.roles_label }}</span>
+  </div>
+  {% endif %}
+</nav>
+
+<main id="content" class="staff-page__content">
+  {% if messages %}
+  <div class="stack" role="status">
+    {% for message in messages %}
+    <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% elif message.level_tag == "info" %}{% icon "info" %}{% else %}{% icon "alert" %}{% endif %}<p>{{ message }}</p></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}

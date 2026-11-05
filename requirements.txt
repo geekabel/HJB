@@ -1,17 +1,17 @@
-# Dépendances de l'application (épinglées).
+# Application dependencies (pinned).
 Django==6.1.3
 phonenumbers==9.0.41
-# Import Excel des résidents (carte T08). defusedxml protège openpyxl
-# contre les attaques XML (doc openpyxl).
+# Excel import of residents (card T08). defusedxml protects openpyxl
+# against XML attacks (openpyxl docs).
 openpyxl==3.1.5
 defusedxml==0.7.1
-# SMS (carte T10) : bibliothèque officielle OVHcloud (signature des requêtes)
-# et requests, utilisé directement pour SMSGate.
+# SMS (card T10): official OVHcloud library (request signing)
+# and requests, used directly for SMSGate.
 ovh==1.2.0
 requests==2.34.2
-# Code QR de la feuille d'activation (carte T11). Pur Python, sans dépendance.
+# QR code of the activation sheet (card T11). Pure Python, no dependency.
 segno==1.6.6
-# Clés d'accès (carte T13) : WebAuthn sur django-otp. La 0.10.3 corrige la faille
-# GHSA-8r76-c459-ww98 (ajout d'une clé sans vérification).
+# Passkeys (card T13): WebAuthn on top of django-otp. Version 0.10.3 fixes
+# GHSA-8r76-c459-ww98 (adding a passkey without verification).
 django-otp==1.7.5
 django-otp-webauthn==0.10.3

@@ -1,0 +1,35 @@
+{% extends "ui/base.html" %}
+{% load icons %}
+{% comment %}
+  Section template for the resident area (mobile first).
+  Variables: ``active_nav`` (home, messages, report, appointments, account)
+  to mark the entry of the bottom bar.
+  The "#" links will be replaced by the real pages (cards T23, T27, T30, T34).
+{% endcomment %}
+{% block body_class %}resident-page{% endblock %}
+{% block body %}
+<header class="resident-page__header">
+  {% block header %}
+  <div class="row">
+    <span class="logo-tile">{% roofs %}</span>
+    <span class="text-muted text-small">Espace résidents</span>
+  </div>
+  {% endblock %}
+</header>
+
+<main id="content" class="resident-page__content">
+  {% block content %}{% endblock %}
+</main>
+
+{% block nav %}
+<nav class="resident-nav" aria-label="Navigation principale">
+  <ul>
+    <li><a href="#"{% if active_nav == "home" %} aria-current="page"{% endif %}>{% icon "home" %}Accueil</a></li>
+    <li><a href="#"{% if active_nav == "messages" %} aria-current="page"{% endif %}>{% icon "message" %}Messages</a></li>
+    <li><a href="#"{% if active_nav == "report" %} aria-current="page"{% endif %}>{% icon "plus" %}Signaler</a></li>
+    <li><a href="#"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>{% icon "calendar" %}Rendez-vous</a></li>
+    <li><a href="#"{% if active_nav == "account" %} aria-current="page"{% endif %}>{% icon "person" %}Mon compte</a></li>
+  </ul>
+</nav>
+{% endblock nav %}
+{% endblock %}

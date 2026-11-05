@@ -1,13 +1,13 @@
 from django.contrib import admin
 
-from .models import ImportResidents
+from .models import ResidentImport
 
 
-@admin.register(ImportResidents)
-class ImportResidentsAdmin(admin.ModelAdmin):
-    """Historique en lecture seule."""
+@admin.register(ResidentImport)
+class ResidentImportAdmin(admin.ModelAdmin):
+    """Read-only history."""
 
-    list_display = ("importe_le", "fichier", "nombre", "importe_par")
+    list_display = ("imported_at", "file_name", "count", "imported_by")
 
     def has_add_permission(self, request):
         return False

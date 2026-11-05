@@ -1,0 +1,123 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Guide de style{% endblock %}
+{% block content %}
+<header class="stack">
+  <h1>Guide de style</h1>
+  <p class="text-muted">Les composants de l'application, aux couleurs du logo. Chaque nouvelle page les réutilise : on ne crée pas de nouveau style sans l'ajouter ici.</p>
+  <p class="row"><a class="button button--secondary" href="{% url 'ui:guide_resident' %}">Voir l'accueil résident d'exemple</a></p>
+</header>
+
+<section class="stack" aria-labelledby="colors">
+  <h2 id="colors">Couleurs</h2>
+  <p class="text-muted">Une couleur, un sens : bleu pour agir et informer, jaune pour ce qui demande de l'attention, vert pour ce qui est terminé. Les couleurs vives du logo servent seulement de décor, jamais pour du texte.</p>
+  <div class="grid-auto">
+    <div class="swatch"><div class="swatch__color swatch__color--action"></div><strong>Action</strong><span class="text-muted text-small">Boutons, liens, sélection</span></div>
+    <div class="swatch"><div class="swatch__color swatch__color--warning"></div><strong>Attention</strong><span class="text-muted text-small">Retard, à traiter, compteurs</span></div>
+    <div class="swatch"><div class="swatch__color swatch__color--success"></div><strong>Terminé</strong><span class="text-muted text-small">Réglé, confirmé, activé</span></div>
+    <div class="swatch"><div class="swatch__color swatch__color--error"></div><strong>Erreur</strong><span class="text-muted text-small">Saisie à corriger</span></div>
+    <div class="swatch"><div class="swatch__color swatch__color--ink"></div><strong>Encre</strong><span class="text-muted text-small">Texte, menu de l'équipe</span></div>
+    <div class="swatch"><div class="swatch__color swatch__color--bg"></div><strong>Fond</strong><span class="text-muted text-small">Fond des pages</span></div>
+  </div>
+  <div class="row">
+    <span class="logo-tile">{% roofs %}</span>
+    <span class="text-muted text-small">Logo : vert, bleu et jaune</span>
+  </div>
+</section>
+
+<section class="stack" aria-labelledby="text">
+  <h2 id="text">Textes</h2>
+  <div class="card">
+    <p class="text-muted text-small">Titres : Bricolage Grotesque. Texte : Atkinson Hyperlegible, conçue pour être lisible par le plus grand nombre.</p>
+    <h3>Visite de logement demain</h3>
+    <h4>Lampe salle de bain</h4>
+    <p>Contrôle de l'alarme incendie et du compteur. Si vous êtes absent, nous passerons entre 15 h et 17 h.</p>
+    <p class="text-muted text-small">Texte secondaire : dates, auteurs, aides.</p>
+  </div>
+</section>
+
+<section class="stack" aria-labelledby="buttons">
+  <h2 id="buttons">Boutons et puces</h2>
+  <div class="row">
+    <button class="button" type="button">{% icon "send" %}Programmer l'envoi</button>
+    <button class="button button--secondary" type="button">M'envoyer un test</button>
+    <button class="button button--quiet" type="button">Annuler</button>
+    <button class="button" type="button" disabled>Relancer (dans 48 h)</button>
+  </div>
+  <div class="row" role="group" aria-label="Filtrer les messages">
+    <button class="chip" type="button" aria-pressed="true">Tous</button>
+    <button class="chip" type="button" aria-pressed="false">Visites</button>
+    <button class="chip" type="button" aria-pressed="false">Annonces</button>
+    <button class="chip" type="button" aria-pressed="false">Votes</button>
+  </div>
+</section>
+
+<section class="stack" aria-labelledby="statuses">
+  <h2 id="statuses">Statuts et bandeaux</h2>
+  <div class="row">
+    <span class="badge badge--info">Planifié</span>
+    <span class="badge badge--warning">En retard de 26 h</span>
+    <span class="badge badge--success">Réglé</span>
+    <span class="badge badge--neutral">Peut attendre</span>
+    <span class="badge badge--error">Échec d'envoi</span>
+    <span class="counter">7<span class="visually-hidden"> à traiter</span></span>
+  </div>
+  <div class="alert alert--warning">{% icon "alert" %}<p>Fuite d'eau, odeur de gaz, prise qui chauffe ? Appelez tout de suite l'accueil.</p></div>
+  <div class="alert alert--info">{% icon "info" %}<p>Votre numéro de chambre ne sert jamais à vous connecter.</p></div>
+  <div class="alert alert--success">{% icon "check" %}<p>Votre réponse a bien été envoyée.</p></div>
+</section>
+
+<section class="stack" aria-labelledby="forms">
+  <h2 id="forms">Formulaires</h2>
+  <form class="card stack" action="#" method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label for="example-description">Décrivez le problème</label>
+      <textarea id="example-description" name="description" rows="3" aria-describedby="example-description-help">La lampe de la salle de bain ne s'allume plus.</textarea>
+      <span class="field__help" id="example-description-help">Quelques mots suffisent.</span>
+    </div>
+    <div class="field">
+      <label for="example-phone">Téléphone</label>
+      <input id="example-phone" name="phone" type="tel" value="06 12 34" autocomplete="tel" aria-invalid="true" aria-describedby="example-phone-error">
+      <span class="field__error" id="example-phone-error">{% icon "alert" %}Ce numéro est incomplet : il faut 10 chiffres.</span>
+    </div>
+    <fieldset class="field">
+      <legend>Accès à votre chambre</legend>
+      <label class="choices"><input type="radio" name="access" value="yes" checked>Vous pouvez entrer si je suis absent</label>
+      <label class="choices"><input type="radio" name="access" value="no">Je veux être présent</label>
+    </fieldset>
+    <div class="field">
+      <label for="example-reason">Motif du rendez-vous</label>
+      <select id="example-reason" name="reason">
+        <option>Je préfère en parler sur place</option>
+        <option>Démarches administratives</option>
+        <option>Emploi, formation</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="button" type="button">Envoyer le signalement</button>
+    </div>
+  </form>
+</section>
+
+<section class="stack" aria-labelledby="cards">
+  <h2 id="cards">Cartes</h2>
+  <div class="grid-auto">
+    <div class="card stat">
+      <span class="text-muted text-small">Signalements ouverts</span>
+      <span class="stat__value">7</span>
+      <span class="badge badge--warning">dont 2 en retard</span>
+    </div>
+    <div class="card stat">
+      <span class="text-muted text-small">Messages programmés</span>
+      <span class="stat__value">3</span>
+      <span class="text-muted text-small">Prochain : demain 8 h</span>
+    </div>
+    <a class="card card--link" href="#">
+      <span class="row"><span class="card__title">Lampe salle de bain</span><span class="badge badge--info">Planifié</span></span>
+      <span class="card__text">Intervention vendredi, de 10 h à 12 h.</span>
+    </a>
+  </div>
+</section>
+<p class="text-muted text-small">Les chiffres et noms de cette page sont des exemples.</p>
+{% endblock %}

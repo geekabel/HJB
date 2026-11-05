@@ -5,14 +5,14 @@ from . import views
 app_name = "residents"
 
 urlpatterns = [
-    path("", views.liste, name="liste"),
-    path("nouveau/", views.creer, name="creer"),
-    path("<int:pk>/", views.fiche, name="fiche"),
-    path("<int:pk>/depart/", views.depart, name="depart"),
-    path("<int:pk>/retour/", views.retour, name="retour"),
-    path("<int:pk>/code-activation/", views.code_activation, name="code_activation"),
-    path("<int:pk>/couper-acces/", views.couper_acces, name="couper_acces"),
-    path("import/", views.import_fichier, name="import"),
-    path("import/apercu/", views.import_apercu, name="import_apercu"),
-    path("import/modele.csv", views.import_modele, name="import_modele"),
+    path("", views.resident_list, name="list"),
+    path("nouveau/", views.create, name="create"),
+    path("<int:pk>/", views.detail, name="detail"),
+    path("<int:pk>/depart/", views.departure, name="departure"),
+    path("<int:pk>/retour/", views.return_view, name="return"),
+    path("<int:pk>/code-activation/", views.activation_code, name="activation_code"),
+    path("<int:pk>/couper-acces/", views.cut_access, name="cut_access"),
+    path("import/", views.import_file, name="import"),
+    path("import/apercu/", views.import_preview, name="import_preview"),
+    path("import/modele.csv", views.import_template, name="import_template"),
 ]

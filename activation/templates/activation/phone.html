@@ -1,0 +1,44 @@
+{% extends "activation/base.html" %}
+{% load icons %}
+{% block title %}Vérifier mon téléphone{% endblock %}
+{% block step %}
+<header class="stack stack--tight">
+  <h1>Vérifions que c'est bien vous</h1>
+  {% if person.phone %}
+  <p class="text-muted">Bonjour {{ person.first_name }}. {% if code_sent %}Nous avons envoyé un code à 6 chiffres au{% else %}Nous allons envoyer un code à 6 chiffres au{% endif %} <strong><span aria-hidden="true">{{ person.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ person.phone|slice:"-2:" }}</span></strong>, le numéro donné à l'accueil.</p>
+  {% endif %}
+</header>
+
+{% if not person.phone %}
+<div class="alert alert--info">{% icon "info" %}<p>Aucun numéro n'est enregistré pour vous. Passez à l'accueil pour le donner, puis recommencez avec un nouveau code d'activation.</p></div>
+{% elif code_sent %}
+<form class="stack" method="post" novalidate>
+  {% csrf_token %}
+  {{ form.code.as_field_group }}
+  <p class="text-muted text-small">Valable 10 minutes.</p>
+  <button class="button button--block" type="submit" name="action" value="verify">Valider</button>
+</form>
+<form class="row" method="post">
+  {% csrf_token %}
+  <button class="button button--quiet" type="submit" name="action" value="send">Renvoyer un code</button>
+  {% if resend_at %}<span class="text-muted text-small">Possible à partir de <time datetime="{{ resend_at|date:'Y-m-d\TH:i:sO' }}">{{ resend_at|time:"H:i:s" }}</time>.</span>{% endif %}
+</form>
+{% else %}
+<form class="stack" method="post">
+  {% csrf_token %}
+  <button class="button button--block" type="submit" name="action" value="send">Recevoir le code par SMS</button>
+</form>
+{% endif %}
+
+{% if person.phone %}
+<p><a href="{% url 'activation:wrong_number' %}">Ce n'est pas mon numéro</a></p>
+{% endif %}
+
+<section class="card row row--top" aria-labelledby="next-step-title">
+  {% icon "lock" %}
+  <div class="stack stack--tight">
+    <h2 id="next-step-title" class="card__title">Étape suivante : votre clé d'accès</h2>
+    <p class="text-muted text-small">Vous vous connecterez ensuite avec Face ID, votre empreinte ou le code de votre téléphone. Pas de mot de passe à retenir.</p>
+  </div>
+</section>
+{% endblock %}

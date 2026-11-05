@@ -1,0 +1,33 @@
+{% extends "ui/resident.html" %}
+{% load icons static %}
+{% block title %}Connexion{% endblock %}
+{% block head %}<script src="{% static 'ui/js/passkey.js' %}" defer></script>{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<header class="stack stack--tight">
+  <h1>Connexion</h1>
+  <p class="text-muted">Utilisez votre clé d'accès : Face ID, votre empreinte ou le code de votre téléphone.</p>
+</header>
+
+{% include "access/_passkey_button.html" with label="Me connecter avec ma clé d'accès" %}
+
+<section class="card stack stack--tight" aria-labelledby="first-login-title">
+  <h2 id="first-login-title" class="card__title">Première connexion ?</h2>
+  <p class="text-muted text-small">L'accueil vous remet un code d'activation. <a href="{% url 'activation:enter_code' %}">Activer mon compte</a></p>
+</section>
+
+<section class="card stack stack--tight" aria-labelledby="lost-phone-title">
+  <h2 id="lost-phone-title" class="card__title">Téléphone perdu ou changé ?</h2>
+  <p class="text-muted text-small">Passez à l'accueil avec une pièce d'identité. On vous remettra un nouveau code, et votre ancienne clé ne marchera plus.</p>
+</section>
+
+<p class="text-muted text-small">Personnel : votre premier code d'activation vous est remis par un administrateur.</p>
+{% endblock %}

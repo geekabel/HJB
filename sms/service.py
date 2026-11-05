@@ -1,9 +1,9 @@
-"""Point d'entrée unique pour envoyer un SMS : ``envoyer_sms(numero, texte)``.
+"""Single entry point to send an SMS: ``send_sms(number, text)``.
 
-Le fournisseur actif vient du réglage ``SMS`` (même forme que les réglages
-d'e-mail de Django) :
+The active provider comes from the ``SMS`` setting (same shape as Django's
+e-mail settings):
 
-    SMS = {"BACKEND": "sms.fournisseurs.ovh.FournisseurOvh", "OPTIONS": {...}}
+    SMS = {"BACKEND": "sms.providers.ovh.OvhProvider", "OPTIONS": {...}}
 """
 
 import logging
@@ -12,72 +12,70 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.module_loading import import_string
 
-from comptes.telephone import masquer_telephone, normaliser_telephone, valider_e164
+from accounts.phone import mask_phone, normalize_phone, validate_e164
 
-from .fournisseurs.base import ErreurConfiguration, ErreurEnvoi, ErreurSms
-from .segments import analyser
+from .providers.base import ConfigurationError, SendError, SmsError
+from .segments import analyze
 
-journal = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-# Au-delà, le message coûte cher et se lit mal sur un téléphone.
-SEGMENTS_MAX = 6
+# Beyond this, the message costs a lot and is hard to read on a phone.
+MAX_SEGMENTS = 6
 
 
-def fournisseur_actif():
-    reglage = getattr(settings, "SMS", {})
+def active_provider():
+    setting = getattr(settings, "SMS", {})
     try:
-        classe = import_string(reglage["BACKEND"])
-    except (KeyError, ImportError) as erreur:
-        raise ErreurConfiguration(f"Réglage SMS invalide : {erreur}") from erreur
-    return classe(**reglage.get("OPTIONS", {}))
+        provider_class = import_string(setting["BACKEND"])
+    except (KeyError, ImportError) as error:
+        raise ConfigurationError(f"Invalid SMS setting: {error}") from error
+    return provider_class(**setting.get("OPTIONS", {}))
 
 
-def envoyer_sms(numero, texte):
-    """Envoie un SMS au numéro E.164 ``numero``. Renvoie un ResultatEnvoi.
+def send_sms(number, text):
+    """Send an SMS to the E.164 number ``number``. Return a SendResult.
 
-    Lève ErreurSms (ou une sous-classe) en cas d'échec ; voir ses attributs
-    ``temporaire`` et ``incertain`` avant tout nouvel essai.
+    Raise SmsError (or a subclass) on failure. Check its ``temporary`` and
+    ``uncertain`` attributes before any new attempt.
     """
     try:
-        valider_e164(numero)
-        # Numéro réel et portable (phonenumbers), pas seulement « + et chiffres ».
-        valide = normaliser_telephone(numero) == numero
+        validate_e164(number)
+        # A real mobile number (phonenumbers), not only "+ and digits".
+        valid = normalize_phone(number) == number
     except ValidationError:
-        valide = False
-    if not valide:
-        raise ErreurEnvoi("Le numéro n'est pas un portable au format international.")
-    texte = (texte or "").strip()
-    if not texte:
-        raise ErreurEnvoi("Le message est vide.")
-    info = analyser(texte)
-    if info.segments > SEGMENTS_MAX:
-        raise ErreurEnvoi(
-            f"Le message est trop long ({info.segments} SMS, {SEGMENTS_MAX} au plus)."
-        )
+        valid = False
+    if not valid:
+        raise SendError("The number is not a mobile number in international format.")
+    text = (text or "").strip()
+    if not text:
+        raise SendError("The message is empty.")
+    info = analyze(text)
+    if info.segments > MAX_SEGMENTS:
+        raise SendError(f"The message is too long ({info.segments} SMS, {MAX_SEGMENTS} at most).")
 
-    fournisseur = fournisseur_actif()
-    manquantes = fournisseur.options_manquantes()
-    if manquantes:
-        raise ErreurConfiguration(
-            f"Fournisseur {fournisseur.nom} : options manquantes ({', '.join(manquantes)})."
+    provider = active_provider()
+    missing = provider.missing_options()
+    if missing:
+        raise ConfigurationError(
+            f"Provider {provider.name}: missing options ({', '.join(missing)})."
         )
-    # Les journaux ne contiennent jamais le numéro complet ni le texte.
+    # Logs never contain the full number or the text.
     try:
-        resultat = fournisseur.envoyer(numero, texte)
-    except ErreurSms as erreur:
-        journal.warning(
-            "Échec d'envoi SMS via %s vers %s : %s",
-            fournisseur.nom,
-            masquer_telephone(numero),
-            erreur,
+        result = provider.send(number, text)
+    except SmsError as error:
+        logger.warning(
+            "SMS sending failed via %s to %s: %s",
+            provider.name,
+            mask_phone(number),
+            error,
         )
         raise
-    journal.info(
-        "SMS envoyé via %s vers %s (%s, %d segment(s), id %s)",
-        fournisseur.nom,
-        masquer_telephone(numero),
-        info.encodage,
+    logger.info(
+        "SMS sent via %s to %s (%s, %d segment(s), id %s)",
+        provider.name,
+        mask_phone(number),
+        info.encoding,
         info.segments,
-        resultat.identifiant,
+        result.message_id,
     )
-    return resultat
+    return result

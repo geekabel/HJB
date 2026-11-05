@@ -1,0 +1,36 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Accueil{% endblock %}
+{% block content %}
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<header class="stack stack--tight">
+  <h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
+  <p class="text-muted">Vous êtes connecté. Les messages, les rendez-vous et les signalements arrivent bientôt ici.</p>
+</header>
+
+<section class="card stack" aria-labelledby="passkeys-title">
+  <h2 id="passkeys-title" class="card__title">Ma clé d'accès</h2>
+  {% if passkeys %}
+  <ul class="plain-list">
+    {% for passkey in passkeys %}
+    <li>Créée le <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>{% if passkey.last_used_at %}, utilisée le <time datetime="{{ passkey.last_used_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.last_used_at|date:"j F Y à H:i" }}</time>{% endif %}.</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted">Aucune clé d'accès.</p>
+  {% endif %}
+  <p class="text-muted text-small">Téléphone perdu ou changé ? Passez à l'accueil : un nouveau code remplacera cette clé.</p>
+</section>
+
+<form method="post" action="{% url 'access:logout' %}">
+  {% csrf_token %}
+  <button class="button button--quiet" type="submit">Me déconnecter</button>
+</form>
+{% endblock %}

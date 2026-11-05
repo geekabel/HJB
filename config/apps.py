@@ -1,7 +1,7 @@
 from django.contrib.admin.apps import AdminConfig
 
 
-class AdminHJBConfig(AdminConfig):
-    """Remplace « django.contrib.admin » dans INSTALLED_APPS (doc Django, default_site)."""
+class HJBAdminConfig(AdminConfig):
+    """Replaces "django.contrib.admin" in INSTALLED_APPS (Django docs, default_site)."""
 
-    default_site = "config.admin.SiteAdministration"
+    default_site = "config.admin.HJBAdminSite"

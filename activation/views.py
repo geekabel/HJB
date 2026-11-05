@@ -1,7 +1,7 @@
-"""Activation du compte, côté résident (maquette R0).
+"""Account activation, resident side (mockup R0).
 
-Étape 1 : code remis à l'accueil (T11). Étape 2 : téléphone (T12).
-Étape 3 : clé d'accès (T13).
+Step 1: code given by the front desk (T11). Step 2: phone (T12).
+Step 3: passkey (T13).
 """
 
 import json
@@ -21,147 +21,147 @@ from django_otp import login as otp_login
 from django_otp_webauthn.exceptions import OTPWebAuthnApiError
 from django_otp_webauthn.utils import get_credential_model, rewrite_exceptions
 
-from comptes import verification
-from comptes.activation import ErreurActivation, utiliser_code
-from comptes.models import User
-from connexion import session
-from connexion.erreurs import reponse_erreur
-from connexion.webauthn import AideActivation
-from journal.models import Action
-from journal.service import adresse_ip, journaliser
-from residents.depart import cles_de_session, fermer_sessions
+from access import session_policy
+from access.errors import error_response
+from access.webauthn import ActivationWebAuthnHelper
+from accounts import phone_verification
+from accounts.activation_codes import ActivationError, redeem_code
+from accounts.models import User
+from accounts.sessions import close_sessions, session_keys_for
+from audit.models import Action
+from audit.service import client_ip, log_action
 
-from . import parcours
-from .forms import FormulaireCode, FormulaireCodeSms
+from . import journey
+from .forms import ActivationCodeForm, SmsCodeForm
 
-journal_webauthn = logging.getLogger("django_otp_webauthn")
+webauthn_logger = logging.getLogger("django_otp_webauthn")
 
-# Échecs de saisie dans ce navigateur, sur la dernière heure.
-CLE_ECHECS = "activation_echecs"
+# Code entry failures in this browser, over the last hour.
+FAILURES_KEY = "activation_failures"
 
 
 @never_cache
-def saisie(request):
-    formulaire = FormulaireCode(request.POST or None)
-    if request.method == "POST" and formulaire.is_valid():
-        # Heures des échecs de la dernière heure, dans ce navigateur.
-        echecs = [h for h in request.session.get(CLE_ECHECS, []) if time.time() - h < 3600]
+def enter_code(request):
+    form = ActivationCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        # Times of the failures in the last hour, in this browser.
+        failures = [t for t in request.session.get(FAILURES_KEY, []) if time.time() - t < 3600]
         try:
-            code = utiliser_code(formulaire.cleaned_data["code"], adresse_ip(request), len(echecs))
-        except ErreurActivation as erreur:
-            if erreur.code == "invalide":
-                echecs.append(time.time())
-            request.session[CLE_ECHECS] = echecs
-            formulaire.add_error("code", str(erreur))
+            code = redeem_code(form.cleaned_data["code"], client_ip(request), len(failures))
+        except ActivationError as error:
+            if error.code == "invalid":
+                failures.append(time.time())
+            request.session[FAILURES_KEY] = failures
+            form.add_error("code", str(error))
         else:
-            parcours.demarrer(request, code)
-            return redirect("activation:telephone")
-    return render(request, "activation/saisie.html", {"formulaire": formulaire, "etape": 1})
+            journey.start(request, code)
+            return redirect("activation:phone")
+    return render(request, "activation/enter_code.html", {"form": form, "step": 1})
 
 
 @never_cache
-def telephone(request):
-    """Étape 2 : un code SMS prouve que la personne a bien ce téléphone (carte T12)."""
-    personne = parcours.personne_en_cours(request)
-    if personne is None:
+def phone(request):
+    """Step 2: an SMS code proves that the person really has this phone (card T12)."""
+    person = journey.current_person(request)
+    if person is None:
         messages.info(request, "Pour commencer, saisissez le code remis par l'accueil.")
-        return redirect("activation:saisie")
-    if parcours.etape_faite(request, "telephone_verifie") and personne.telephone_est_verifie:
-        return redirect("activation:cle")
+        return redirect("activation:enter_code")
+    if journey.step_done(request, "phone_verified") and person.phone_is_verified:
+        return redirect("activation:passkey")
 
-    formulaire = FormulaireCodeSms()
+    form = SmsCodeForm()
     if request.method == "POST":
         action = request.POST.get("action")
         try:
-            if action == "envoyer":
-                verification.envoyer_code(personne)
+            if action == "send":
+                phone_verification.send_code(person)
                 messages.success(request, "Code envoyé. Il peut mettre une minute à arriver.")
-                return redirect("activation:telephone")
-            if action == "verifier":
-                formulaire = FormulaireCodeSms(request.POST)
-                if formulaire.is_valid():
-                    verification.verifier_code(personne, formulaire.cleaned_data["code"])
-                    parcours.noter(request, "telephone_verifie", True)
-                    return redirect("activation:cle")
-        except verification.ErreurVerification as erreur:
-            if action == "verifier":
-                formulaire.add_error("code", str(erreur))
+                return redirect("activation:phone")
+            if action == "verify":
+                form = SmsCodeForm(request.POST)
+                if form.is_valid():
+                    phone_verification.check_code(person, form.cleaned_data["code"])
+                    journey.remember(request, "phone_verified", True)
+                    return redirect("activation:passkey")
+        except phone_verification.VerificationError as error:
+            if action == "verify":
+                form.add_error("code", str(error))
             else:
-                messages.warning(request, str(erreur))
-                return redirect("activation:telephone")
+                messages.warning(request, str(error))
+                return redirect("activation:phone")
 
-    derniere = verification.derniere(personne)
-    code_envoye = bool(
-        derniere
-        and derniere.verifie_le is None
-        and derniere.expire_le > timezone.now()
-        and derniere.telephone == personne.telephone
+    latest = phone_verification.latest(person)
+    code_sent = bool(
+        latest
+        and latest.verified_at is None
+        and latest.expires_at > timezone.now()
+        and latest.phone == person.phone
     )
     return render(
         request,
-        "activation/telephone.html",
+        "activation/phone.html",
         {
-            "etape": 2,
-            "personne": personne,
-            "formulaire": formulaire,
-            "code_envoye": code_envoye,
-            "renvoi_le": verification.renvoi_possible_le(personne),
+            "step": 2,
+            "person": person,
+            "form": form,
+            "code_sent": code_sent,
+            "resend_at": phone_verification.resend_available_at(person),
         },
     )
 
 
 @never_cache
-def mauvais_numero(request):
-    """« Ce n'est pas mon numéro » : seul l'accueil peut le corriger.
+def wrong_number(request):
+    """The "not my number" page: only the front desk can fix the number.
 
-    Simple page d'information : un affichage (GET) ne change rien.
+    A plain information page: viewing it (GET) changes nothing.
     """
-    return render(request, "activation/mauvais_numero.html", {"etape": 2})
+    return render(request, "activation/wrong_number.html", {"step": 2})
 
 
-# État de la cérémonie WebAuthn, gardé dans le parcours entre le début et la fin.
-ETAT_CLE = "cle_etat"
-BACKEND_CLE = "django_otp_webauthn.backends.WebAuthnBackend"
+# State of the WebAuthn ceremony, kept in the journey between begin and complete.
+PASSKEY_STATE = "passkey_state"
+PASSKEY_BACKEND = "django_otp_webauthn.backends.WebAuthnBackend"
 
 
-def _personne_prete(request):
-    """La personne du parcours, si son téléphone est vérifié (revérifié à chaque fois)."""
-    personne = parcours.personne_en_cours(request)
+def _ready_person(request):
+    """The person of the journey, if their phone is verified (checked again each time)."""
+    person = journey.current_person(request)
     if (
-        personne is not None
-        and parcours.etape_faite(request, "telephone_verifie")
-        and personne.telephone_est_verifie
+        person is not None
+        and journey.step_done(request, "phone_verified")
+        and person.phone_is_verified
     ):
-        return personne
+        return person
     return None
 
 
 @never_cache
-def cle(request):
-    """Étape 3 : création de la clé d'accès (carte T13)."""
-    personne = _personne_prete(request)
-    if personne is None:
-        if parcours.personne_en_cours(request):
-            return redirect("activation:telephone")
-        return redirect("activation:saisie")
-    configuration = {
-        "mode": "creation",
-        "debut": reverse("activation:cle_debut"),
-        "fin": reverse("activation:cle_fin"),
-        "suite": "",
+def passkey(request):
+    """Step 3: passkey creation (card T13)."""
+    person = _ready_person(request)
+    if person is None:
+        if journey.current_person(request):
+            return redirect("activation:phone")
+        return redirect("activation:enter_code")
+    config = {
+        "mode": "register",
+        "begin": reverse("activation:passkey_begin"),
+        "complete": reverse("activation:passkey_complete"),
+        "next": "",
     }
     return render(
         request,
-        "activation/cle.html",
-        {"etape": 3, "personne": personne, "configuration": configuration},
+        "activation/passkey.html",
+        {"step": 3, "person": person, "config": config},
     )
 
 
-class ParcoursFini(Exception):
-    """Le parcours n'est plus valable (départ, nouveau code…) : tout est annulé."""
+class JourneyEnded(Exception):
+    """The journey is no longer valid (departure, new code...): everything is cancelled."""
 
 
-PARCOURS_FINI = (
+JOURNEY_ENDED = (
     "Votre activation a expiré. Recommencez avec le code remis par l'accueil, "
     "ou demandez-en un nouveau."
 )
@@ -169,69 +169,67 @@ PARCOURS_FINI = (
 
 @require_POST
 @never_cache
-def cle_debut(request):
-    """Options de création de la clé, pour navigator.credentials.create()."""
-    personne = _personne_prete(request)
-    if personne is None:
-        return reponse_erreur("parcours", 403, PARCOURS_FINI)
-    options, etat = AideActivation(request).register_begin(user=personne)
-    parcours.noter(request, ETAT_CLE, etat)
+def passkey_begin(request):
+    """Passkey creation options, for navigator.credentials.create()."""
+    person = _ready_person(request)
+    if person is None:
+        return error_response("journey", 403, JOURNEY_ENDED)
+    options, state = ActivationWebAuthnHelper(request).register_begin(user=person)
+    journey.remember(request, PASSKEY_STATE, state)
     return JsonResponse(options)
 
 
 @require_POST
 @never_cache
-def cle_fin(request):
-    """Vérifie et enregistre la clé, remplace les anciennes, puis connecte la personne."""
-    etat = parcours.retirer(request, ETAT_CLE)  # usage unique, même en cas d'erreur
-    personne = _personne_prete(request)
-    if personne is None:
-        return reponse_erreur("parcours", 403, PARCOURS_FINI)
-    if not etat:
-        return reponse_erreur("invalid_state", 400)
+def passkey_complete(request):
+    """Check and save the passkey, replace the old ones, then log the person in."""
+    state = journey.pop(request, PASSKEY_STATE)  # single use, even on error
+    person = _ready_person(request)
+    if person is None:
+        return error_response("journey", 403, JOURNEY_ENDED)
+    if not state:
+        return error_response("invalid_state", 400)
     try:
-        donnees = json.loads(request.body)
+        data = json.loads(request.body)
     except ValueError:
-        return reponse_erreur("malformed_request", 400)
+        return error_response("malformed_request", 400)
 
     try:
         with transaction.atomic():
-            # Verrou sur le compte : une création, un départ ou un nouveau code passent
-            # l'un après l'autre. Tout est revérifié une fois le verrou pris.
-            User.objects.select_for_update().get(pk=personne.pk)
-            personne = _personne_prete(request)
-            if personne is None:
-                raise ParcoursFini
-            with rewrite_exceptions(logger=journal_webauthn):
-                cle_acces = AideActivation(request).register_complete(
-                    user=personne, state=etat, data=donnees
+            # Lock on the account: a creation, a departure or a new code run
+            # one after the other. Everything is checked again once the lock is held.
+            User.objects.select_for_update().get(pk=person.pk)
+            person = _ready_person(request)
+            if person is None:
+                raise JourneyEnded
+            with rewrite_exceptions(logger=webauthn_logger):
+                new_passkey = ActivationWebAuthnHelper(request).register_complete(
+                    user=person, state=state, data=data
                 )
-            # Récupération (téléphone perdu ou changé) : les anciennes clés ne servent plus.
-            anciennes = (
-                get_credential_model().objects.filter(user=personne).exclude(pk=cle_acces.pk)
+            # Recovery (lost or changed phone): the old passkeys no longer work.
+            previous = get_credential_model().objects.filter(user=person).exclude(pk=new_passkey.pk)
+            count = previous.count()
+            previous.delete()
+            log_action(
+                Action.PASSKEY_CREATED,
+                actor=person,
+                target=person,
+                details={"previous_removed": count},
+                request=request,
             )
-            nombre = anciennes.count()
-            anciennes.delete()
-            journaliser(
-                Action.CLE_ACCES_CREEE,
-                acteur=personne,
-                cible=personne,
-                details={"anciennes_retirees": nombre},
-                requete=request,
-            )
-    except ParcoursFini:
-        return reponse_erreur("parcours", 403, PARCOURS_FINI)
+    except JourneyEnded:
+        return error_response("journey", 403, JOURNEY_ENDED)
     except IntegrityError:
-        # Identifiant de clé déjà enregistré (réponse rejouée ou forgée).
-        return reponse_erreur("credential_exists", 422)
-    except OTPWebAuthnApiError as erreur:
-        return reponse_erreur(erreur.code, erreur.status_code)
+        # Passkey id already saved (replayed or forged response).
+        return error_response("credential_exists", 422)
+    except OTPWebAuthnApiError as error:
+        return error_response(error.code, error.status_code)
 
-    # Les autres sessions de la personne (ancien téléphone) sont fermées.
-    autres_sessions = cles_de_session(personne)
-    login(request, personne, backend=BACKEND_CLE)  # nouvelle clé de session, last_login rempli
-    otp_login(request, cle_acces)
-    fermer_sessions(autres_sessions)
-    parcours.terminer(request)
-    session.ouvrir(request, personne)
-    return JsonResponse({"id": cle_acces.pk, "redirect_url": reverse("accueil")})
+    # The other sessions of the person (old phone) are closed.
+    other_sessions = session_keys_for(person)
+    login(request, person, backend=PASSKEY_BACKEND)  # new session key, last_login set
+    otp_login(request, new_passkey)
+    close_sessions(other_sessions)
+    journey.finish(request)
+    session_policy.open_session(request, person)
+    return JsonResponse({"id": new_passkey.pk, "redirect_url": reverse("home")})

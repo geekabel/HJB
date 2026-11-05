@@ -7,7 +7,7 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    # En local, les réglages de développement sont utilisés par défaut.
+    # Locally, the development settings are used by default.
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
     try:
         from django.core.management import execute_from_command_line
