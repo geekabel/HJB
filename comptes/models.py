@@ -24,8 +24,14 @@ FILTRE_ETAT_COMPTE = {
 
 class GestionnaireUtilisateurs(UserManager):
     def residents(self):
-        """Comptes sans rôle du personnel (un résident modérateur en fait partie)."""
-        return self.exclude(groups__name__in=[GROUPE_PAR_ROLE[r] for r in ROLES_EQUIPE])
+        """Comptes sans rôle du personnel (un résident modérateur en fait partie).
+
+        Un compte qui a accès à l'administration (is_staff, is_superuser) n'est
+        jamais un résident, même sans groupe.
+        """
+        return self.exclude(groups__name__in=[GROUPE_PAR_ROLE[r] for r in ROLES_EQUIPE]).filter(
+            is_staff=False, is_superuser=False
+        )
 
     def avec_role(self, role):
         """Les comptes qui ont ce rôle (parmi d'autres, éventuellement)."""

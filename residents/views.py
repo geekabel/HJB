@@ -14,7 +14,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET
 
@@ -23,7 +23,8 @@ from comptes.roles import Role
 from logement.models import Etage, Sejour
 from logement.services import sejour_en_cours
 
-from .forms import FormulaireImport, FormulaireResident
+from .depart import enregistrer_depart, est_parti
+from .forms import FormulaireDepart, FormulaireImport, FormulaireResident
 from .importation import (
     EN_TETES,
     ErreurFichier,
@@ -54,6 +55,16 @@ def _residents():
     )
 
 
+def _anciens():
+    """Anciens résidents : compte désactivé et plus de séjour en cours.
+
+    Un compte désactivé mais encore logé reste dans la liste : son départ
+    n'est pas fini (la chambre n'est pas libérée).
+    """
+    en_cours = Sejour.objects.filter(resident=OuterRef("pk"), depart__isnull=True)
+    return Q(is_active=False) & ~Exists(en_cours)
+
+
 def _filtrer(residents, recherche, etage, compte):
     en_cours = Sejour.objects.filter(resident=OuterRef("pk"), depart__isnull=True)
     for mot in recherche.split():
@@ -79,16 +90,26 @@ def liste(request):
     etage = request.GET.get("etage", "")
     if etage != SANS_CHAMBRE and etage not in {str(e.pk) for e in etages}:
         etage = ""
+    peut_gerer = request.user.has_perm("comptes.gerer_residents")
+    etats = EtatCompte.choices
+    if not peut_gerer:
+        # Les éducateurs ne voient que les résidents actuels (minimisation des données).
+        etats = [choix for choix in etats if choix[0] != EtatCompte.DESACTIVE]
     compte = request.GET.get("compte", "")
-    if compte not in EtatCompte.values:
+    if compte not in dict(etats):
         compte = ""
 
     tous = User.objects.residents()
     compteurs = tous.aggregate(
         total=Count("pk"),
+        anciens=Count("pk", filter=_anciens()),
         **{etat: Count("pk", filter=q) for etat, q in FILTRE_ETAT_COMPTE.items()},
     )
+    compteurs["actuels"] = compteurs["total"] - compteurs["anciens"]
     residents = _filtrer(_residents(), recherche, etage, compte)
+    if compte != EtatCompte.DESACTIVE:
+        # Les anciens résidents n'apparaissent qu'avec le filtre « Désactivé ».
+        residents = residents.exclude(_anciens())
     page = Paginator(residents, RESIDENTS_PAR_PAGE).get_page(request.GET.get("page"))
     for resident in page:
         resident.sejour = resident.sejours_en_cours[0] if resident.sejours_en_cours else None
@@ -106,7 +127,8 @@ def liste(request):
             "recherche": recherche,
             "etages": etages,
             "etage": etage,
-            "etats": EtatCompte.choices,
+            "etats": etats,
+            "peut_gerer": peut_gerer,
             "compte": compte,
             "filtre_actif": bool(recherche or etage or compte),
             "parametres": filtres.urlencode(),
@@ -150,8 +172,11 @@ def creer(request):
 @permission_required("comptes.voir_residents", raise_exception=True)
 def fiche(request, pk):
     resident = get_object_or_404(User.objects.residents(), pk=pk)
+    peut_gerer = request.user.has_perm("comptes.gerer_residents")
+    if not peut_gerer and est_parti(resident):
+        raise Http404  # anciens résidents : réservés à l'accueil et à l'administration
     formulaire = None
-    if request.user.has_perm("comptes.gerer_residents"):
+    if peut_gerer:
         formulaire, enregistre = _formulaire(request, resident)
         if enregistre:
             messages.success(request, "Les modifications sont enregistrées.")
@@ -168,7 +193,44 @@ def fiche(request, pk):
             "resident": resident,
             "sejour": sejour_en_cours(resident),
             "sejours": resident.sejours.select_related("chambre__etage"),
+            "dernier_depart": resident.sejours.filter(depart__isnull=False)
+            .order_by("-depart")
+            .values_list("depart", flat=True)
+            .first(),
         },
+    )
+
+
+@login_required
+@permission_required("comptes.gerer_residents", raise_exception=True)
+def depart(request, pk):
+    """Départ (carte T09) : page de confirmation, car l'action ferme le compte."""
+    resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if resident.pk == request.user.pk:
+        raise PermissionDenied
+    if est_parti(resident):
+        messages.info(request, "Le départ de cette personne est déjà enregistré.")
+        return redirect("residents:fiche", pk=resident.pk)
+    sejour = sejour_en_cours(resident)
+    formulaire = FormulaireDepart(request.POST or None, sejour=sejour)
+    if request.method == "POST" and formulaire.is_valid():
+        try:
+            enregistrer_depart(resident, formulaire.cleaned_data["depart"], requete=request)
+        except ValidationError as erreur:
+            if erreur.code == "deja_parti":
+                messages.info(request, erreur.messages[0])
+                return redirect("residents:fiche", pk=resident.pk)
+            formulaire.add_error("depart", erreur.messages)
+        else:
+            nom = resident.get_full_name() or resident.get_username()
+            messages.success(
+                request, f"Le départ de {nom} est enregistré. Son compte est désactivé."
+            )
+            return redirect("residents:fiche", pk=resident.pk)
+    return render(
+        request,
+        "residents/depart.html",
+        {"actif": "residents", "resident": resident, "sejour": sejour, "formulaire": formulaire},
     )
 
 

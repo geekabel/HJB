@@ -67,7 +67,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T09 | Départ d'un résident | E1 Résidents | T06, T15 |
 | T10 | Couche fournisseur SMS | E4 Messages | T01 |
 | T11 | Code d'activation | E2 Connexion | T07 |
 | T12 | Vérification du téléphone par code SMS | E2 Connexion | T10, T11 |
@@ -117,6 +116,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T06 | Étages, chambres et séjours | 5 nov. 2026 |
 | T07 | Liste et fiche des résidents (équipe) | 5 nov. 2026 |
 | T08 | Import CSV et Excel des résidents | 5 nov. 2026 |
+| T09 | Départ d'un résident | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -213,9 +213,16 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - **Notes** : le fichier n'est jamais enregistré ; seules les lignes analysées restent dans la session jusqu'à la confirmation ou l'annulation. openpyxl lit en mode lecture seule, et `defusedxml` est installé, comme le conseille sa doc contre les attaques XML. Le numéro de ligne affiché est celui du fichier, même s'il contient des lignes vides. Une fiche au même nom qu'une fiche existante est signalée sans bloquer. Fichiers d'essai : données inventées uniquement.
 - **Revue indépendante (5 nov.)** : corrigé après relecture. Fichiers abîmés ou piégés (encodage, CSV mal formé, XML cassé, archive qui gonfle) refusés avec un message au lieu d'une erreur 500. Les lignes vides ne font plus perdre de lignes. La confirmation est liée à son aperçu par un jeton : deux onglets ou un double clic ne créent rien en double (trace `ImportResidents`, jeton unique en base). Aperçu valable une heure. Un ancien séjour qui croise la date d'arrivée est signalé dans l'aperçu. Une arrivée sans date prend le jour de l'import. 45 tests pour l'import.
 
-#### T09 Départ d'un résident
-- [ ] Fin du séjour, compte désactivé, sessions fermées, accès wifi désactivé
-- [ ] Trace dans le journal d'audit
+#### T09 Départ d'un résident (fait le 5 nov. 2026)
+- **Docs** : [signaux](https://docs.djangoproject.com/en/6.1/topics/signals/#defining-and-sending-signals), [sessions en base](https://docs.djangoproject.com/en/6.1/topics/http/sessions/#using-database-backed-sessions), [ModelBackend et comptes inactifs](https://docs.djangoproject.com/en/6.1/ref/contrib/auth/#django.contrib.auth.backends.ModelBackend).
+- [x] Fin du séjour (la chambre redevient libre), compte désactivé, sessions fermées sur tous les appareils, le tout dans une transaction
+- [x] Page de confirmation qui dit ce qui va se passer, bouton rouge, date du jour ou passée (jamais avant l'arrivée)
+- [x] Trace dans le journal d'audit (chambre, date, nombre de sessions fermées) ; le journal nomme maintenant la personne (« Awa Koné (awa.kone) »)
+- [x] Liste : les anciens résidents sont à part, derrière le lien « N anciens résidents »
+- [x] Fiche d'un ancien résident : identité modifiable, pas de relogement depuis la fiche
+- [ ] Accès wifi désactivé : à faire en T15, branché sur le signal `depart_enregistre`
+- **Notes** : le signal `depart_enregistre` est envoyé dans la transaction du départ : si la coupure du wifi (T15) ou des clés d'accès (T13) échoue, rien n'est enregistré (testé). Le mot de passe inutilisable est renouvelé, ce qui invalide aussi toute session restante. Le départ prévu à l'avance (« Départ le 30 nov. » de la maquette) demande une tâche quotidienne : ajouté à T21. Le retour d'un ancien résident : ajouté à T11.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Verrou sur la ligne du compte : une fiche ouverte avant le départ ne peut plus le défaire, et deux départs ne se croisent pas. Un compte désactivé dans l'administration mais encore logé reste dans la liste et peut recevoir son départ. Un compte d'administration (is_staff, super-utilisateur) n'est jamais traité comme résident. Les éducateurs ne voient que les résidents actuels (minimisation des données). Les sessions sont lues avant la transaction, puis supprimées avec le moteur de sessions configuré. 18 tests.
 
 ### E2 Connexion
 
@@ -234,6 +241,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Impression du code ou affichage d'un QR code
 - [ ] Limite de tentatives
 - [ ] Import (T08) : option « envoyer un code d'activation aux nouveaux », par SMS
+- [ ] Retour d'un ancien résident (T09) : réactiver le compte avec un nouveau code et le reloger
 
 #### T12 Vérification du téléphone par code SMS
 - **Maquette** : R0.
@@ -247,6 +255,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Connexion sans mot de passe
 - [ ] Récupération : nouveau code d'activation par l'accueil
 - [ ] Sessions longues pour les résidents, avec reconnexion demandée pour les actions sensibles
+- [ ] Au départ (T09) : supprimer les clés d'accès, via le signal `depart_enregistre`
 
 #### T14 Sécurité de l'espace équipe
 - [ ] Espace équipe réservé aux rôles du personnel
@@ -261,6 +270,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Modèle `AccesWifi` : mot de passe chiffré, clé dans une variable d'environnement
 - [ ] Saisie ou génération par l'équipe, date d'expiration à un an
 - [ ] Affichage réservé aux administrateurs, chaque affichage dans le journal
+- [ ] Au départ (T09) : désactiver l'accès wifi de la chambre, via le signal `depart_enregistre`
 
 #### T16 Écran « Mon wifi » du résident
 - **Maquette** : R6.
@@ -299,6 +309,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [ ] Notification push d'abord, SMS seulement sans abonnement push
 - [ ] Envois sans doublon (contrainte unique sur `Envoi`)
 - [ ] Relance automatique de ceux qui n'ont pas répondu
+- [ ] Départ prévu (T09) : saisi à l'avance, enregistré automatiquement le jour venu
 
 #### T22 Réponse Présent ou Absent
 - **Docs** : [signature cryptographique](https://docs.djangoproject.com/en/6.1/topics/signing/).
