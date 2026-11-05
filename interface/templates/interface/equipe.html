@@ -21,7 +21,7 @@
       </a>
     </li>
     <li><a href="#"{% if actif == "rendezvous" %} aria-current="page"{% endif %}>Rendez-vous</a></li>
-    {% if perms.comptes.gerer_residents %}
+    {% if perms.comptes.voir_residents %}
     <li><a href="{% url 'residents:liste' %}"{% if actif == "residents" %} aria-current="page"{% endif %}>Résidents et wifi</a></li>
     {% endif %}
     {% if perms.comptes.voir_journal %}

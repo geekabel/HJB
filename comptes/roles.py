@@ -38,6 +38,7 @@ ROLE_PAR_GROUPE = {groupe: role for role, groupe in GROUPE_PAR_ROLE.items()}
 # Permissions propres au projet, déclarées dans User.Meta.permissions.
 PERMISSIONS = {
     "acceder_espace_equipe": "Peut accéder à l'espace équipe",
+    "voir_residents": "Peut consulter la liste et les fiches des résidents",
     "gerer_residents": "Peut gérer les résidents et leurs séjours",
     "generer_code_activation": "Peut générer un code d'activation",
     "voir_code_wifi": "Peut afficher un mot de passe wifi",
@@ -52,6 +53,7 @@ PERMISSIONS = {
 PERMISSIONS_PAR_ROLE = {
     Role.ACCUEIL: [
         "acceder_espace_equipe",
+        "voir_residents",
         "gerer_residents",
         "generer_code_activation",
         "envoyer_messages",
@@ -59,6 +61,8 @@ PERMISSIONS_PAR_ROLE = {
     ],
     Role.EDUCATEUR: [
         "acceder_espace_equipe",
+        # Les éducateurs consultent les résidents, sans les modifier.
+        "voir_residents",
         "envoyer_messages",
         "gerer_rendezvous",
     ],
