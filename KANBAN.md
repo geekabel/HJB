@@ -440,6 +440,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Réglages : durée d'un rendez-vous (30, 45 min ou 1 h) et délai pour réserver (2 heures avant, ou la veille)
 - [x] Calcul des créneaux réservables d'un jour (`bookable()`), utilisé par T27
 - **Notes** : les rappels (« la veille et 1 h avant ») viennent avec T29, les messages directs avec T28. Les rendez-vous pris s'afficheront dans la grille avec T27. Un compte sans le rôle Éducateur (Administration) peut ouvrir des créneaux, mais un message dit que les résidents ne le verront pas.
+- **Revue** : corrigé après la revue indépendante. Deux enregistrements en même temps (double clic, deux onglets) : réglages et grille ensemble ou rien, avec un verrou sur l'éducateur (le même que la réservation de T27). Seules les clés exactes des cases sont acceptées (plus de doublons ni de créneaux qui se chevauchent). Avertissement pour un créneau trop court pour la durée choisie. Délai de 2 heures en temps réel (changement d'heure). Script : un glisser rapide remplit tout le rectangle, un glisser bloqué s'arrête, un clic n'est plus perdu, événements `change` envoyés. Cases fermées avec une bordure visible (contraste 3:1), heures toujours visibles quand la grille défile sur téléphone, lien pour passer la grille au clavier. Pour T27 : absences, jours fériés et chevauchements après un changement de durée.
 
 #### T27 Réservation d'un rendez-vous
 - **Maquette** : R5.

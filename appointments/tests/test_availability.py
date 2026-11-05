@@ -125,3 +125,100 @@ class PageTests(TestCase):
         response = self.client.get(URL)
         save_page("appointments-availability-admin", response)
         self.assertContains(response, "Vous n'avez pas le rôle Éducateur")
+
+
+class ReviewTests(TestCase):
+    """Cases raised by the independent review of T26."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.samia = make_user("samia", Role.EDUCATOR, first_name="Samia")
+        cls.karim = make_user("karim", Role.EDUCATOR, first_name="Karim")
+
+    def test_duplicates_and_other_spellings_are_ignored(self):
+        keys = ["0-1000", "0-1000", "0-1030", "0-1030", "00-1100", "+0-1100", " 0-1100", "0-08000"]
+        availability.save_grid(self.samia, keys)
+        self.assertEqual([str(a) for a in Availability.objects.all()], ["lundi 10:00-11:00"])
+
+    def test_every_cell_and_the_edges(self):
+        availability.save_grid(self.samia, list(availability.CELLS))
+        self.assertEqual(
+            [str(a) for a in Availability.objects.all()],
+            [f"{day} 08:00-19:00" for day in ("lundi", "mardi", "mercredi", "jeudi", "vendredi")],
+        )
+        availability.save_grid(self.samia, ["0-0800", "0-1830"])
+        self.assertEqual(
+            [str(a) for a in Availability.objects.all()], ["lundi 08:00-08:30", "lundi 18:30-19:00"]
+        )
+
+    def test_clock_changes(self):
+        # 29 March and 25 October 2026: the clocks change in Paris.
+        availability.save_grid(self.samia, ["0-0800", "4-0800"])
+        utc = __import__("datetime").timezone.utc
+        cases = {
+            date(2026, 3, 27): datetime(2026, 3, 27, 7, 0, tzinfo=utc),  # winter: +1
+            date(2026, 3, 30): datetime(2026, 3, 30, 6, 0, tzinfo=utc),  # summer: +2
+            date(2026, 10, 23): datetime(2026, 10, 23, 6, 0, tzinfo=utc),
+            date(2026, 10, 26): datetime(2026, 10, 26, 7, 0, tzinfo=utc),
+        }
+        for day, expected in cases.items():
+            (slot,) = availability.bookable(self.samia, day, aware(date(2026, 1, 1), 9))
+            self.assertEqual(slot.start, expected, day)
+
+    def test_deadline_edges(self):
+        availability.save_grid(self.samia, ["3-1000"])
+        exactly_two_hours = aware(THURSDAY, 8)
+        self.assertEqual(len(availability.bookable(self.samia, THURSDAY, exactly_two_hours)), 1)
+        self.assertEqual(len(availability.bookable(self.samia, THURSDAY, aware(THURSDAY, 8, 1))), 0)
+        EducatorSettings.objects.create(educator=self.samia, notice="day_before")
+        wednesday = date(2026, 11, 11)
+        self.assertEqual(
+            len(availability.bookable(self.samia, THURSDAY, aware(wednesday, 23, 59))), 1
+        )
+        self.assertEqual(len(availability.bookable(self.samia, THURSDAY, aware(THURSDAY, 0))), 0)
+
+    def test_access_is_exactly_forbidden(self):
+        for role in (Role.FRONT_DESK, Role.MAINTENANCE, Role.MODERATOR):
+            user = make_user(f"u-{role}", role)
+            log_in_verified(self.client, user)
+            self.assertEqual(self.client.get(URL).status_code, 403, role)
+        log_in_verified(self.client, make_user("resident"))
+        self.assertEqual(self.client.get(URL).status_code, 403)
+
+    def test_csrf_and_only_my_own_grid(self):
+        from django.test import Client
+
+        availability.save_grid(self.karim, ["1-0900"])
+        client = Client(enforce_csrf_checks=True)
+        log_in_verified(client, self.samia)
+        response = client.post(URL, {"cell": ["0-1000"], "slot_minutes": "30", "notice": "2h"})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Availability.objects.filter(educator=self.samia).exists())
+        log_in_verified(self.client, self.samia)
+        self.client.post(
+            URL,
+            {"cell": ["0-1000"], "slot_minutes": "60", "notice": "2h", "educator": self.karim.pk},
+        )
+        self.assertEqual([str(a) for a in self.karim.availabilities.all()], ["mardi 09:00-09:30"])
+        self.assertFalse(EducatorSettings.objects.filter(educator=self.karim).exists())
+
+    def test_too_short_ranges_are_reported(self):
+        log_in_verified(self.client, self.samia)
+        self.client.post(
+            URL, {"cell": ["0-1000", "2-1400", "2-1430"], "slot_minutes": "60", "notice": "2h"}
+        )
+        response = self.client.get(URL)
+        self.assertContains(
+            response,
+            "1 créneau trop court pour un rendez-vous de 60 minutes : lundi 10:00-10:30. "
+            "Personne ne peut y réserver.",
+        )
+
+    def test_invalid_settings_keep_the_cells(self):
+        log_in_verified(self.client, self.samia)
+        response = self.client.post(
+            URL, {"cell": ["0-1000", "4-1500"], "slot_minutes": "20", "notice": "2h"}
+        )
+        self.assertContains(response, 'value="4-1500" checked')
+        self.assertFalse(Availability.objects.exists())
+        self.assertFalse(EducatorSettings.objects.exists())

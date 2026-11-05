@@ -4,11 +4,15 @@ The grid has one cell per half hour, from 8:00 to 19:00, Monday to Friday.
 Open cells that touch are saved as one range (Availability). The bookable
 times cut each range into meetings of the educator's length, after the
 booking deadline.
+
+save_grid() deletes and recreates the rows of the educator: nothing may point
+to an Availability row (a booked meeting keeps its own start and end).
 """
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
@@ -35,16 +39,8 @@ def cell_key(weekday, start):
     return f"{weekday}-{start:%H%M}"
 
 
-def _parse(key):
-    try:
-        weekday, hhmm = key.split("-")
-        weekday = int(weekday)
-        start = time(int(hhmm[:2]), int(hhmm[2:]))
-    except (ValueError, TypeError):
-        return None
-    if weekday not in DAYS or start not in cell_times():
-        return None
-    return weekday, start
+# The only keys accepted: other spellings of a cell ("00-1000") are refused.
+CELLS = {cell_key(day, moment): (day, moment) for day in DAYS for moment in cell_times()}
 
 
 def _add(moment, delta):
@@ -67,7 +63,7 @@ def open_cells(educator):
 
 def ranges(keys):
     """{weekday: [(start, end), ...]} from cell keys, cells that touch merged."""
-    cells = sorted(filter(None, (_parse(key) for key in keys)))
+    cells = sorted({CELLS[key] for key in keys if key in CELLS})
     merged = {}
     for weekday, start in cells:
         day = merged.setdefault(weekday, [])
@@ -78,9 +74,19 @@ def ranges(keys):
     return merged
 
 
+def lock(educator):
+    """Lock the educator row until the end of the transaction.
+
+    The grid save and the bookings of this educator (T27) then run one after
+    the other (PostgreSQL; SQLite runs its writing transactions one by one).
+    """
+    get_user_model().objects.select_for_update().filter(pk=educator.pk).first()
+
+
 @transaction.atomic
 def save_grid(educator, keys):
     """Replace the weekly grid of ``educator``. Return the number of ranges."""
+    lock(educator)
     Availability.objects.filter(educator=educator).delete()
     rows = [
         Availability(educator=educator, weekday=weekday, start=start, end=end)
@@ -99,11 +105,22 @@ def settings_of(educator):
 
 def earliest_start(settings, now=None):
     """The first moment a resident can still book."""
-    now = timezone.localtime(now or timezone.now())
+    now = now or timezone.now()
     if settings.notice == EducatorSettings.Notice.DAY_BEFORE:
-        tomorrow = now.date() + timedelta(days=1)
+        tomorrow = timezone.localdate(now) + timedelta(days=1)
         return timezone.make_aware(datetime.combine(tomorrow, time(0, 0)))
+    # Real time, not clock time: 2 hours are 2 hours across a clock change.
     return now + timedelta(hours=2)
+
+
+def too_short(educator, minutes):
+    """Ranges of ``educator`` shorter than a meeting: they give no slot."""
+    length = timedelta(minutes=minutes)
+    return [
+        row
+        for row in Availability.objects.filter(educator=educator)
+        if datetime.combine(date.min, row.end) - datetime.combine(date.min, row.start) < length
+    ]
 
 
 @dataclass(frozen=True)

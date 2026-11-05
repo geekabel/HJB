@@ -1600,6 +1600,7 @@
   .slot-grid {
     width: 100%;
     min-width: 36rem;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: var(--s-1) 2px;
     font-size: var(--t-small);
@@ -1612,7 +1613,17 @@
     text-align: start;
   }
 
+  .slot-grid thead td,
   .slot-grid tbody th {
+    width: 3.5rem;
+  }
+
+  /* The hours stay in view when the grid scrolls sideways (phones) */
+  .slot-grid tbody th {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background: var(--surface);
     padding-inline-end: var(--s-2);
     color: var(--text-muted);
     font-weight: 400;
@@ -1637,7 +1648,7 @@
     align-items: center;
     min-height: 2rem;
     padding-inline: var(--s-2);
-    border: 1px solid transparent;
+    border: 1px solid var(--control); /* 3:1 at least: the edge of a control */
     border-radius: var(--r-small);
     background: var(--bg);
     color: var(--action);
@@ -1663,7 +1674,7 @@
   }
 
   .slot:hover .slot__face {
-    border-color: var(--control);
+    border-color: var(--ink);
   }
 
   .slot-key {
