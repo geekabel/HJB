@@ -29,5 +29,16 @@ def personne_en_cours(request):
     return User.objects.filter(pk=donnees["utilisateur"], is_active=True).first()
 
 
+def noter(request, cle, valeur):
+    """Note une étape franchie (par exemple « telephone_verifie »)."""
+    donnees = request.session[CLE]
+    donnees[cle] = valeur
+    request.session[CLE] = donnees  # réaffecté pour que la session soit enregistrée
+
+
+def etape_faite(request, cle):
+    return bool(request.session.get(CLE, {}).get(cle))
+
+
 def terminer(request):
     request.session.pop(CLE, None)

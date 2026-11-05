@@ -47,6 +47,9 @@ class CodeActivationTests(EquipeTestCase):
 
     def test_generation_et_feuille_imprimable(self):
         reponse = self.client.post(self.url_code())
+        feuille = reverse("residents:code_activation_feuille", args=[self.awa.pk])
+        self.assertRedirects(reponse, feuille, fetch_redirect_response=False)
+        reponse = self.client.get(feuille)
         enregistrer_page("residents-code-activation", reponse)
         self.assertEqual(reponse.status_code, 200)
         self.assertIn("no-store", reponse["Cache-Control"])
@@ -63,6 +66,25 @@ class CodeActivationTests(EquipeTestCase):
         reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
         self.assertContains(reponse, "Dernier code utilisé le")
         self.assertNotContains(reponse, code)
+
+    def test_recharger_la_feuille_ne_change_pas_le_code(self):
+        self.client.post(self.url_code(), follow=True)
+        empreinte_remise = CodeActivation.objects.get().empreinte
+        feuille = reverse("residents:code_activation_feuille", args=[self.awa.pk])
+        reponse = self.client.get(feuille, follow=True)
+        self.assertRedirects(reponse, reverse("residents:fiche", args=[self.awa.pk]))
+        self.assertContains(reponse, "Ce code a déjà été affiché. Il reste valable")
+        # Toujours un seul code, et c'est celui qui a été remis.
+        self.assertEqual(
+            list(CodeActivation.objects.valides().values_list("empreinte", flat=True)),
+            [empreinte_remise],
+        )
+
+    def test_feuille_d_un_autre_resident(self):
+        lina = creer_utilisateur("lina")
+        self.client.post(self.url_code())
+        feuille = reverse("residents:code_activation_feuille", args=[lina.pk])
+        self.assertRedirects(self.client.get(feuille), reverse("residents:fiche", args=[lina.pk]))
 
     def test_code_en_attente_sur_la_fiche(self):
         self.client.post(self.url_code())
@@ -118,12 +140,30 @@ class RetourTests(EquipeTestCase):
         self.assertEqual(
             entree.resume(), f"Chambre 304, retour le {timezone.localdate():%d/%m/%Y}."
         )
+        # L'ancienne connexion ne fait pas passer le compte pour activé.
+        self.assertIsNone(self.awa.last_login)
+        self.assertEqual(self.awa.etat_compte, "en_attente")
         # Ensuite, un code peut être généré.
-        self.assertEqual(self.client.post(self.url_code()).status_code, 200)
+        self.assertEqual(self.client.post(self.url_code(), follow=True).status_code, 200)
+        self.assertTrue(CodeActivation.objects.valides().exists())
 
     def test_lien_depuis_la_fiche(self):
         reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
         self.assertContains(reponse, f'href="{self.url}"')
+
+    def test_lien_visible_sans_le_droit_de_generer_des_codes(self):
+        from django.contrib.auth.models import Permission
+
+        # Maintenance, plus la gestion des résidents donnée à la main : pas de droit
+        # sur les codes d'activation.
+        gestion = creer_utilisateur("gestion", Role.MAINTENANCE)
+        gestion.user_permissions.set(
+            Permission.objects.filter(codename__in=["voir_residents", "gerer_residents"])
+        )
+        self.client.force_login(gestion)
+        reponse = self.client.get(reverse("residents:fiche", args=[self.awa.pk]))
+        self.assertContains(reponse, f'href="{self.url}"')
+        self.assertNotContains(reponse, "Activation du compte")
 
     def test_pas_pour_un_resident_actuel(self):
         lina = creer_utilisateur("lina")
@@ -162,6 +202,26 @@ class ImportAvecCodesTests(EquipeTestCase):
         self.importer(envoyer_codes=False)
         self.assertEqual(memoire.boite, [])
         self.assertFalse(CodeActivation.objects.exists())
+
+    def test_une_panne_imprevue_ne_casse_pas_l_import(self):
+        from unittest import mock
+
+        with (
+            mock.patch("residents.views.envoyer_code_par_sms", side_effect=RuntimeError("panne")),
+            self.assertLogs("residents.views", "ERROR"),
+        ):
+            reponse = self.importer(envoyer_codes=True)
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, "2 résidents importés.")
+        self.assertContains(reponse, "1 SMS n&#x27;ont pas pu partir")
+
+    def test_trop_de_codes_a_envoyer(self):
+        from unittest import mock
+
+        with mock.patch("residents.views.CODES_SMS_MAX", 0):
+            reponse = self.importer(envoyer_codes=True)
+        self.assertContains(reponse, "aucun SMS n&#x27;est parti")
+        self.assertEqual(memoire.boite, [])
 
     def test_avec_l_option(self):
         reponse = self.importer(envoyer_codes=True)

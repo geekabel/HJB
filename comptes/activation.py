@@ -8,8 +8,9 @@ clé d'accès (T13).
   (clé dérivée de SECRET_KEY) : on peut retrouver le code saisi, mais pas
   relire un code à partir de la base.
 - Usage unique, valable 72 h ; un nouveau code annule le précédent.
-- Les codes inconnus sont comptés par adresse IP : au-delà de
-  ECHECS_MAX en une heure, la saisie est bloquée.
+- Les codes faux sont comptés par navigateur (10) et par adresse IP (50)
+  sur une heure ; au-delà, la saisie est bloquée. Avec 2^49 codes possibles,
+  deviner un code reste hors de portée même sans ces limites.
 
 Docs Python : hmac, secrets (https://docs.python.org/3/library/secrets.html).
 """
@@ -32,7 +33,8 @@ from .models import CodeActivation, EchecActivation
 ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
 LONGUEUR = 10  # 30^10 : environ 2^49 codes possibles
 DUREE_VALIDITE = timedelta(hours=72)
-ECHECS_MAX = 10
+ECHECS_MAX = 10  # par navigateur
+ECHECS_MAX_ADRESSE = 50  # par adresse IP (le wifi de la résidence est partagé)
 FENETRE_ECHECS = timedelta(hours=1)
 
 
@@ -89,19 +91,27 @@ def generer_code(utilisateur, *, par=None, requete=None):
     raise RuntimeError("Impossible de générer un code unique.")
 
 
-def trop_d_echecs(adresse_ip):
+def trop_d_echecs(adresse_ip, echecs_session=0):
+    """Vrai si la saisie doit être bloquée pour l'instant.
+
+    Deux limites : 10 échecs pour un même navigateur (fautes de frappe), et 50
+    pour une même adresse IP. Beaucoup de résidents partagent l'adresse du wifi
+    de la résidence : une limite basse par adresse permettrait à une seule
+    personne de bloquer tout le monde.
+    """
+    if echecs_session >= ECHECS_MAX:
+        return True
     depuis = timezone.now() - FENETRE_ECHECS
-    return EchecActivation.objects.filter(adresse_ip=adresse_ip, cree_le__gte=depuis).count() >= (
-        ECHECS_MAX
-    )
+    recents = EchecActivation.objects.filter(adresse_ip=adresse_ip, cree_le__gte=depuis)
+    return recents.count() >= ECHECS_MAX_ADRESSE
 
 
-def utiliser_code(saisie, adresse_ip=None):
+def utiliser_code(saisie, adresse_ip=None, echecs_session=0):
     """Vérifie le code saisi et le marque comme utilisé. Renvoie le CodeActivation.
 
     Lève ErreurActivation (code « trop_essais » ou « invalide »).
     """
-    if trop_d_echecs(adresse_ip):
+    if trop_d_echecs(adresse_ip, echecs_session):
         raise ErreurActivation(
             "Trop d'essais. Réessayez dans une heure, ou passez à l'accueil.", "trop_essais"
         )
@@ -114,9 +124,11 @@ def utiliser_code(saisie, adresse_ip=None):
             .select_related("utilisateur")
             .first()
         )
-    # Usage unique, même si deux appareils envoient le code au même moment.
-    if trouve is None or not CodeActivation.objects.filter(
-        pk=trouve.pk, utilise_le__isnull=True
+    # Usage unique, même si deux appareils envoient le code au même moment. La mise à
+    # jour revérifie tout (annulé, expiré, compte désactivé entre-temps) : un code
+    # remplacé ou annulé pendant la saisie ne passe pas.
+    if trouve is None or not CodeActivation.objects.valides().filter(
+        pk=trouve.pk, utilisateur__is_active=True
     ).update(utilise_le=timezone.now()):
         EchecActivation.objects.create(adresse_ip=adresse_ip)
         # Ménage : les échecs de plus d'un jour ne servent plus.

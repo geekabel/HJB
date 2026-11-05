@@ -1,8 +1,44 @@
 {% extends "activation/base_activation.html" %}
+{% load icones %}
 {% block titre %}Vérifier mon téléphone{% endblock %}
 {% block etape %}
 <header class="pile pile--serree">
-  <h1>Code accepté</h1>
-  <p class="texte-doux">Bonjour {{ personne.first_name }}. Étape suivante : vérifier votre numéro de téléphone.</p>
+  <h1>Vérifions que c'est bien vous</h1>
+  {% if personne.telephone %}
+  <p class="texte-doux">Bonjour {{ personne.first_name }}. {% if code_envoye %}Nous avons envoyé un code à 6 chiffres au{% else %}Nous allons envoyer un code à 6 chiffres au{% endif %} <strong><span aria-hidden="true">{{ personne.telephone_masque }}</span><span class="visuellement-cache">numéro finissant par {{ personne.telephone|slice:"-2:" }}</span></strong>, le numéro donné à l'accueil.</p>
+  {% endif %}
 </header>
+
+{% if not personne.telephone %}
+<div class="alerte alerte--info">{% icone "info" %}<p>Aucun numéro n'est enregistré pour vous. Passez à l'accueil pour le donner, puis recommencez avec un nouveau code d'activation.</p></div>
+{% elif code_envoye %}
+<form class="pile" method="post" novalidate>
+  {% csrf_token %}
+  {{ formulaire.code.as_field_group }}
+  <p class="texte-doux texte-petit">Valable 10 minutes.</p>
+  <button class="bouton bouton--bloc" type="submit" name="action" value="verifier">Valider</button>
+</form>
+<form class="rangee" method="post">
+  {% csrf_token %}
+  <button class="bouton bouton--discret" type="submit" name="action" value="envoyer">Renvoyer un code</button>
+  {% if attente %}<span class="texte-doux texte-petit">Possible dans {{ attente }} seconde{{ attente|pluralize }}.</span>{% endif %}
+</form>
+{% else %}
+<form class="pile" method="post">
+  {% csrf_token %}
+  <button class="bouton bouton--bloc" type="submit" name="action" value="envoyer">Recevoir le code par SMS</button>
+</form>
+{% endif %}
+
+{% if personne.telephone %}
+<p><a href="{% url 'activation:mauvais_numero' %}">Ce n'est pas mon numéro</a></p>
+{% endif %}
+
+<section class="carte rangee rangee--haut" aria-labelledby="titre-suite">
+  {% icone "cadenas" %}
+  <div class="pile pile--serree">
+    <h2 id="titre-suite" class="carte__titre">Étape suivante : votre clé d'accès</h2>
+    <p class="texte-doux texte-petit">Vous vous connecterez ensuite avec Face ID, votre empreinte ou le code de votre téléphone. Pas de mot de passe à retenir.</p>
+  </div>
+</section>
 {% endblock %}

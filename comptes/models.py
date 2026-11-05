@@ -64,8 +64,39 @@ class User(AbstractUser):
         validators=[valider_e164],
         help_text="Saisie libre (06 12 34 56 78) ; enregistré au format international.",
     )
+    telephone_verifie_le = models.DateTimeField(
+        "téléphone vérifié le",
+        null=True,
+        blank=True,
+        help_text="Par code SMS, pendant l'activation. Remis à vide si le numéro change.",
+    )
 
     objects = GestionnaireUtilisateurs()
+
+    # Doc « Customizing model loading » : on garde le numéro lu en base pour
+    # savoir, à l'enregistrement, s'il a changé.
+    @classmethod
+    def from_db(cls, db, field_names, values, **kwargs):
+        instance = super().from_db(db, field_names, values, **kwargs)
+        if "telephone" in field_names:
+            instance._telephone_charge = instance.telephone
+        return instance
+
+    def save(self, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        change = (
+            not self._state.adding
+            and hasattr(self, "_telephone_charge")
+            and self.telephone != self._telephone_charge
+            and (update_fields is None or "telephone" in update_fields)
+        )
+        if change:
+            # Un nouveau numéro n'est pas vérifié.
+            self.telephone_verifie_le = None
+            if update_fields is not None:
+                kwargs["update_fields"] = {*update_fields, "telephone_verifie_le"}
+        super().save(**kwargs)
+        self._telephone_charge = self.telephone
 
     class Meta(AbstractUser.Meta):
         verbose_name = "utilisateur"
@@ -185,3 +216,28 @@ class EchecActivation(models.Model):
 
     def __str__(self):
         return f"Échec depuis {self.adresse_ip or '?'} ({self.cree_le:%d/%m/%Y %H:%M})"
+
+
+class VerificationTelephone(models.Model):
+    """Code SMS à 6 chiffres envoyé pendant l'activation (carte T12).
+
+    Seule l'empreinte HMAC du code est gardée. Valable 10 minutes, 5 essais.
+    """
+
+    utilisateur = models.ForeignKey(
+        "User", on_delete=models.CASCADE, related_name="verifications_telephone"
+    )
+    telephone = models.CharField("numéro", max_length=16)
+    empreinte = models.CharField(max_length=64, editable=False)
+    cree_le = models.DateTimeField("envoyé le", auto_now_add=True, db_index=True)
+    expire_le = models.DateTimeField("expire le")
+    tentatives = models.PositiveSmallIntegerField(default=0)
+    verifie_le = models.DateTimeField("vérifié le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "vérification de téléphone"
+        verbose_name_plural = "vérifications de téléphone"
+        ordering = ["-cree_le", "-id"]
+
+    def __str__(self):
+        return f"Vérification pour {self.utilisateur} ({self.cree_le:%d/%m/%Y %H:%M})"
