@@ -89,6 +89,10 @@ Les mots de passe wifi des chambres sont chiffrés (Fernet). En production, `DJA
 
 Le format des identifiants et mots de passe générés (6 et 6 caractères par défaut, comme le portail de la résidence) se change dans l'administration, page « Réglages wifi ». La liste déjà tenue par l'équipe s'importe depuis la liste des résidents, bouton « Importer la liste wifi ».
 
+## Application installable
+
+Le site s'installe sur l'écran d'accueil (manifeste et service worker, voir `ui/pwa.py`). Le service worker ne garde que des fichiers publics. Après un changement du logo, redessinez les icônes avec `python -m tools.make_icons`.
+
 ## Envoi de SMS
 
 Le fournisseur se choisit avec `DJANGO_SMS_PROVIDER` (voir [.env.example](.env.example)) :

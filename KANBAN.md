@@ -72,7 +72,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
 | T17 | Rappels d'expiration du wifi | E3 Wifi | T16, T19 |
-| T18 | Application installable (PWA) | E4 Messages | T03 |
 | T19 | Notifications Web Push | E4 Messages | T18 |
 | T20 | Modèles de message et composeur | E4 Messages | T06, T10 |
 | T21 | Envoi programmé et relances | E4 Messages | T19, T20 |
@@ -123,6 +122,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T15 | Accès wifi chiffré (équipe) | 5 nov. 2026 |
 | T15b | Format du portail wifi et import de la liste | 5 nov. 2026 |
 | T16 | Écran « Mon wifi » du résident | 5 nov. 2026 |
+| T18 | Application installable (PWA) | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -342,10 +342,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E4 Messages
 
-#### T18 Application installable (PWA)
-- **Docs** : MDN (manifeste d'application web, service workers).
-- [ ] Manifeste, icônes (dont `favicon.ico`, absent pour l'instant), service worker
-- [ ] Écran d'aide « ajouter à l'écran d'accueil » pour iPhone (nécessaire pour recevoir les notifications)
+#### T18 Application installable (PWA) (fait le 5 nov. 2026)
+- **Docs** : [rendre une PWA installable (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [manifeste (MDN)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest), [service workers (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [Web Push sur iOS (WebKit)](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/), [Pillow ImageDraw](https://pillow.readthedocs.io/en/stable/reference/ImageDraw.html).
+- [x] Manifeste `/manifest.webmanifest` (nom, icônes 192 et 512 dont une « maskable », `display: standalone`), lié depuis chaque page. Icônes tirées du logo par `tools/make_icons.py` : `favicon.ico`, icône SVG, icône pour l'écran d'accueil de l'iPhone. `/favicon.ico` renvoie vers le fichier
+- [x] Service worker `/sw.js`, servi à la racine pour couvrir tout le site. Les pages viennent toujours du réseau : aucune page avec des données personnelles n'entre dans le cache. Sans réseau, la page « Pas de connexion » s'affiche. Le cache ne garde que des fichiers publics (page hors ligne, feuille de style, polices, logo) et change de nom quand l'un d'eux change
+- [x] Page `/installer/` : étapes pour iPhone (Safari, Partager, « Sur l'écran d'accueil ») et Android (Chrome, « Installer l'application »), et bouton « Installer » quand le navigateur le propose. Raccourci « Installer l'application » sur l'accueil du résident, caché quand l'application est déjà ouverte depuis son icône
+- **Notes** : vérifié dans Chromium : aucune erreur d'installation, cache limité aux fichiers publics, page hors ligne avec sa mise en forme, la page wifi jamais en cache. Sur iPhone, l'installation ne se fait que par le menu Partager (pas de bouton possible). Pillow ne sert qu'à dessiner les icônes, en développement.
 
 #### T19 Notifications Web Push
 - **Docs** : MDN Push API, pywebpush (ou django-webpush si sa maintenance est confirmée).

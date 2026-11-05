@@ -293,6 +293,14 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Commande | `rotate_wifi_keys` |
 | Écran « Mon wifi » du résident (carte T16) | `housing:my_wifi` (`/wifi/`), `housing:my_wifi_password` (`/wifi/mot-de-passe/`), gabarit `housing/my_wifi.html`, script `ui/js/copy.js` |
 
+## Application installable (carte T18)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Manifeste, service worker, page hors ligne, page d'installation | `ui.pwa` : `manifest`, `service_worker`, `offline`, `install` ; adresses `/manifest.webmanifest`, `/sw.js`, `/hors-ligne/`, `/installer/` |
+| Script commun à toutes les pages | `ui/static/ui/js/app.js` (attributs `data-install-box`, `data-install-button`, `data-hide-when-installed`, `data-show-when-installed`) |
+| Icônes | `ui/static/ui/icons/`, dessinées par `tools/make_icons.py` |
+
 ## Modèles prévus
 
 Les modèles des cartes à venir (wifi, messages, sondages, rendez-vous, signalements,
