@@ -14,7 +14,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import redirect, render
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_variables
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
 from access.decorators import recent_confirmation_required
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 CANNOT_SHOW = (
     "Le mot de passe ne peut pas être affiché pour le moment. "
-    "Passez à l'accueil, l'équipe vous le donnera."
+    "Passez à l'accueil : l'équipe vous donnera un nouvel accès."
 )
 
 
@@ -50,9 +50,12 @@ def validity_percent(access):
     return max(0, min(100, round(100 * access.days_left / total)))
 
 
-def _page(request, password=None):
-    stay = current_stay(request.user)
-    access = wifi.current_access(stay.room) if stay else None
+def _room_access(user):
+    stay = current_stay(user)
+    return stay, (wifi.current_access(stay.room) if stay else None)
+
+
+def _page(request, stay, access, password=None):
     response = render(
         request,
         "housing/my_wifi.html",
@@ -74,17 +77,24 @@ def _page(request, password=None):
 @require_GET
 @login_required
 def my_wifi(request):
-    return _page(request)
+    return _page(request, *_room_access(request.user))
 
 
 @sensitive_variables("password")
-@require_GET
+@require_http_methods(["GET", "POST"])
 @login_required
 @recent_confirmation_required
 def my_wifi_password(request):
-    """The same page, with the password shown. Each display goes to the audit log."""
-    stay = current_stay(request.user)
-    access = wifi.current_access(stay.room) if stay else None
+    """Show the password, on POST only (the "Afficher" button).
+
+    A GET (back button, reload, prefetch, link from elsewhere) never shows it
+    nor writes to the audit log: it only comes back here after the passkey
+    confirmation, and sends the person to the page, ready for the button.
+    """
+    if request.method == "GET":
+        messages.info(request, "Clé d'accès confirmée. Appuyez sur « Afficher ».")
+        return redirect("housing:my_wifi")
+    stay, access = _room_access(request.user)
     if access is None:
         return redirect("housing:my_wifi")
     try:
@@ -93,4 +103,4 @@ def my_wifi_password(request):
         logger.exception("Could not show the wifi password to the resident")
         messages.warning(request, CANNOT_SHOW)
         return redirect("housing:my_wifi")
-    return _page(request, password=password)
+    return _page(request, stay, access, password=password)

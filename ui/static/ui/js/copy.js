@@ -14,10 +14,15 @@
   }
   var status = document.querySelector("[data-copy-status]");
 
+  // Empty the live region first, so that the same message is read again.
   function say(text) {
-    if (status) {
-      status.textContent = text;
+    if (!status) {
+      return;
     }
+    status.textContent = "";
+    window.setTimeout(function () {
+      status.textContent = text;
+    }, 100);
   }
 
   document.querySelectorAll("button[data-copy]").forEach(function (button) {
@@ -32,7 +37,7 @@
           say(button.dataset.copied || "Copié.");
         },
         function () {
-          say("La copie n'a pas marché. Appuyez longuement sur le texte pour le copier.");
+          say("La copie n'a pas marché. Touchez le texte pour le sélectionner, puis copiez-le.");
         }
       );
     });

@@ -65,7 +65,10 @@
       {% else %}
       <dd class="copy-box">
         <span class="copy-box__value copy-box__value--masked"><span aria-hidden="true">••••••••</span><span class="visually-hidden">Masqué</span></span>
-        <a class="button" href="{% url 'housing:my_wifi_password' %}">{% icon "eye" %}Afficher</a>
+        <form method="post" action="{% url 'housing:my_wifi_password' %}">
+          {% csrf_token %}
+          <button class="button" type="submit">{% icon "eye" %}Afficher<span class="visually-hidden"> le mot de passe</span></button>
+        </form>
       </dd>
       {% endif %}
     </div>
@@ -78,8 +81,8 @@
   {% endif %}
 
   <div class="stack stack--tight">
-    <p class="row row--between"><span>Valable jusqu'au</span><strong><time datetime="{{ access.expires_on|date:'Y-m-d' }}">{{ access.expires_on|date:"j F Y" }}</time></strong></p>
-    <div class="validity{% if access.is_expired or access.renew_soon %} validity--low{% endif %}" aria-hidden="true"><span style="width: {{ validity_percent }}%"></span></div>
+    <p class="row row--between"><span>{% if access.is_expired %}A expiré le{% else %}Valable jusqu'au{% endif %}</span><strong><time datetime="{{ access.expires_on|date:'Y-m-d' }}">{{ access.expires_on|date:"j F Y" }}</time></strong></p>
+    <svg class="validity{% if access.is_expired or access.renew_soon %} validity--low{% endif %}" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true"><rect class="validity__track" width="100" height="2"/><rect class="validity__fill" width="{{ validity_percent }}" height="2"/></svg>
     <p class="text-muted text-small">Enregistré le <time datetime="{{ access.created_on|date:'Y-m-d' }}">{{ access.created_on|date:"j F Y" }}</time> · {{ time_left }}</p>
   </div>
 </div>

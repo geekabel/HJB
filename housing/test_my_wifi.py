@@ -71,7 +71,7 @@ class PageTests(MyWifiTestCase):
         self.assertContains(response, "HJB-Residents")
         self.assertContains(response, "vre8th")
         self.assertNotContains(response, "72ptmk")
-        self.assertContains(response, f'href="{PASSWORD_URL}"')
+        self.assertContains(response, f'action="{PASSWORD_URL}"')
         self.assertContains(response, "encore 12 mois")
         self.assertIn("no-store", response["Cache-Control"])
         self.assertFalse(AuditEntry.objects.filter(action=Action.WIFI_PASSWORD_SHOWN).exists())
@@ -123,13 +123,16 @@ class ShowPasswordTests(MyWifiTestCase):
 
     def test_needs_a_recent_passkey_confirmation(self):
         self.log_in()
-        response = self.client.get(PASSWORD_URL)
-        self.assertTrue(response["Location"].startswith(reverse("access:confirm")))
-        self.assertIn("next=%2Fwifi%2Fmot-de-passe%2F", response["Location"])
+        for method in (self.client.get, self.client.post):
+            with self.subTest(method=method.__name__):
+                response = method(PASSWORD_URL)
+                self.assertTrue(response["Location"].startswith(reverse("access:confirm")))
+                self.assertIn("next=%2Fwifi%2Fmot-de-passe%2F", response["Location"])
+        self.assertFalse(AuditEntry.objects.filter(action=Action.WIFI_PASSWORD_SHOWN).exists())
 
-    def test_shown_and_logged(self):
+    def test_shown_on_post_and_logged(self):
         self.log_in(confirmed=True)
-        response = self.client.get(PASSWORD_URL)
+        response = self.client.post(PASSWORD_URL)
         save_page("housing-my-wifi-shown", response)
         self.assertContains(response, "72ptmk")
         self.assertContains(response, 'data-copy="wifi-password"')
@@ -139,6 +142,15 @@ class ShowPasswordTests(MyWifiTestCase):
         self.assertEqual(entry.actor, self.ines)
         self.assertEqual(entry.summary(), "Chambre 312.")
 
+    def test_get_never_shows_it(self):
+        # Review of T16: back button, reload, prefetch or a link from elsewhere.
+        self.log_in(confirmed=True)
+        response = self.client.get(PASSWORD_URL, headers={"sec-purpose": "prefetch"}, follow=True)
+        self.assertRedirects(response, URL)
+        self.assertContains(response, "Appuyez sur « Afficher ».")
+        self.assertNotContains(response, "72ptmk")
+        self.assertFalse(AuditEntry.objects.filter(action=Action.WIFI_PASSWORD_SHOWN).exists())
+
     def test_unreadable_password(self):
         from cryptography.fernet import Fernet
 
@@ -147,14 +159,43 @@ class ShowPasswordTests(MyWifiTestCase):
             override_settings(WIFI_ENCRYPTION_KEYS=[Fernet.generate_key().decode()]),
             self.assertLogs("housing.views", "ERROR"),
         ):
-            response = self.client.get(PASSWORD_URL, follow=True)
+            response = self.client.post(PASSWORD_URL, follow=True)
         self.assertRedirects(response, URL)
-        self.assertContains(response, "ne peut pas être affiché")
+        self.assertContains(response, "un nouvel accès")
         self.assertFalse(AuditEntry.objects.filter(action=Action.WIFI_PASSWORD_SHOWN).exists())
 
-    def test_post_refused(self):
+
+class OtherRoomTests(MyWifiTestCase):
+    """Review of T16: a resident never sees the access of another room."""
+
+    def setUp(self):
+        self.record()
+
+    def test_after_a_room_change(self):
+        from .services import assign_room
+
         self.log_in(confirmed=True)
-        self.assertEqual(self.client.post(PASSWORD_URL).status_code, 405)
+        assign_room(self.ines, Room.objects.create(number="305", floor=self.r312.floor))
+        response = self.client.get(URL)
+        self.assertContains(response, "pas encore prêt")
+        self.assertNotContains(response, "vre8th")
+        response = self.client.post(PASSWORD_URL)
+        self.assertRedirects(response, URL)
+
+    def test_after_a_departure(self):
+        from residents.departure import record_departure
+
+        self.log_in(confirmed=True)
+        record_departure(self.ines, timezone.localdate())
+        response = self.client.get(URL)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("access:login"), response["Location"])
+
+    def test_staff_without_a_room(self):
+        self.log_in(self.nadia, confirmed=True)
+        response = self.client.get(URL)
+        self.assertContains(response, "Vous n'avez pas de chambre")
+        self.assertRedirects(self.client.post(PASSWORD_URL), URL)
 
 
 class TextTests(TestCase):

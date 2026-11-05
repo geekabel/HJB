@@ -1323,26 +1323,24 @@
     font-weight: 700;
   }
 
-  .copy-status:empty {
-    display: none;
-  }
-
+  /* No :empty rule: the live region must stay in the accessibility tree */
   .validity {
+    display: block;
+    width: 100%;
     height: 0.5rem;
     border-radius: 999px;
-    background: var(--line);
-    overflow: hidden;
   }
 
-  .validity span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--action-bg);
+  .validity__track {
+    fill: var(--line);
   }
 
-  .validity--low span {
-    background: var(--warning);
+  .validity__fill {
+    fill: var(--action-bg);
+  }
+
+  .validity--low .validity__fill {
+    fill: var(--warning-text); /* the yellow of --warning is too pale on the track */
   }
 
   .code-sheet svg {
