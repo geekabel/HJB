@@ -11,6 +11,8 @@ prospection. Sans cette option, OVHcloud ajoute « STOP » et bloque l'envoi
 entre 20 h et 8 h (doc OVHcloud).
 """
 
+import requests
+
 from .base import ErreurConfiguration, ErreurEnvoi, FournisseurSms, ResultatEnvoi
 
 
@@ -49,18 +51,27 @@ class FournisseurOvh(FournisseurSms):
             corps["senderForResponse"] = True
         try:
             reponse = self._client().post(f"/sms/{self.options['service']}/jobs", **corps)
-        except (
-            exceptions.HTTPError,
-            exceptions.NetworkError,
-            exceptions.InvalidResponse,
-        ) as erreur:
-            raise ErreurEnvoi(f"OVHcloud est injoignable ({erreur}).", temporaire=True) from erreur
+        except exceptions.HTTPError as erreur:
+            # La bibliothèque enveloppe l'erreur de requests (2e argument).
+            cause = erreur.args[1] if len(erreur.args) > 1 else None
+            if isinstance(cause, requests.ConnectionError):
+                raise ErreurEnvoi("OVHcloud est injoignable.", temporaire=True) from erreur
+            raise ErreurEnvoi(
+                "OVHcloud n'a pas répondu à temps : le SMS est peut-être parti.", incertain=True
+            ) from erreur
+        except (exceptions.NetworkError, exceptions.InvalidResponse) as erreur:
+            raise ErreurEnvoi(
+                "Réponse d'OVHcloud illisible : le SMS est peut-être parti.", incertain=True
+            ) from erreur
         except exceptions.APIError as erreur:
             statut = getattr(getattr(erreur, "response", None), "status_code", 0) or 0
             raise ErreurEnvoi(
-                f"OVHcloud a refusé l'envoi : {erreur}", temporaire=statut >= 500
+                f"OVHcloud a refusé l'envoi : {erreur}",
+                temporaire=statut == 429 or statut >= 500,
             ) from erreur
 
+        if not isinstance(reponse, dict):
+            raise ErreurEnvoi("Réponse d'OVHcloud inattendue.", incertain=True)
         if reponse.get("invalidReceivers") or not reponse.get("ids"):
             raise ErreurEnvoi("OVHcloud a refusé ce numéro.", temporaire=False)
         return ResultatEnvoi(self.nom, str(reponse["ids"][0]))

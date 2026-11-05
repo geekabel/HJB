@@ -68,6 +68,12 @@ DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "webmaster@loca
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 
+# SMS : sans DJANGO_SMS_FOURNISSEUR, aucun envoi, et rien d'écrit dans les
+# journaux (la console y mettrait numéros et codes). Voir base.py.
+
+SMS = reglage_sms("aucun")  # noqa: F405
+
+
 # HTTPS
 # https://docs.djangoproject.com/en/6.1/topics/security/#ssl-https
 

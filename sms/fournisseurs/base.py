@@ -9,7 +9,17 @@ from dataclasses import dataclass
 
 
 class ErreurSms(Exception):
-    """Erreur générale d'envoi de SMS."""
+    """Erreur d'envoi de SMS. Sauf si ``incertain`` est vrai, le SMS n'est pas parti.
+
+    ``temporaire`` : vrai si un nouvel essai plus tard peut réussir (réseau
+    coupé avant l'envoi, surcharge). Faux si le même envoi échouera encore.
+    ``incertain`` : le fournisseur a peut-être envoyé le SMS (délai dépassé
+    pendant la réponse…). Ne jamais relancer automatiquement : risque de
+    doublon. Les relances (carte T21) s'appuient sur ces deux indications.
+    """
+
+    temporaire = False
+    incertain = False
 
 
 class ErreurConfiguration(ErreurSms):
@@ -17,16 +27,12 @@ class ErreurConfiguration(ErreurSms):
 
 
 class ErreurEnvoi(ErreurSms):
-    """Le fournisseur a refusé ou n'a pas pu envoyer le SMS.
+    """Le fournisseur a refusé l'envoi, ou on ne sait pas s'il l'a fait."""
 
-    ``temporaire`` : vrai si un nouvel essai plus tard peut réussir (réseau,
-    surcharge). Faux si le même envoi échouera encore (numéro refusé,
-    identifiants faux). Les relances (carte T21) s'en servent.
-    """
-
-    def __init__(self, message, *, temporaire):
+    def __init__(self, message, *, temporaire=False, incertain=False):
         super().__init__(message)
         self.temporaire = temporaire
+        self.incertain = incertain
 
 
 @dataclass(frozen=True)

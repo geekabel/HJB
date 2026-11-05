@@ -139,10 +139,11 @@ MAILERS = {
 
 
 # SMS : fournisseur interchangeable (application sms, carte T10).
-# DJANGO_SMS_FOURNISSEUR : console (par défaut, rien n'est envoyé), smsgate ou ovh.
+# DJANGO_SMS_FOURNISSEUR : console (rien n'est envoyé), smsgate, ovh ou aucun.
 # Les identifiants viennent toujours de l'environnement (voir .env.example).
 
 FOURNISSEURS_SMS = {
+    "aucun": ("sms.fournisseurs.aucun.FournisseurAucun", {}),
     "console": ("sms.fournisseurs.console.FournisseurConsole", {}),
     "smsgate": (
         "sms.fournisseurs.smsgate.FournisseurSmsGate",
@@ -166,16 +167,25 @@ FOURNISSEURS_SMS = {
         },
     ),
 }
-_choix_sms = os.environ.get("DJANGO_SMS_FOURNISSEUR", "console")
-if _choix_sms not in FOURNISSEURS_SMS:
-    raise ImproperlyConfigured(
-        f"DJANGO_SMS_FOURNISSEUR={_choix_sms!r} : valeurs possibles {', '.join(FOURNISSEURS_SMS)}."
-    )
-_classe_sms, _variables_sms = FOURNISSEURS_SMS[_choix_sms]
-SMS = {
-    "BACKEND": _classe_sms,
-    "OPTIONS": {cle: os.environ.get(variable, "") for cle, variable in _variables_sms.items()},
-}
+
+
+def reglage_sms(par_defaut):
+    """Réglage SMS lu dans l'environnement. ``par_defaut`` : console ou aucun."""
+    choix = os.environ.get("DJANGO_SMS_FOURNISSEUR") or par_defaut
+    if choix not in FOURNISSEURS_SMS:
+        raise ImproperlyConfigured(
+            f"DJANGO_SMS_FOURNISSEUR={choix!r} : valeurs possibles {', '.join(FOURNISSEURS_SMS)}."
+        )
+    classe, variables = FOURNISSEURS_SMS[choix]
+    return {
+        "BACKEND": classe,
+        "OPTIONS": {cle: os.environ.get(variable, "") for cle, variable in variables.items()},
+    }
+
+
+# En développement, la console affiche les SMS. La production refuse d'envoyer
+# tant qu'aucun fournisseur n'est choisi (voir prod.py).
+SMS = reglage_sms("console")
 
 # Tests : aucun vrai SMS, voir outils/lanceur_tests.py.
 TEST_RUNNER = "outils.lanceur_tests.LanceurTests"

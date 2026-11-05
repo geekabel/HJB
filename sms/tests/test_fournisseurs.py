@@ -7,6 +7,7 @@ import requests
 from django.test import SimpleTestCase
 from ovh import exceptions as ovh_exceptions
 
+from sms.fournisseurs.aucun import FournisseurAucun
 from sms.fournisseurs.base import ErreurConfiguration, ErreurEnvoi
 from sms.fournisseurs.console import FournisseurConsole
 from sms.fournisseurs.ovh import FournisseurOvh
@@ -22,6 +23,12 @@ def reponse_http(code, corps=None):
     else:
         reponse.json.return_value = corps
     return reponse
+
+
+class AucunTests(SimpleTestCase):
+    def test_refuse_sans_rien_ecrire(self):
+        with self.assertRaisesMessage(ErreurConfiguration, "DJANGO_SMS_FOURNISSEUR"):
+            FournisseurAucun().envoyer(NUMERO, "Code 123456")
 
 
 class ConsoleTests(SimpleTestCase):
@@ -68,7 +75,7 @@ class SmsGateTests(SimpleTestCase):
             (reponse_http(401, None), False, "code 401"),
             (reponse_http(429, {"message": "Too many"}), True, "code 429"),
             (reponse_http(503, None), True, "code 503"),
-            (reponse_http(202, {"status": "queued"}), True, "sans identifiant"),
+            (reponse_http(500, ["liste"]), True, "code 500"),
         ]
         for reponse, temporaire, extrait in cas:
             with self.subTest(code=reponse.status_code):
@@ -76,6 +83,30 @@ class SmsGateTests(SimpleTestCase):
                 with self.assertRaisesMessage(ErreurEnvoi, extrait) as ctx:
                     self.fournisseur().envoyer(NUMERO, "Bonjour")
                 self.assertEqual(ctx.exception.temporaire, temporaire)
+                self.assertFalse(ctx.exception.incertain)
+
+    @mock.patch("sms.fournisseurs.smsgate.requests.post")
+    def test_acceptation_sans_identifiant_est_incertaine(self, post):
+        for corps in ({"status": "queued"}, ["liste"], None):
+            with self.subTest(corps=corps):
+                post.return_value = reponse_http(202, corps)
+                with self.assertRaises(ErreurEnvoi) as ctx:
+                    self.fournisseur().envoyer(NUMERO, "Bonjour")
+                # Le SMS est peut-être parti : pas de nouvel essai automatique.
+                self.assertTrue(ctx.exception.incertain)
+                self.assertFalse(ctx.exception.temporaire)
+
+    @mock.patch("sms.fournisseurs.smsgate.requests.post")
+    def test_delai_de_reponse_depasse(self, post):
+        post.side_effect = requests.ReadTimeout("lent")
+        with self.assertRaisesMessage(ErreurEnvoi, "pas répondu à temps") as ctx:
+            self.fournisseur().envoyer(NUMERO, "Bonjour")
+        self.assertTrue(ctx.exception.incertain)
+        self.assertFalse(ctx.exception.temporaire)
+        post.side_effect = requests.ConnectTimeout("connexion")
+        with self.assertRaises(ErreurEnvoi) as ctx:
+            self.fournisseur().envoyer(NUMERO, "Bonjour")
+        self.assertTrue(ctx.exception.temporaire)
 
     @mock.patch("sms.fournisseurs.smsgate.requests.post")
     def test_telephone_injoignable(self, post):
@@ -91,6 +122,10 @@ class SmsGateTests(SimpleTestCase):
         )
         self.assertEqual(self.fournisseur().options_manquantes(), [])
         self.assertEqual(FournisseurSmsGate(url="u", jeton="j").options_manquantes(), [])
+        self.assertEqual(
+            FournisseurSmsGate(url="u", jeton="j", sim="SIM1").options_manquantes(),
+            ["sim (1, 2 ou 3)"],
+        )
 
 
 OPTIONS_OVH = {
@@ -153,20 +188,35 @@ class OvhTests(SimpleTestCase):
 
     @mock.patch("ovh.Client")
     def test_erreurs_de_l_api(self, client):
-        serveur = mock.Mock(status_code=500, headers={})
+        def reponse(code):
+            return mock.Mock(status_code=code, headers={})
+
+        # (erreur, temporaire, incertain)
         cas = [
-            (ovh_exceptions.HTTPError("réseau"), True),
-            (ovh_exceptions.NetworkError(), True),
-            (ovh_exceptions.InvalidCredential("clé"), False),
-            (ovh_exceptions.BadParametersError("paramètre"), False),
-            (ovh_exceptions.APIError("panne", response=serveur), True),
+            (ovh_exceptions.HTTPError("x", requests.ConnectionError("refusé")), True, False),
+            (ovh_exceptions.HTTPError("x", requests.ReadTimeout("lent")), False, True),
+            (ovh_exceptions.NetworkError(), False, True),
+            (ovh_exceptions.InvalidResponse("x"), False, True),
+            (ovh_exceptions.InvalidCredential("clé", response=reponse(403)), False, False),
+            (ovh_exceptions.BadParametersError("paramètre", response=reponse(400)), False, False),
+            (ovh_exceptions.APIError("trop de requêtes", response=reponse(429)), True, False),
+            (ovh_exceptions.APIError("panne", response=reponse(500)), True, False),
         ]
-        for erreur, temporaire in cas:
-            with self.subTest(erreur=type(erreur).__name__):
+        for erreur, temporaire, incertain in cas:
+            with self.subTest(erreur=f"{type(erreur).__name__} {erreur.args[:1]}"):
                 client.return_value.post.side_effect = erreur
                 with self.assertRaises(ErreurEnvoi) as ctx:
                     self.fournisseur().envoyer(NUMERO, "Bonjour")
-                self.assertEqual(ctx.exception.temporaire, temporaire)
+                self.assertEqual(
+                    (ctx.exception.temporaire, ctx.exception.incertain), (temporaire, incertain)
+                )
+
+    @mock.patch("ovh.Client")
+    def test_reponse_inattendue(self, client):
+        client.return_value.post.return_value = ["pas", "un", "objet"]
+        with self.assertRaises(ErreurEnvoi) as ctx:
+            self.fournisseur().envoyer(NUMERO, "Bonjour")
+        self.assertTrue(ctx.exception.incertain)
 
     def test_region_inconnue(self):
         with self.assertRaises(ErreurConfiguration):

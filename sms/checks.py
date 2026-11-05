@@ -6,7 +6,7 @@ Doc : https://docs.djangoproject.com/en/6.1/topics/checks/
 from django.conf import settings
 from django.core.checks import Error, Warning, register
 
-FOURNISSEURS_DE_TEST = ("FournisseurConsole", "FournisseurMemoire")
+FOURNISSEURS_DE_TEST = ("FournisseurAucun", "FournisseurConsole", "FournisseurMemoire")
 
 
 @register("sms")
@@ -37,7 +37,7 @@ def verifier_fournisseur_de_production(app_configs, **kwargs):
     if nom_classe in FOURNISSEURS_DE_TEST:
         return [
             Warning(
-                "Les SMS ne partent pas : le fournisseur est celui du développement.",
+                "Les SMS ne partent pas : aucun fournisseur réel n'est configuré.",
                 hint="Régler DJANGO_SMS_FOURNISSEUR sur « ovh » (ou « smsgate » pour des essais).",
                 id="sms.W001",
             )

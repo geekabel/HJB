@@ -12,7 +12,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.module_loading import import_string
 
-from comptes.telephone import masquer_telephone, valider_e164
+from comptes.telephone import masquer_telephone, normaliser_telephone, valider_e164
 
 from .fournisseurs.base import ErreurConfiguration, ErreurEnvoi, ErreurSms
 from .segments import analyser
@@ -35,20 +35,25 @@ def fournisseur_actif():
 def envoyer_sms(numero, texte):
     """Envoie un SMS au numéro E.164 ``numero``. Renvoie un ResultatEnvoi.
 
-    Lève ErreurSms (ou une sous-classe) si le SMS n'est pas parti.
+    Lève ErreurSms (ou une sous-classe) en cas d'échec ; voir ses attributs
+    ``temporaire`` et ``incertain`` avant tout nouvel essai.
     """
     try:
         valider_e164(numero)
-    except ValidationError as erreur:
-        raise ErreurEnvoi(
-            "Le numéro n'est pas au format international.", temporaire=False
-        ) from erreur
+        # Numéro réel et portable (phonenumbers), pas seulement « + et chiffres ».
+        valide = normaliser_telephone(numero) == numero
+    except ValidationError:
+        valide = False
+    if not valide:
+        raise ErreurEnvoi("Le numéro n'est pas un portable au format international.")
     texte = (texte or "").strip()
     if not texte:
-        raise ErreurSms("Le message est vide.")
+        raise ErreurEnvoi("Le message est vide.")
     info = analyser(texte)
     if info.segments > SEGMENTS_MAX:
-        raise ErreurSms(f"Le message est trop long ({info.segments} SMS, {SEGMENTS_MAX} au plus).")
+        raise ErreurEnvoi(
+            f"Le message est trop long ({info.segments} SMS, {SEGMENTS_MAX} au plus)."
+        )
 
     fournisseur = fournisseur_actif()
     manquantes = fournisseur.options_manquantes()

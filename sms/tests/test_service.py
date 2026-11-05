@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.conf import settings
 from django.core.checks import run_checks
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
 from django.test import SimpleTestCase, override_settings
 
@@ -29,12 +30,17 @@ class ServiceTests(SimpleTestCase):
     def test_refus_avant_l_envoi(self):
         cas = [
             ("06 12 34 56 78", "Bonjour", "format international"),
+            # Forme E.164 correcte, mais numéro inexistant ou fixe : refusé avant l'envoi.
+            ("+999999999", "Bonjour", "portable au format international"),
+            ("+33123456789", "Bonjour", "portable au format international"),
             (NUMERO, "   ", "vide"),
             (NUMERO, "a" * (153 * SEGMENTS_MAX + 1), "trop long"),
         ]
         for numero, texte, extrait in cas:
-            with self.subTest(extrait), self.assertRaisesMessage(ErreurSms, extrait):
+            with self.subTest(extrait), self.assertRaisesMessage(ErreurSms, extrait) as ctx:
                 envoyer_sms(numero, texte)
+            self.assertFalse(ctx.exception.temporaire)
+            self.assertFalse(ctx.exception.incertain)
         self.assertEqual(memoire.boite, [])
 
     def test_journal_sans_numero_complet_ni_texte(self):
@@ -66,6 +72,41 @@ class ServiceTests(SimpleTestCase):
             envoyer_sms(NUMERO, "Bonjour")
 
 
+class ReglageTests(SimpleTestCase):
+    def test_choix_par_l_environnement(self):
+        from config.settings.base import reglage_sms
+
+        with mock.patch.dict("os.environ", {}, clear=True):
+            self.assertTrue(reglage_sms("aucun")["BACKEND"].endswith("FournisseurAucun"))
+            self.assertTrue(reglage_sms("console")["BACKEND"].endswith("FournisseurConsole"))
+        environ = {"DJANGO_SMS_FOURNISSEUR": "smsgate", "SMSGATE_URL": "http://192.0.2.5:8080"}
+        with mock.patch.dict("os.environ", environ, clear=True):
+            reglage = reglage_sms("aucun")
+            self.assertTrue(reglage["BACKEND"].endswith("FournisseurSmsGate"))
+            self.assertEqual(reglage["OPTIONS"]["url"], "http://192.0.2.5:8080")
+            self.assertEqual(reglage["OPTIONS"]["jeton"], "")
+        with (
+            mock.patch.dict("os.environ", {"DJANGO_SMS_FOURNISSEUR": "pirate"}, clear=True),
+            self.assertRaises(ImproperlyConfigured),
+        ):
+            reglage_sms("aucun")
+
+    def test_la_production_n_ecrit_pas_les_sms_par_defaut(self):
+        # prod.py appelle reglage_sms("aucun") : sans variable, rien ne part ni ne s'affiche.
+        from pathlib import Path
+
+        source = (Path(settings.BASE_DIR) / "config/settings/prod.py").read_text()
+        self.assertIn('SMS = reglage_sms("aucun")', source)
+
+    def test_lanceur_impose_la_boite_en_memoire_dans_chaque_processus(self):
+        from outils.lanceur_tests import SMS_DE_TEST, LanceurTests, imposer_sms_de_test
+
+        self.assertIs(LanceurTests.parallel_test_suite.process_setup, imposer_sms_de_test)
+        with override_settings(SMS={"BACKEND": "sms.fournisseurs.ovh.FournisseurOvh"}):
+            imposer_sms_de_test()
+            self.assertEqual(settings.SMS, SMS_DE_TEST)
+
+
 class ControlesTests(SimpleTestCase):
     def ids(self, **kwargs):
         return [m.id for m in run_checks(tags=["sms"], **kwargs)]
@@ -83,10 +124,14 @@ class ControlesTests(SimpleTestCase):
     def test_fournisseur_introuvable(self):
         self.assertEqual(self.ids(), ["sms.E001"])
 
-    @override_settings(SMS={"BACKEND": "sms.fournisseurs.console.FournisseurConsole"})
     def test_avertissement_au_deploiement(self):
-        self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W001"])
-        self.assertEqual(self.ids(), [])
+        for classe in ("console.FournisseurConsole", "aucun.FournisseurAucun"):
+            with (
+                self.subTest(classe),
+                override_settings(SMS={"BACKEND": f"sms.fournisseurs.{classe}"}),
+            ):
+                self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W001"])
+                self.assertEqual(self.ids(), [])
 
 
 class CommandeEssaiTests(SimpleTestCase):

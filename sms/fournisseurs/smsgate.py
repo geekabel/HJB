@@ -24,6 +24,8 @@ class FournisseurSmsGate(FournisseurSms):
         identifiants = self.options.get("identifiant") and self.options.get("mot_de_passe")
         if not (self.options.get("jeton") or identifiants):
             manquantes.append("jeton (ou identifiant et mot_de_passe)")
+        if self.options.get("sim") and str(self.options["sim"]) not in {"1", "2", "3"}:
+            manquantes.append("sim (1, 2 ou 3)")
         return manquantes
 
     def envoyer(self, numero, texte):
@@ -44,23 +46,35 @@ class FournisseurSmsGate(FournisseurSms):
                 auth=auth,
                 timeout=float(self.options.get("delai", 10)),
             )
-        except requests.RequestException as erreur:
+        except requests.ConnectionError as erreur:
+            # Connexion impossible (y compris délai de connexion) : rien n'est parti.
             raise ErreurEnvoi(
                 f"SMSGate est injoignable ({type(erreur).__name__}).", temporaire=True
             ) from erreur
+        except requests.RequestException as erreur:
+            # Délai de réponse dépassé, réponse coupée : le SMS est peut-être parti.
+            raise ErreurEnvoi(
+                f"SMSGate n'a pas répondu à temps ({type(erreur).__name__}).", incertain=True
+            ) from erreur
 
+        donnees = _json(reponse)
         if 200 <= reponse.status_code < 300:
-            try:
-                return ResultatEnvoi(self.nom, str(reponse.json()["id"]))
-            except (ValueError, KeyError) as erreur:
-                raise ErreurEnvoi(
-                    "SMSGate a répondu sans identifiant de message.", temporaire=True
-                ) from erreur
-        try:
-            detail = reponse.json().get("message", "")
-        except ValueError:
-            detail = ""
+            if donnees.get("id"):
+                return ResultatEnvoi(self.nom, str(donnees["id"]))
+            raise ErreurEnvoi(
+                "SMSGate a accepté le message sans donner son identifiant.", incertain=True
+            )
+        detail = donnees.get("message", "")
         raise ErreurEnvoi(
             f"SMSGate a refusé l'envoi (code {reponse.status_code}). {detail}".strip(),
             temporaire=reponse.status_code in CODES_TEMPORAIRES,
         )
+
+
+def _json(reponse):
+    """Le corps JSON s'il s'agit d'un objet, sinon un dictionnaire vide."""
+    try:
+        donnees = reponse.json()
+    except ValueError:
+        return {}
+    return donnees if isinstance(donnees, dict) else {}

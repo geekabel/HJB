@@ -67,7 +67,10 @@ def masquer_telephone(e164, region=REGION_PAR_DEFAUT):
     On garde le premier groupe (indicatif ou 06/07) et les deux derniers
     chiffres : assez pour reconnaître un numéro, pas pour l'appeler.
     """
-    texte = afficher_telephone(e164, region)
+    try:
+        texte = afficher_telephone(e164, region)
+    except phonenumbers.NumberParseException:
+        texte = e164  # numéro illisible : on masque quand même ses chiffres
     if not texte:
         return ""
     debut = texte.find(" ")
