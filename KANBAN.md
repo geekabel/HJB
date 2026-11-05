@@ -284,8 +284,10 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Clé d'accès obligatoire pour le personnel, et plus aucun mot de passe : la connexion par mot de passe est coupée (les permissions des rôles restent), l'administration exige une session vérifiée par clé et renvoie vers /connexion/
 - [x] Premier accès du personnel : code d'activation généré par un administrateur (action « Générer un code d'activation (personnel) »), puis SMS et clé, comme les résidents. Un code du personnel ne sert pas à un résident, et inversement. Premier administrateur : `python manage.py code_activation <identifiant> --telephone "06 …"`
 - [x] Adresse de l'administration réglable (`DJANGO_ADMIN_URL`) ; `check --deploy` signale « admin/ » (connexion.W001)
-- [x] Limite de tentatives de connexion par adresse IP : 100 débuts en 10 minutes, 30 refus par heure (réponse 429)
+- [x] Limite de tentatives de connexion par adresse IP : 300 débuts de connexion en 10 minutes (réponse 429). Une adresse IPv6 compte pour son réseau /64
+- [x] `check` refuse une adresse d'administration déjà prise (/connexion/, /equipe/…) (connexion.E001)
 - **Notes** : retirer ModelBackend coupait aussi les permissions (c'est lui qui les lit) : un backend `PermissionsSansMotDePasse` garde les permissions et refuse tout mot de passe. Les comptes se créent sans mot de passe dans l'administration. Les compteurs des limites sont dans le cache de Django, en mémoire par processus tant qu'aucun cache partagé n'est choisi (T38). Essai de bout en bout dans Chromium : activation d'un administrateur, puis espace équipe et administration.
+- **Revue indépendante (5 nov.)** : corrigé après relecture. Le blocage après 30 échecs permettait à n'importe qui de bloquer tout le wifi de la résidence avec des requêtes vides : il est retiré, car une clé d'accès ne se devine pas ; seule la limite des débuts reste, plus large. Une personne qui pouvait seulement modifier des comptes pouvait se donner le rôle Administration et le statut de super-utilisateur : les rôles et l'accès technique demandent maintenant le rôle Administration, et le statut de super-utilisateur demande d'en être un. Le code d'un super-utilisateur ne peut venir que d'un super-utilisateur. Ajouter un rôle ne supprime plus le code du personnel déjà remis. Une adresse d'administration déjà prise est refusée. Un test prouvait moins qu'il ne disait. 367 tests.
 
 ### Qualité
 
@@ -442,6 +444,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 #### T38 Déploiement
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
+- [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
 - [ ] Fichiers statiques et médias
 
