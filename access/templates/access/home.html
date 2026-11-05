@@ -15,6 +15,10 @@
   <p class="text-muted">Vous êtes connecté. Les messages, les rendez-vous et les signalements arrivent bientôt ici.</p>
 </header>
 
+<nav class="grid-2" aria-label="Raccourcis">
+  <a class="card card--link" href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span class="card__title">Mon wifi</span></a>
+</nav>
+
 <section class="card stack" aria-labelledby="passkeys-title">
   <h2 id="passkeys-title" class="card__title">Ma clé d'accès</h2>
   {% if passkeys %}

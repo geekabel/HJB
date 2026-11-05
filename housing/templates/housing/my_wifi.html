@@ -1,0 +1,93 @@
+{% extends "ui/resident.html" %}
+{% load icons static %}
+{% block title %}Mon accès wifi{% endblock %}
+{% block head %}<script src="{% static 'ui/js/copy.js' %}" defer></script>{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'home' %}">{% icon "back" %}<span class="visually-hidden">Retour à l'accueil</span></a>
+  <h1>Mon accès wifi</h1>
+</div>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not stay %}
+<div class="card stack">
+  <p>Vous n'avez pas de chambre en ce moment : pas d'accès wifi à afficher.</p>
+</div>
+{% elif not access %}
+<div class="card stack">
+  <div class="row">
+    <span class="icon-tile">{% icon "wifi" %}</span>
+    <p>Votre accès wifi n'est pas encore prêt. L'accueil vous le donnera.</p>
+  </div>
+</div>
+{% else %}
+{% if access.is_expired %}
+<div class="alert alert--warning" role="status">{% icon "alert" %}<p><strong>Votre accès a expiré.</strong> Passez à l'accueil pour le renouveler.</p></div>
+{% elif access.renew_soon %}
+<div class="alert alert--info">{% icon "clock" %}<p>Votre accès se termine bientôt. L'accueil le renouvellera.</p></div>
+{% endif %}
+
+<div class="card stack">
+  <div class="row">
+    <span class="icon-tile">{% icon "wifi" %}</span>
+    <div>
+      <p class="text-muted text-small">Réseau</p>
+      {% if network_name %}
+      <p class="wifi-network">{{ network_name }}</p>
+      {% else %}
+      <p>Demandez le nom du réseau à l'accueil.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <dl class="wifi-values">
+    <div>
+      <dt>Identifiant</dt>
+      <dd class="copy-box">
+        <span class="copy-box__value" id="wifi-username">{{ access.username }}</span>
+        <button class="copy-box__button" type="button" data-copy="wifi-username" data-copied="Identifiant copié." hidden>{% icon "copy" %}<span class="visually-hidden">Copier l'identifiant</span></button>
+      </dd>
+    </div>
+    <div>
+      <dt>Mot de passe</dt>
+      {% if password %}
+      <dd class="copy-box">
+        <span class="copy-box__value" id="wifi-password">{{ password }}</span>
+        <button class="copy-box__button" type="button" data-copy="wifi-password" data-copied="Mot de passe copié." hidden>{% icon "copy" %}<span class="visually-hidden">Copier le mot de passe</span></button>
+      </dd>
+      {% else %}
+      <dd class="copy-box">
+        <span class="copy-box__value copy-box__value--masked"><span aria-hidden="true">••••••••</span><span class="visually-hidden">Masqué</span></span>
+        <a class="button" href="{% url 'housing:my_wifi_password' %}">{% icon "eye" %}Afficher</a>
+      </dd>
+      {% endif %}
+    </div>
+  </dl>
+  <p class="copy-status text-small" role="status" data-copy-status></p>
+  {% if password %}
+  <p><a href="{% url 'housing:my_wifi' %}">Masquer le mot de passe</a></p>
+  {% else %}
+  <p class="icon-text text-muted text-small">{% icon "lock" %}<span>Vous confirmerez avec votre clé d'accès : Face ID, empreinte ou code du téléphone.</span></p>
+  {% endif %}
+
+  <div class="stack stack--tight">
+    <p class="row row--between"><span>Valable jusqu'au</span><strong><time datetime="{{ access.expires_on|date:'Y-m-d' }}">{{ access.expires_on|date:"j F Y" }}</time></strong></p>
+    <div class="validity{% if access.is_expired or access.renew_soon %} validity--low{% endif %}" aria-hidden="true"><span style="width: {{ validity_percent }}%"></span></div>
+    <p class="text-muted text-small">Enregistré le <time datetime="{{ access.created_on|date:'Y-m-d' }}">{{ access.created_on|date:"j F Y" }}</time> · {{ time_left }}</p>
+  </div>
+</div>
+
+<div class="card stack">
+  <p>Votre accès ne marche plus ? Passez à l'accueil : l'équipe vérifiera et le renouvellera si besoin.</p>
+</div>
+
+<p class="text-muted text-small">Ces identifiants sont personnels. Ne les partagez pas : toute connexion est liée à votre chambre.</p>
+{% endif %}
+{% endblock %}

@@ -28,6 +28,8 @@ urlpatterns = [
     path("connexion/", include("access.urls")),
     # Resident area: account activation (cards T11 to T13).
     path("activer/", include("activation.urls")),
+    # Resident area: wifi access of the room (card T16).
+    path("wifi/", include("housing.urls")),
     # Style guide, for staff only.
     path("guide/", include("ui.urls")),
     # Staff area.
