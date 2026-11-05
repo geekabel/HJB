@@ -85,7 +85,7 @@ erDiagram
         int id PK
         string numero UK
         int etage_id FK
-        bool active
+        bool active "fermée : travaux, bureau…"
     }
     SEJOUR {
         int id PK
@@ -322,6 +322,9 @@ Les groupes et leurs permissions sont recréés à chaque `migrate` (signal `pos
 |---|---|
 | Une chambre n'a qu'un séjour en cours | Contrainte unique conditionnelle sur `Sejour(chambre)` quand `depart` est vide |
 | Un résident n'a qu'un séjour en cours | Même contrainte sur `Sejour(resident)` |
+| Le départ ne précède pas l'arrivée | Contrainte de vérification sur `Sejour` |
+| Pas deux séjours qui se croisent, pour une chambre ou une personne | Validation de `Sejour` (`clean`), le jour de relève est permis |
+| Pas de nouveau séjour dans une chambre fermée | Validation de `Sejour` (`clean`) |
 | Un seul accès wifi actif par chambre | Contrainte unique conditionnelle sur `AccesWifi(chambre)` quand `actif` est vrai |
 | Un seul vote par sondage et par résident | Contrainte unique sur `Participation(sondage, resident)` |
 | Un envoi par personne et par canal | Contrainte unique sur `Envoi(campagne, destinataire, canal)`, ce qui rend un nouvel essai sans risque de doublon |

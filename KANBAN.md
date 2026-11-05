@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T06 | Étages, chambres et séjours | E1 Résidents | T01 |
 | T07 | Liste et fiche des résidents (équipe) | E1 Résidents | T03, T06 |
 | T08 | Import CSV et Excel des résidents | E1 Résidents | T07 |
 | T09 | Départ d'un résident | E1 Résidents | T06, T15 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T03 | Gabarits de base et système de design CSS | 5 nov. 2026 |
 | T04 | Rôles et permissions | 5 nov. 2026 |
 | T05 | Journal d'audit | 5 nov. 2026 |
+| T06 | Étages, chambres et séjours | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -178,10 +178,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 ### E1 Résidents
 
-#### T06 Étages, chambres et séjours
-- [ ] Modèles `Etage`, `Chambre`, `Sejour` et contraintes uniques conditionnelles
-- [ ] Administration Django pour la saisie initiale
-- [ ] Tests des contraintes (une chambre, un séjour en cours)
+#### T06 Étages, chambres et séjours (fait le 5 nov. 2026)
+- **Docs** : [contraintes](https://docs.djangoproject.com/en/6.1/ref/models/constraints/), [validation des modèles](https://docs.djangoproject.com/en/6.1/ref/models/instances/#validating-objects), [Exists et OuterRef](https://docs.djangoproject.com/en/6.1/ref/models/expressions/#exists-subqueries), [inlines de l'administration](https://docs.djangoproject.com/en/6.1/ref/contrib/admin/#inlinemodeladmin-objects).
+- [x] Modèles `Etage`, `Chambre`, `Sejour` (application `logement`) et contraintes uniques conditionnelles : un séjour en cours par chambre et par personne, départ jamais avant l'arrivée
+- [x] Validation en plus des contraintes : pas de chevauchement de dates (le jour de relève est permis), pas de nouveau séjour dans une chambre fermée
+- [x] `affecter_chambre()` : arrivée, déménagement interne (le séjour précédent se termine le jour même) ou correction le jour de l'arrivée, dans une transaction
+- [x] Administration Django pour la saisie initiale : un étage et ses chambres sur une seule page, filtre « libre / occupée »
+- [x] Tests des contraintes en base et des messages de validation (21 tests)
+- **Notes** : un compte qui a des séjours ne peut pas être supprimé (`PROTECT`) : l'historique reste. Le départ d'un résident sera fait en T09.
 
 #### T07 Liste et fiche des résidents (équipe)
 - **Maquette** : P5.
