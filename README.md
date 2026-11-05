@@ -78,7 +78,8 @@ Le fournisseur se choisit avec `DJANGO_SMS_FOURNISSEUR` (voir [.env.example](.en
 
 | Valeur | Usage |
 |---|---|
-| `console` | Par défaut. Le SMS s'affiche dans la console, rien n'est envoyé |
+| *(vide)* | En production : aucun SMS ne part, et rien n'est écrit dans les journaux |
+| `console` | Par défaut en développement. Le SMS s'affiche dans la console, rien n'est envoyé. Jamais en production : numéros et codes finiraient dans les journaux |
 | `smsgate` | Essais réels avec un téléphone Android et l'application [SMSGate](https://docs.sms-gate.app) |
 | `ovh` | Production, avec l'[API SMS d'OVHcloud](https://docs.ovhcloud.com/fr/guides/web-cloud/messaging/sms/sending-via-api-c.md) |
 
