@@ -20,6 +20,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from access import views as access_views
+from messaging import resident_views as messaging_resident_views
 from ui import pwa
 
 urlpatterns = [
@@ -37,6 +38,9 @@ urlpatterns = [
     path("activer/", include("activation.urls")),
     # Resident area: wifi access of the room (card T16).
     path("wifi/", include("housing.urls")),
+    # Messages of the residents, and the personal reply link of the SMS (card T22).
+    path("messages/", include("messaging.resident_urls")),
+    path("r/<str:token>/", messaging_resident_views.reply, name="reply"),
     # Notification settings and Web Push subscriptions (card T19).
     path("notifications/", include("push.urls")),
     # Style guide, for staff only.

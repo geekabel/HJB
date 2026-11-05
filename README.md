@@ -99,6 +99,8 @@ Les notifications Web Push sont signées avec une clé VAPID. En production, `DJ
 
 ## Tâches de fond et tâches planifiées
 
+Les SMS des messages qui demandent une réponse finissent par un lien personnel vers le site : en production, réglez `DJANGO_SITE_URL` (par défaut, la première adresse de `DJANGO_WEBAUTHN_ORIGINS`).
+
 Les envois de messages passent par le [framework de tâches de Django](https://docs.djangoproject.com/en/6.1/topics/tasks/). En production, les tâches sont gardées dans la base de données par [django-tasks-db](https://github.com/RealOrangeOne/django-tasks-db) et exécutées par son *worker*, un service à part qui tourne en permanence :
 
 ```sh

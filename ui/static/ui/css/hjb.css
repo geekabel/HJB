@@ -1398,6 +1398,22 @@
     flex: 1 1 16rem;
   }
 
+  /* Answer "Présent" / "Absent" (card T22): two big buttons side by side */
+  .answer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-3);
+  }
+
+  .answer .button {
+    min-height: calc(var(--target) + var(--s-2));
+  }
+
+  .button--selected {
+    outline: 3px solid var(--action);
+    outline-offset: 2px;
+  }
+
   /* Notification settings (card T19) */
   .push-error {
     margin: 0;

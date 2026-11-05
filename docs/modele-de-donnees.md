@@ -231,8 +231,8 @@ erDiagram
         int id PK
         int campaign_id FK
         int resident_id FK
-        string value "present, absent"
-        datetime replied_at
+        string answer "present, absent"
+        datetime answered_at "modifiable jusqu'au soir du jour J"
     }
     NOTIFICATION {
         int id PK
@@ -405,6 +405,7 @@ Dans le code, chaque rôle a une valeur : `front_desk` (Accueil), `educator` (É
 - Un `DELIVERY` par personne, par message et par sorte (le message, puis la relance) : la contrainte unique empêche tout doublon, même avec deux *workers*. Chaque envoi est réservé (`sending`) avant de partir ; un envoi resté réservé plus de 10 minutes passe en échec, jamais renvoyé.
 - Le texte envoyé (champs remplis) est gardé dans `DELIVERY` : il servira à la boîte de réception (T23).
 - La relance va seulement à ceux qui n'ont pas de `ATTENDANCE_REPLY`.
+- La réponse se donne par un lien personnel signé (SMS, boutons de la notification) ou dans l'appli. Pas de table pour les liens : la signature suffit, et elle dépend de la clé secrète.
 
 ## Notifications
 

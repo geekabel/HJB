@@ -18,8 +18,10 @@ import logging
 from datetime import datetime, time, timedelta
 from functools import partial
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import models, transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from audit.models import Action
@@ -34,6 +36,8 @@ from sms.service import MAX_SEGMENTS, send_sms
 from .audience import audience, rendered
 from .models import AttendanceReply, Campaign, Delivery, ReplyType
 from .placeholders import fill, missing_values, values_for
+from .replies import closes_at, reply_path
+from .replies import is_open as replies_open
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +91,17 @@ def problems(campaign, send_at):
             found.append(
                 "La relance (le jour J à 8 h) doit venir au moins une heure après l'envoi."
             )
+    if (
+        campaign.reply_type == ReplyType.ATTENDANCE
+        and campaign.event_date
+        and closes_at(campaign) <= send_at + MIN_REMINDER_GAP
+    ):
+        # The answers close at the end of the event day: the link would be useless.
+        found.append("La date du message est passée ou trop proche : plus de réponse possible.")
+    if campaign.reply_type == ReplyType.ATTENDANCE and not settings.SITE_URL:
+        found.append(
+            "L'adresse du site n'est pas réglée (DJANGO_SITE_URL) : pas de lien de réponse."
+        )
     try:
         vapid()
     except ImproperlyConfigured:
@@ -439,7 +454,8 @@ def _send_one(campaign, delivery):
             user,
             title=delivery.title,
             body=delivery.body,
-            url="/",
+            url=reverse("inbox:message", args=[campaign.pk]),
+            reply=reply_path(campaign.pk, user.pk) if replies_open(campaign) else "",
             tag=f"message-{campaign.pk}",
             urgency="high" if delivery.kind == Delivery.Kind.REMINDER else "normal",
         )

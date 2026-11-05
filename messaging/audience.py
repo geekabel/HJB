@@ -98,6 +98,17 @@ def audience(campaign, *, floors=None, rooms=None, people=None, excluded=None, e
 
 
 def rendered(campaign, recipient):
-    """(full text, SMS text) for one recipient."""
+    """(full text, SMS text) for one recipient.
+
+    A message that asks for an answer ends its SMS with the personal reply link
+    (card T22): it counts in the length, so it is in the previews and costs too.
+    """
+    from .models import ReplyType
+    from .replies import sms_suffix
+
     values = values_for(campaign, recipient.user, recipient.room)
-    return fill(campaign.body, values), sms_text(fill(campaign.sms_body or campaign.body, values))
+    sms = sms_text(fill(campaign.sms_body or campaign.body, values))
+    if campaign.reply_type == ReplyType.ATTENDANCE:
+        user_id = recipient.user.pk if recipient.user else 0
+        sms += sms_suffix(campaign.pk or 0, user_id or 0)
+    return fill(campaign.body, values), sms

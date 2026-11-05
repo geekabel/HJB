@@ -1,5 +1,5 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
+{% load icons messaging_tags %}
 {% block title %}{{ display_title }}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
@@ -32,6 +32,16 @@
   <div class="card stat"><span class="text-muted text-small">SMS envoyés</span><span class="stat__value">{{ stats.sms }}</span><span class="text-muted text-small">{{ stats.segments }} SMS facturé{{ stats.segments|pluralize }}</span></div>
   <div class="card stat"><span class="text-muted text-small">Échecs</span><span class="stat__value">{{ stats.failed }}</span></div>
 </div>
+{% if answers %}
+<section class="stack" aria-labelledby="answers-title">
+  <h2 id="answers-title">Réponses</h2>
+  <div class="grid-auto">
+    <div class="card stat"><span class="text-muted text-small">Présents</span><span class="stat__value">{{ answers.present }}</span></div>
+    <div class="card stat"><span class="text-muted text-small">Absents</span><span class="stat__value">{{ answers.absent }}</span></div>
+    <div class="card stat"><span class="text-muted text-small">Sans réponse</span><span class="stat__value">{{ answers.none }}</span><span class="text-muted text-small">parmi ceux qui ont reçu le message</span></div>
+  </div>
+</section>
+{% endif %}
 {% if campaign.status == "sending" %}<p class="alert alert--info" role="status">{% icon "clock" %}<span>Envoi en cours. Rechargez la page pour suivre l'avancée.</span></p>{% endif %}
 {% if campaign.remind_at %}
 <div class="row row--between">
@@ -56,6 +66,7 @@
         <th scope="col">Envoi</th>
         <th scope="col">Canal</th>
         <th scope="col">État</th>
+        {% if answers %}<th scope="col">Réponse</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -66,6 +77,7 @@
         <td>{{ delivery.get_kind_display }}</td>
         <td>{{ delivery.get_channel_display }}</td>
         <td>{% if delivery.status == "sent" %}<span class="badge badge--success">Envoyé</span>{% elif delivery.status == "failed" %}<span class="badge badge--error">Échec</span> <span class="text-small">{{ delivery.error }}</span>{% else %}<span class="badge badge--info">{{ delivery.get_status_display }}</span>{% endif %}</td>
+        {% if answers %}<td>{% if delivery.kind == "message" %}{% with answer=answers.answers|get_item:delivery.recipient_id %}{% if answer == "present" %}<span class="badge badge--success">Présent</span>{% elif answer == "absent" %}<span class="badge badge--neutral">Absent</span>{% else %}<span class="text-muted">–</span>{% endif %}{% endwith %}{% endif %}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>
