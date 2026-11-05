@@ -67,12 +67,15 @@ def audience(campaign, *, floors=None, rooms=None, people=None, excluded=None, e
     stays = stays.select_related("resident", "room").order_by("room__number")
     room_of = {stay.resident_id: stay.room for stay in stays}
     users = {stay.resident_id: stay.resident for stay in stays}
-    for person in people:
-        if person.is_active:
-            users.setdefault(person.pk, person)
-            if person.pk not in room_of:
-                stay = Stay.objects.current().filter(resident=person).select_related("room").first()
-                room_of[person.pk] = stay.room if stay else None
+    # People added one by one: still residents (no staff role since), still active.
+    added = User.objects.residents().filter(pk__in=[p.pk for p in people], is_active=True)
+    added_rooms = {
+        stay.resident_id: stay.room
+        for stay in Stay.objects.current().filter(resident__in=added).select_related("room")
+    }
+    for person in added:
+        users.setdefault(person.pk, person)
+        room_of.setdefault(person.pk, added_rooms.get(person.pk))
     for person in excluded:
         users.pop(person.pk, None)
 

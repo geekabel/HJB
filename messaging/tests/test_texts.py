@@ -61,3 +61,11 @@ class SmsTextTests(SimpleTestCase):
         self.assertEqual(result, "Fete ce soir 🎉\nA bientot")
         self.assertEqual(analyze(result).non_gsm, ("🎉",))
         self.assertEqual(words_with(result, "🎉"), ["🎉"])
+
+    def test_review_characters(self):
+        # Review of T20: common characters, and no change of meaning.
+        self.assertEqual(
+            to_gsm("n\u00b0 312 \u2022 rez\u2011de\u2011chauss\u00e9e"), "no 312 - rez-de-chaussée"
+        )
+        self.assertEqual(to_gsm("\ufb01n \u0151"), "fin o")
+        self.assertEqual(to_gsm("\u00bd"), "\u00bd")  # would become "1/2" with another slash

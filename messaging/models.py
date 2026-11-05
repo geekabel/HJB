@@ -28,7 +28,7 @@ class ReplyType(models.TextChoices):
 
 def _check_texts(instance):
     errors = {}
-    for field in ("body", "sms_body"):
+    for field in ("title", "body", "sms_body"):
         problems = check_text(getattr(instance, field))
         if problems:
             errors[field] = problems

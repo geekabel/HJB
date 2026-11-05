@@ -12,6 +12,7 @@ from sms.providers.base import SmsError
 from sms.service import send_sms
 
 from .audience import Recipient, audience, rendered
+from .placeholders import fill, missing_values, values_for
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +55,9 @@ def find_target(query):
     return None, None, f"Plusieurs résidents correspondent à « {query} » : {names}. Précisez."
 
 
-def sample_recipient(campaign, user):
+def sample_recipient(campaign, user, audience_=None):
     """The first recipient (for the previews), or the user themselves."""
-    recipients = audience(campaign).recipients
+    recipients = (audience_ or audience(campaign)).recipients
     return recipients[0] if recipients else Recipient(user, None, "none")
 
 
@@ -65,12 +66,17 @@ def send_test(campaign, user, *, by_sms=False):
 
     Return a list of French result lines.
     """
+    missing = missing_values(campaign)
+    if missing:
+        names = ", ".join(f"{{{name}}}" for name in missing)
+        return [f"Rien n'est parti : indiquez d'abord la valeur de {names}."]
     sample = sample_recipient(campaign, user)
     body, sms = rendered(campaign, sample)
+    title = fill(campaign.title, values_for(campaign, sample.user, sample.room))
     lines = []
     result = send_to_user(
         user,
-        title=TEST_PREFIX + campaign.title,
+        title=TEST_PREFIX + title,
         body=body,
         url=f"/equipe/messages/{campaign.pk}/",
         tag=f"test-{campaign.pk}",

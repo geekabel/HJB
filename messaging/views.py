@@ -45,17 +45,19 @@ def _sms_report(campaign, audience_):
     sms_recipients = [r for r in audience_.recipients if r.channel == "sms"]
     texts = [rendered(campaign, r)[1] for r in sms_recipients]
     if not texts:
-        sample = audience_.recipients[0] if audience_.recipients else None
-        texts = [rendered(campaign, sample)[1]] if sample else [rendered(campaign, _nobody())[1]]
-    longest = max(texts, key=lambda t: analyze(t).segments * 1000 + analyze(t).units)
+        sample = audience_.recipients[0] if audience_.recipients else _nobody()
+        texts = [rendered(campaign, sample)[1]]
+    sizes = {text: analyze(text) for text in texts}
+    longest = max(texts, key=lambda t: (sizes[t].segments, sizes[t].units))
     info = analyze(longest)
     replaced = [c for c in dict.fromkeys(source) if c not in GSM and c in REPLACEMENTS]
     limit = 160 if info.encoding == "GSM-7" else 70
     if info.segments > 1:
         limit = (153 if info.encoding == "GSM-7" else 67) * info.segments
     return {
-        "text": texts[0],
+        "text": longest,  # the preview shows the longest: the counts below are for it
         "info": info,
+        "varies": len({sizes[t].segments for t in texts}) > 1,
         "limit": limit,
         "replaced": [(c, REPLACEMENTS[c]) for c in replaced],
         "kept": [(c, words_with(longest, c)) for c in info.non_gsm],
@@ -77,7 +79,7 @@ def _added(campaign):
 
 def _compose_page(request, form, campaign):
     audience_ = audience(campaign) if campaign.pk else None
-    sample = sample_recipient(campaign, request.user) if campaign.pk else None
+    sample = sample_recipient(campaign, request.user, audience_) if campaign.pk else None
     context = {
         "active_nav": "messages",
         "form": form,
@@ -93,7 +95,7 @@ def _compose_page(request, form, campaign):
             {
                 "audience": audience_,
                 "sample": sample,
-                "preview_title": campaign.title,
+                "preview_title": fill(campaign.title, values),
                 "preview_body": fill(campaign.body, values),
                 "sms": _sms_report(campaign, audience_),
                 "added_rooms": rooms,
@@ -147,6 +149,8 @@ def compose(request, pk=None):
 def _apply(request, campaign, action, add):
     """Run the button that was pressed. Return a response, or None for the edit page."""
     kind, _, value = action.partition(":")
+    if kind == "add" and not add.strip():
+        kind = "save"  # Enter in a text field presses the first button: "Ajouter"
     if kind == "save":
         messages.success(request, f"Brouillon enregistré à {timezone.localtime():%H:%M}.")
     elif kind == "add":
@@ -168,8 +172,8 @@ def _apply(request, campaign, action, add):
             if person and kind == "remove_person":
                 campaign.people.remove(person)
             elif person and kind == "exclude":
+                # Kept in the added people: "Remettre" brings the person back.
                 campaign.excluded.add(person)
-                campaign.people.remove(person)
             elif person:
                 campaign.excluded.remove(person)
     elif kind == "test":

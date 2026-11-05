@@ -26,10 +26,10 @@
 </form>
 {% endif %}
 
-<form class="compose" method="post" action="{% if campaign.pk %}{% url 'messaging:compose' campaign.pk %}{% else %}{% url 'messaging:new' %}{% endif %}" novalidate>
+<form class="compose" method="post" action="{% if campaign.pk %}{% url 'messaging:compose' campaign.pk %}{% else %}{% url 'messaging:new' %}{% if campaign.template_id %}?modele={{ campaign.template_id }}{% endif %}{% endif %}" novalidate>
   {% csrf_token %}
   <div class="compose__main stack">
-    {% if form.non_field_errors %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p>{{ form.non_field_errors|join:" " }}</p></div>{% endif %}
+    {% if form.errors %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p><strong>Rien n'a été enregistré, ajouté ni envoyé.</strong> Corrigez {% if form.errors|length > 1 %}les champs signalés{% else %}le champ signalé{% endif %} ci-dessous.{% if form.non_field_errors %} {{ form.non_field_errors|join:" " }}{% endif %}</p></div>{% endif %}
 
     <fieldset class="card stack">
       <legend class="compose__step">1. Type de message</legend>
@@ -56,15 +56,15 @@
       </ul>
       {% endif %}
       {% if audience %}
-      <p class="compose__counts"><strong>{{ audience.total }}</strong> résident{{ audience.total|pluralize }} · <strong>{{ audience.push }}</strong> recevront une notification (gratuit) · <strong>{{ audience.sms }}</strong> sans l'application : SMS{% if audience.unreachable %} · <strong class="text-warning">{{ audience.unreachable }}</strong> sans moyen de contact{% endif %}</p>
+      <p class="compose__counts"><strong>{{ audience.total }}</strong> résident{{ audience.total|pluralize }} · <strong>{{ audience.push }}</strong> {% if audience.push > 1 %}recevront{% else %}recevra{% endif %} une notification (gratuit) · <strong>{{ audience.sms }}</strong> sans l'application : SMS{% if audience.unreachable %} · <strong class="text-warning">{{ audience.unreachable }}</strong> sans moyen de contact{% endif %}</p>
       {% if audience.recipients %}
       <details>
-        <summary>Voir les {{ audience.total }} destinataire{{ audience.total|pluralize }}</summary>
+        <summary>{% if audience.total > 1 %}Voir les {{ audience.total }} destinataires{% else %}Voir le destinataire{% endif %}</summary>
         <ul class="plain-list compose__recipients">
           {% for recipient in audience.recipients %}
           <li class="row row--between">
             <span>{{ recipient.user.get_full_name|default:recipient.user.get_username }}{% if recipient.room %} · {{ recipient.room.number }}{% endif %} <span class="badge {% if recipient.channel == 'push' %}badge--info{% elif recipient.channel == 'sms' %}badge--neutral{% else %}badge--warning{% endif %}">{% if recipient.channel == 'push' %}Notification{% elif recipient.channel == 'sms' %}SMS{% else %}Aucun moyen{% endif %}</span></span>
-            <button class="button button--quiet" type="submit" name="action" value="exclude:{{ recipient.user.pk }}">Retirer<span class="visually-hidden"> {{ recipient.user.get_full_name|default:recipient.user.get_username }}</span></button>
+            <button class="button button--quiet" type="submit" name="action" value="exclude:{{ recipient.user.pk }}">Ne pas envoyer<span class="visually-hidden"> à {{ recipient.user.get_full_name|default:recipient.user.get_username }}</span></button>
           </li>
           {% endfor %}
         </ul>
@@ -112,7 +112,7 @@
         <p class="text-muted text-small">HJBelfort</p>
         <p class="compose__text">{{ sms.text }}</p>
       </div>
-      <p class="row row--between text-small"><span>{% if sms.info.encoding == "GSM-7" %}Alphabet SMS standard{% else %}Caractères spéciaux (UCS-2){% endif %}</span><strong>{{ sms.info.units }} / {{ sms.limit }} · {{ sms.info.segments }} SMS</strong></p>
+      <p class="row row--between text-small"><span>{% if sms.varies %}Le plus long. {% endif %}{% if sms.info.encoding == "GSM-7" %}Alphabet SMS standard{% else %}Caractères spéciaux (UCS-2){% endif %}</span><strong>{{ sms.info.units }} / {{ sms.limit }} · {{ sms.info.segments }} SMS</strong></p>
       {% if sms.replaced %}<p class="text-muted text-small">Remplacés pour rester à 160 caractères par SMS : {% for char, plain in sms.replaced %}<span class="nowrap">{{ char }} → {{ plain }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
       {% if sms.kept %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le SMS contient {% for char, words in sms.kept %}« {{ char }} »{% if words and words.0 != char %} (dans « {{ words.0 }} »){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %} : chaque SMS est alors limité à 70 caractères. Il coûte <strong>{{ sms.info.segments }} SMS par personne</strong>. Retirez {% if sms.kept|length > 1 %}ces caractères{% else %}ce caractère{% endif %} pour réduire le coût.</p></div>{% endif %}
       {% if sms.too_long %}<div class="alert alert--error" role="alert">{% icon "alert" %}<p>Trop long : {{ sms.info.segments }} SMS. Six au plus. Écrivez une version SMS plus courte.</p></div>
@@ -123,14 +123,17 @@
       <h2 id="summary-title" class="card__title">Récapitulatif</h2>
       <dl class="details">
         <dt>Notifications</dt><dd>{% if audience.push %}{{ audience.push }} · gratuit{% else %}aucune{% endif %}</dd>
-        <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
+        <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
         {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }}</dd>{% endif %}
       </dl>
       <p class="text-muted text-small">L'envoi aux résidents arrive bientôt. Pour l'instant : brouillon et essai.</p>
       <button class="button" type="submit" name="action" value="save">Enregistrer le brouillon</button>
       <label class="choices"><input type="checkbox" name="test_sms" value="yes">Aussi par SMS sur mon téléphone</label>
       <button class="button button--secondary" type="submit" name="action" value="test">{% icon "send" %}M'envoyer un test</button>
-      <button class="button button--quiet" type="submit" formaction="{% url 'messaging:delete' campaign.pk %}" formnovalidate>Supprimer le brouillon</button>
+      <details class="stack">
+        <summary>Supprimer le brouillon</summary>
+        <button class="button button--danger" type="submit" formaction="{% url 'messaging:delete' campaign.pk %}" formnovalidate>Oui, supprimer ce brouillon</button>
+      </details>
     </section>
     {% else %}
     <div class="card stack">

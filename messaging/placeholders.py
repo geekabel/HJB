@@ -56,7 +56,7 @@ def fill(text, values):
 
 def missing_values(campaign):
     """Fields used in the texts whose value is not given (date, start, end)."""
-    used = set(fields_in(campaign.body)) | set(fields_in(campaign.sms_body))
+    used = set().union(*(fields_in(t) for t in (campaign.title, campaign.body, campaign.sms_body)))
     missing = []
     for name, value in (
         ("date", campaign.event_date),

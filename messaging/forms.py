@@ -67,7 +67,7 @@ class CampaignForm(forms.ModelForm):
             ),
             "sms_body": (
                 "Pour les résidents sans l'application. Vide : le texte complet est envoyé. "
-                "Les caractères hors de l'alphabet SMS (ê, ç, « ») sont remplacés."
+                "Les caractères hors de l'alphabet SMS (ê, ç, guillemets) sont remplacés."
             ),
         }
 

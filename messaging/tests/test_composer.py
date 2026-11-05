@@ -45,6 +45,21 @@ class ComposerTestCase(TestCase):
     def setUp(self):
         cache.clear()
 
+    def post(self, url, **data):
+        base = {
+            "type": "visit",
+            "title": "Visite de logement",
+            "body": "Bonjour {prénom},\nVisite le {date} entre {début} et {fin}.",
+            "sms_body": "",
+            "event_date": "2026-11-06",
+            "start_time": "15:00",
+            "end_time": "17:00",
+            "floors": [self.f3.pk],
+            "action": "save",
+        }
+        base.update(data)
+        return self.client.post(url, base, follow=True)
+
     def campaign(self, **kwargs):
         data = {
             "title": "Visite",
@@ -99,21 +114,6 @@ class FindTargetTests(ComposerTestCase):
 
 
 class ComposerPageTests(ComposerTestCase):
-    def post(self, url, **data):
-        base = {
-            "type": "visit",
-            "title": "Visite de logement",
-            "body": "Bonjour {prénom},\nVisite le {date} entre {début} et {fin}.",
-            "sms_body": "",
-            "event_date": "2026-11-06",
-            "start_time": "15:00",
-            "end_time": "17:00",
-            "floors": [self.f3.pk],
-            "action": "save",
-        }
-        base.update(data)
-        return self.client.post(url, base, follow=True)
-
     def test_permissions(self):
         log_in_verified(self.client, self.ines)
         self.assertEqual(self.client.get(reverse("messaging:list")).status_code, 403)
@@ -236,3 +236,82 @@ class TemplatePagesTests(ComposerTestCase):
         )
         self.assertContains(response, "supprimé")
         self.assertFalse(MessageTemplate.objects.filter(pk=template.pk).exists())
+
+
+class ReviewTests(ComposerTestCase):
+    """Cases found by the independent review of T20."""
+
+    def test_exclude_then_restore_an_added_person(self):
+        log_in_verified(self.client, self.nadia)
+        campaign = self.campaign()
+        url = reverse("messaging:compose", args=[campaign.pk])
+        self.post(url, action="add", add="Lucas", floors=[])
+        response = self.post(url, action=f"exclude:{self.lucas.pk}", floors=[])
+        self.assertEqual(audience(campaign).total, 0)
+        self.assertContains(response, "Remettre Lucas Petit")
+        self.post(url, action=f"restore:{self.lucas.pk}", floors=[])
+        self.assertEqual([r.user for r in audience(campaign).recipients], [self.lucas])
+
+    def test_staff_added_before_their_role_is_not_a_recipient(self):
+        from accounts.roles import set_roles
+
+        campaign = self.campaign()
+        campaign.people.add(self.lucas)
+        set_roles(self.lucas, [Role.EDUCATOR])
+        self.assertEqual(audience(campaign).total, 0)
+
+    def test_audience_queries_do_not_grow_with_added_people(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        campaign = self.campaign(everyone=True)
+        campaign.people.add(self.lucas)
+        with CaptureQueriesContext(connection) as before:
+            audience(campaign)
+        for number in range(5):
+            person = make_user(f"extra{number}")
+            Stay.objects.create(
+                resident=person,
+                room=Room.objects.create(number=f"5{number}", floor=self.f1),
+                arrival=ARRIVAL,
+            )
+            campaign.people.add(person)
+        with self.assertNumQueries(len(before)):
+            audience(campaign)
+
+    def test_enter_in_a_text_field_saves(self):
+        log_in_verified(self.client, self.nadia)
+        response = self.post(reverse("messaging:new"), action="add", add="")
+        self.assertContains(response, "Brouillon enregistré à")
+        self.assertNotContains(response, "Écrivez un numéro de chambre")
+
+    def test_template_link_kept(self):
+        log_in_verified(self.client, self.nadia)
+        template = MessageTemplate.objects.get(name="Coupure d'eau")
+        response = self.client.get(reverse("messaging:new") + f"?modele={template.pk}")
+        self.assertContains(response, f'action="/equipe/messages/nouveau/?modele={template.pk}"')
+        self.post(reverse("messaging:new") + f"?modele={template.pk}")
+        self.assertEqual(Campaign.objects.get().template, template)
+
+    def test_title_fields_and_error_summary(self):
+        log_in_verified(self.client, self.nadia)
+        response = self.post(reverse("messaging:new"), title="Visite du {dat}")
+        self.assertContains(response, "Rien n'a été enregistré, ajouté ni envoyé.")
+        self.assertContains(response, "Champ inconnu : {dat}.")
+        response = self.post(reverse("messaging:new"), title="Visite du {date}")
+        self.assertContains(response, "<strong>Visite du vendredi 6 novembre</strong>")
+
+    @mock.patch("messaging.services.send_to_user")
+    def test_no_test_with_missing_values(self, push):
+        log_in_verified(self.client, self.nadia)
+        campaign = self.campaign(body="Le {date}")
+        response = self.post(
+            reverse("messaging:compose", args=[campaign.pk]),
+            action="test",
+            event_date="",
+            body="Le {date}",
+        )
+        self.assertContains(
+            response, "Rien n&#x27;est parti : indiquez d&#x27;abord la valeur de {date}."
+        )
+        push.assert_not_called()
