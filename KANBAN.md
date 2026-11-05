@@ -66,7 +66,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T05 | Journal d'audit | E0 Fondations | T04 |
 | T06 | Étages, chambres et séjours | E1 Résidents | T01 |
 | T07 | Liste et fiche des résidents (équipe) | E1 Résidents | T03, T06 |
 | T08 | Import CSV et Excel des résidents | E1 Résidents | T07 |
@@ -116,6 +115,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T02 | Outils qualité et intégration continue | 5 nov. 2026 |
 | T03 | Gabarits de base et système de design CSS | 5 nov. 2026 |
 | T04 | Rôles et permissions | 5 nov. 2026 |
+| T05 | Journal d'audit | 5 nov. 2026 |
 
 ## Détail des cartes
 
@@ -167,10 +167,14 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Guide de style réservé aux rôles du personnel : un résident connecté reçoit un 403
 - **Notes** : la carte prévoyait une migration de données. La doc de Django indique que les permissions sont créées par le signal `post_migrate`, donc après les migrations : sur une base neuve, une migration ne pourrait pas les attribuer. Les groupes sont donc créés dans ce même signal, à chaque `migrate`, et le code de `comptes/roles.py` fait foi. Le numéro est normalisé dans `clean_fields()`, avant les validateurs, car `full_clean()` les lance avant `clean()`. Connexion provisoire par la page de l'administration jusqu'à T13 : elle n'accepte que les comptes `is_staff`. Table des droits dans [docs/modele-de-donnees.md](docs/modele-de-donnees.md#rôles-groupes-et-permissions).
 
-#### T05 Journal d'audit
-- [ ] Modèle `EntreeJournal` et fonction `journaliser(acteur, action, objet, requete)`
-- [ ] Utilisé pour : affichage d'un code wifi, génération d'un code d'activation, départ d'un résident, changement de rôle
-- [ ] Consultable par les administrateurs seulement
+#### T05 Journal d'audit (fait le 5 nov. 2026)
+- **Docs** : [GenericForeignKey](https://docs.djangoproject.com/en/6.1/ref/contrib/contenttypes/#generic-relations), [JSONField](https://docs.djangoproject.com/en/6.1/ref/models/fields/#jsonfield), [`HttpRequest.META`](https://docs.djangoproject.com/en/6.1/ref/request-response/#django.http.HttpRequest.META), [pagination](https://docs.djangoproject.com/en/6.1/topics/pagination/), [MDN : formats de date et d'heure](https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Date_and_time_formats).
+- [x] Modèle `EntreeJournal` et fonction `journaliser(action, *, acteur, cible, details, requete)` (application `journal`)
+- [x] Une entrée ne peut être ni modifiée ni supprimée : le modèle refuse, l'administration est en lecture seule
+- [x] Branché sur le changement de rôles (administration). Les trois autres actions sont prêtes et seront branchées par leurs cartes : code d'activation (T11), affichage d'un code wifi (T15), départ d'un résident (T09)
+- [x] Page `/equipe/journal/` réservée à la permission `voir_journal` (Administration) : filtre par action, 50 entrées par page. Lien dans le menu de l'équipe, qui affiche aussi les rôles de la personne
+- [x] Validé W3C, rendu vérifié dans Chrome (mobile et ordinateur, clair et sombre). Sur mobile, le tableau défile et sa zone est atteignable au clavier
+- **Notes** : l'entrée garde le nom de l'acteur et un libellé de la cible, pour rester lisible si le compte est supprimé. L'adresse IP vient de `REMOTE_ADDR` seulement : `X-Forwarded-For` peut être inventé par le client, le réglage derrière un proxy est prévu en T38. Le format `c` du filtre `date` ajoute des microsecondes, que le validateur refuse dans `datetime` : on écrit la date sans elles.
 
 ### E1 Résidents
 

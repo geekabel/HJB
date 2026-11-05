@@ -82,6 +82,11 @@ class User(AbstractUser):
         return Role(role) in self.roles
 
     @property
+    def libelle_roles(self):
+        """Les rôles en clair, par exemple « Accueil, Maintenance »."""
+        return ", ".join(sorted(r.label for r in self.roles)) or "Résident"
+
+    @property
     def est_equipe(self):
         """Vrai si l'utilisateur a au moins un rôle du personnel."""
         return bool(self.roles & ROLES_EQUIPE)

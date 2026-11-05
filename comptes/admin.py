@@ -3,6 +3,9 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 
+from journal.models import Action
+from journal.service import journaliser
+
 from .models import User
 from .roles import Role, definir_roles
 
@@ -68,8 +71,15 @@ class UtilisateurAdmin(UserAdmin):
 
     @admin.display(description="rôles")
     def liste_roles(self, obj):
-        return ", ".join(sorted(r.label for r in obj.roles)) or "résident"
+        return obj.libelle_roles
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
-        definir_roles(form.instance, form.cleaned_data.get("roles", []))
+        avant, apres = definir_roles(form.instance, form.cleaned_data.get("roles", []))
+        if avant != apres:
+            journaliser(
+                Action.ROLES_MODIFIES,
+                cible=form.instance,
+                details={"avant": sorted(avant), "apres": sorted(apres)},
+                requete=request,
+            )

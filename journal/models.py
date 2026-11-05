@@ -1,0 +1,81 @@
+from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
+from django.utils import timezone
+
+
+class Action(models.TextChoices):
+    ROLES_MODIFIES = "ROLES_MODIFIES", "Rôles modifiés"
+    CODE_ACTIVATION_GENERE = "CODE_ACTIVATION_GENERE", "Code d'activation généré"
+    CODE_WIFI_AFFICHE = "CODE_WIFI_AFFICHE", "Mot de passe wifi affiché"
+    DEPART_RESIDENT = "DEPART_RESIDENT", "Départ d'un résident"
+
+
+class EntreeJournalNonModifiable(Exception):
+    """Une entrée du journal ne se modifie pas et ne se supprime pas une par une."""
+
+
+class EntreeJournal(models.Model):
+    """Une action sensible : qui, quoi, sur quoi, quand, depuis quelle adresse.
+
+    L'entrée garde des libellés lisibles (acteur, cible) pour rester
+    compréhensible même si le compte ou l'objet concerné est supprimé.
+    Relation générique : doc « The contenttypes framework ».
+    """
+
+    cree_le = models.DateTimeField("date", default=timezone.now, db_index=True, editable=False)
+    acteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="acteur",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="actions_journalisees",
+    )
+    acteur_libelle = models.CharField("acteur (au moment de l'action)", max_length=150, blank=True)
+    action = models.CharField(max_length=40, choices=Action.choices, db_index=True)
+    # Un journal ne doit pas disparaître avec un type d'objet : PROTECT.
+    cible_type = models.ForeignKey(
+        ContentType, null=True, blank=True, on_delete=models.PROTECT, verbose_name="type de cible"
+    )
+    # Texte : compatible avec toute clé primaire (doc contenttypes).
+    cible_id = models.CharField("identifiant de la cible", max_length=64, blank=True)
+    cible = GenericForeignKey("cible_type", "cible_id")
+    cible_libelle = models.CharField("cible (au moment de l'action)", max_length=200, blank=True)
+    details = models.JSONField("détails", default=dict, blank=True)
+    adresse_ip = models.GenericIPAddressField("adresse IP", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "entrée du journal"
+        verbose_name_plural = "journal d'audit"
+        ordering = ["-cree_le", "-id"]
+        indexes = [models.Index(fields=["cible_type", "cible_id"])]
+
+    def __str__(self):
+        return f"{self.cree_le:%d/%m/%Y %H:%M} · {self.get_action_display()} · {self.cible_libelle}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise EntreeJournalNonModifiable("Une entrée du journal ne se modifie pas.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise EntreeJournalNonModifiable(
+            "Une entrée du journal ne se supprime pas une par une. "
+            "La purge selon la durée de conservation est prévue en T36."
+        )
+
+    def resume(self):
+        """Détails en clair, pour la page du journal."""
+        if self.action == Action.ROLES_MODIFIES:
+            from comptes.roles import Role
+
+            def libelles(codes):
+                return ", ".join(Role(c).label for c in codes) or "aucun (résident)"
+
+            return (
+                f"Avant : {libelles(self.details.get('avant', []))}. "
+                f"Après : {libelles(self.details.get('apres', []))}."
+            )
+        return " · ".join(f"{cle} : {valeur}" for cle, valeur in self.details.items())
