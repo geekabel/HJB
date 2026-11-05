@@ -15,11 +15,11 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_http_methods, require_safe
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 from access.session_policy import is_resident
 
-from . import booking, direct
+from . import booking, direct, reminders
 from .availability import settings_of
 from .models import Appointment, EducatorSettings
 
@@ -137,6 +137,19 @@ def book(request):
     )
 
 
+def _reminder_text(meeting):
+    """What the resident will get, never a promise of a reminder that will not come."""
+    if meeting.status != Appointment.Status.CONFIRMED:
+        return ""
+    if not settings_of(meeting.educator).remind_residents:
+        return ""
+    if reminders.gets_day_before(meeting):
+        return "Un rappel vous est envoyé la veille au soir et une heure avant."
+    if reminders.gets_hour_before(meeting):
+        return "Un rappel vous est envoyé une heure avant."
+    return ""
+
+
 @login_required
 @require_safe
 def detail(request, pk):
@@ -147,7 +160,13 @@ def detail(request, pk):
         render(
             request,
             "appointments/detail.html",
-            {"active_nav": "appointments", "meeting": meeting},
+            {
+                "active_nav": "appointments",
+                "meeting": meeting,
+                "can_cancel": meeting.status == Appointment.Status.CONFIRMED
+                and meeting.start > timezone.now(),
+                "reminder": _reminder_text(meeting),
+            },
         )
     )
 
@@ -187,3 +206,22 @@ def write(request, educator_pk):
             },
         )
     )
+
+
+@login_required
+@require_POST
+def cancel(request, pk):
+    """The resident cancels their meeting (card T29); the educator is told."""
+    meeting = get_object_or_404(
+        Appointment.objects.select_related("educator"), pk=pk, resident=request.user
+    )
+    try:
+        booking.cancel(meeting, request.user)
+    except booking.AlreadyCancelled:
+        pass  # a second click: the first one already said it
+    except booking.CancelRefused as refused:
+        messages.warning(request, str(refused))
+    else:
+        name = direct.first_name(meeting.educator)
+        messages.success(request, f"Rendez-vous annulé. Nous prévenons {name}.")
+    return redirect("rdv:detail", pk=meeting.pk)

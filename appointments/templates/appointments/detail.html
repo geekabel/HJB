@@ -16,7 +16,7 @@
 {% endif %}
 
 <article class="card stack">
-  <p class="text-muted text-small">{% if meeting.status == "confirmed" %}Confirmé{% else %}{{ meeting.get_status_display }}{% endif %}</p>
+  <p class="text-muted text-small">{% if meeting.status == "confirmed" %}Confirmé{% elif meeting.cancelled_by_id == user.pk %}Annulé par vous{% elif meeting.cancelled_by_id == meeting.educator_id %}Annulé par {{ meeting.educator.first_name|default:"l'éducateur" }}{% else %}Annulé{% endif %}</p>
   <h2><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</time></h2>
   <dl class="details">
     <dt>Avec</dt><dd>{{ meeting.educator.first_name|default:meeting.educator.get_username }}</dd>
@@ -24,5 +24,17 @@
     <dt>Motif</dt><dd>{{ meeting.get_reason_display }}</dd>
   </dl>
   <p class="text-muted text-small">Le motif n'est visible que par {{ meeting.educator.first_name|default:"l'éducateur" }}.</p>
+  {% if reminder %}<p class="text-small">{{ reminder }}</p>{% endif %}
 </article>
+
+{% if can_cancel %}
+<details class="card stack">
+  <summary>Annuler ce rendez-vous</summary>
+  <p class="text-small">Nous prévenons {{ meeting.educator.first_name|default:meeting.educator.get_username }}. Le créneau redevient libre pour quelqu'un d'autre.</p>
+  <form method="post" action="{% url 'rdv:cancel' meeting.pk %}">
+    {% csrf_token %}
+    <button class="button button--danger button--block" type="submit">Oui, annuler le rendez-vous</button>
+  </form>
+</details>
+{% endif %}
 {% endblock %}

@@ -127,7 +127,8 @@ class BookTests(BookingTestCase):
             booking.book(self.ines, at(MONDAY, 10), [self.julien], now=NOW)  # same time, me
         booking.book(self.ines, at(MONDAY, 11), [self.samia], now=NOW)
         with self.assertRaisesMessage(
-            booking.BookingRefused, "Vous avez déjà 2 rendez-vous à venir. Passez à l'accueil"
+            booking.BookingRefused,
+            "Vous avez déjà 2 rendez-vous à venir. Annulez-en un depuis sa page",
         ):
             booking.book(self.ines, at(MONDAY + timedelta(days=2), 14), [self.samia], now=NOW)
         with self.assertRaisesMessage(booking.BookingRefused, "deux semaines"):

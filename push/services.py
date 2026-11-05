@@ -156,13 +156,14 @@ def _payload(title, body, url, tag, reply=""):
     return json.dumps(data, ensure_ascii=False)
 
 
-def send_to_user(user, *, title, body, url="/", tag="", urgency="normal", reply=""):
+def send_to_user(user, *, title, body, url="/", tag="", urgency="normal", reply="", ttl=TTL):
     """Send one notification to each device of the person. Return a SendResult.
 
     ``url``: the page opened by a tap on the notification (a path of this site).
     ``tag``: a new message with the same tag replaces the previous one on the device.
     ``urgency``: "very-low", "low", "normal" or "high" (RFC 8030).
     ``reply``: path of the personal reply link (card T22): adds the answer buttons.
+    ``ttl``: seconds the push service keeps it for an offline device (one day).
     """
     payload = _payload(title, body, url, tag, reply)
     key = vapid()
@@ -172,7 +173,7 @@ def send_to_user(user, *, title, body, url="/", tag="", urgency="normal", reply=
         # never follows one to another address.
         session.max_redirects = 0
         for subscription in PushSubscription.objects.filter(user=user):
-            outcome = _send_one(subscription, payload, key, urgency, session)
+            outcome = _send_one(subscription, payload, key, urgency, session, ttl)
             setattr(result, outcome, getattr(result, outcome) + 1)
     return result
 
@@ -181,7 +182,7 @@ def send_to_user(user, *, title, body, url="/", tag="", urgency="normal", reply=
 TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
 
 
-def _send_one(subscription, payload, key, urgency, session):
+def _send_one(subscription, payload, key, urgency, session, ttl=TTL):
     host = urlsplit(subscription.endpoint).hostname
     if not endpoint_allowed(subscription.endpoint) or not keys_valid(
         subscription.p256dh, subscription.auth
@@ -194,7 +195,7 @@ def _send_one(subscription, payload, key, urgency, session):
             payload,
             vapid_private_key=key,
             vapid_claims={"sub": settings.VAPID_CONTACT},  # a new dict: webpush() fills it in
-            ttl=TTL,
+            ttl=ttl,
             headers={"Urgency": urgency},
             timeout=TIMEOUT,
             requests_session=session,

@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from accounts.roles import Role
 from housing.models import Stay
 
-from . import availability, direct
+from . import availability, booking, direct
 from .forms import AbsenceForm, SettingsForm
 from .holidays import holiday_name
 from .models import Absence, Appointment, Availability, Conversation
@@ -85,6 +85,7 @@ def my_availability(request):
             # Only educators are offered to the residents (T27).
             "is_educator": educator.has_role(Role.EDUCATOR),
             "meetings": _meetings(educator),
+            "cancelled": _cancelled(educator),
             "absences": Absence.objects.filter(
                 educator=educator, last_day__gte=timezone.localdate()
             ),
@@ -111,11 +112,28 @@ def _meetings(educator):
         .select_related("resident")
         .prefetch_related(Prefetch("resident__stays", queryset=current, to_attr="current"))[:30]
     )
+    now = timezone.now()
     for meeting in meetings:
         stays = meeting.resident.current
         meeting.room = stays[0].room.number if stays else ""
         meeting.holiday = holiday_name(timezone.localtime(meeting.start).date())
+        meeting.can_cancel = meeting.start > now  # not once it has started
     return meetings
+
+
+def _cancelled(educator):
+    """Meetings still to come that the resident cancelled, or that a departure cancelled.
+
+    The educator may have no device for the notification: the page says it too.
+    """
+    return (
+        Appointment.objects.filter(
+            educator=educator, status=Appointment.Status.CANCELLED, start__gt=timezone.now()
+        )
+        .exclude(cancelled_by=educator)
+        .select_related("resident")
+        .order_by("start")[:10]
+    )
 
 
 @login_required
@@ -217,3 +235,20 @@ def conversation(request, pk):
             },
         )
     )
+
+
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_POST
+def cancel_meeting(request, pk):
+    """The educator cancels one of their meetings (card T29); the resident is told."""
+    meeting = get_object_or_404(Appointment, pk=pk, educator=request.user)
+    try:
+        booking.cancel(meeting, request.user)
+    except booking.AlreadyCancelled:
+        pass  # a second click: the first one already said it
+    except booking.CancelRefused as refused:
+        messages.warning(request, str(refused))
+    else:
+        messages.success(request, "Rendez-vous annulé. La personne est prévenue.")
+    return redirect("appointments:availability")

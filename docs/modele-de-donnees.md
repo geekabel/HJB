@@ -281,6 +281,7 @@ erDiagram
         int educator_id FK "un par éducateur"
         int slot_minutes "30, 45 ou 60"
         string notice "2h, day_before"
+        bool remind_residents "rappels la veille et 1 h avant (T29)"
         string reply_hours "montré aux résidents (T28)"
     }
     APPOINTMENT {
@@ -292,6 +293,10 @@ erDiagram
         string reason "liste courte, facultatif, lu par l'éducateur seul"
         string status "confirmed, cancelled"
         datetime created_at
+        datetime day_before_sent_at "rappel de la veille (T29)"
+        datetime hour_before_sent_at "rappel 1 h avant (T29)"
+        datetime cancelled_at
+        int cancelled_by_id FK "vide : annulé par le système (départ)"
     }
     ABSENCE {
         int id PK
