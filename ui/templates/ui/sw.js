@@ -42,7 +42,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL, { ignoreVary: true })));
     return;
   }
   const url = new URL(request.url);

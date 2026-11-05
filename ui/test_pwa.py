@@ -36,7 +36,7 @@ class ManifestTests(TestCase):
     def test_favicon(self):
         response = self.client.get("/favicon.ico")
         self.assertRedirects(
-            response, "/static/ui/icons/favicon.ico", status_code=301, fetch_redirect_response=False
+            response, "/static/ui/icons/favicon.ico", fetch_redirect_response=False
         )
         self.assertTrue(finders.find("ui/icons/favicon.ico"))
 
@@ -81,3 +81,36 @@ class PagesTests(TestCase):
         log_in_verified(self.client, make_user("ines"))
         response = self.client.get(reverse("home"))
         self.assertContains(response, 'href="/installer/" data-hide-when-installed')
+
+
+class ReviewTests(TestCase):
+    """Cases found by the independent review of T18."""
+
+    def test_worker_update_does_not_renew_the_session(self):
+        from django.contrib.sessions.models import Session
+
+        user = make_user("ines")
+        log_in_verified(self.client, user)
+        key = self.client.session.session_key
+        before = Session.objects.get(session_key=key).expire_date
+        Session.objects.filter(session_key=key).update(expire_date=before.replace(year=2030))
+        for path in ("/sw.js", "/manifest.webmanifest", "/hors-ligne/", "/favicon.ico"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                # Neither renewed nor deleted, and nothing personal in the answer.
+                self.assertNotIn("sessionid", response.cookies)
+                self.assertNotIn("Cookie", response.get("Vary", ""))
+        self.assertEqual(Session.objects.get(session_key=key).expire_date.year, 2030)
+        # An ordinary page still renews it.
+        response = self.client.get(reverse("home"))
+        self.assertIn("sessionid", response.cookies)
+
+    def test_head_requests(self):
+        for path in ("/sw.js", "/manifest.webmanifest", "/hors-ligne/", "/installer/"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.head(path).status_code, 200)
+
+    def test_retry_reloads_the_asked_page(self):
+        self.assertContains(
+            self.client.get("/hors-ligne/"), '<a class="button" href="">Réessayer</a>'
+        )

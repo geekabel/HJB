@@ -20,7 +20,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.templatetags.static import static
 from django.views.decorators.cache import cache_control
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_safe
 
 APP_NAME = "HJB Résidence"
 # Light background of the design system (--bg): splash screen and title bar.
@@ -37,7 +37,7 @@ PRECACHED_STATIC = (
 )
 
 
-@require_GET
+@require_safe
 @cache_control(max_age=86400)
 def manifest(request):
     data = {
@@ -74,7 +74,12 @@ def manifest(request):
 
 @cache
 def _cache_version():
-    """Changes when a cached file changes: the new worker then replaces the old cache."""
+    """Changes when a cached file changes: the new worker then replaces the old cache.
+
+    Computed once per process: a deploy restarts the processes. With runserver,
+    restart it to see a new version (the style sheet is fetched from the network
+    first anyway; only the offline copy would be older).
+    """
     digest = hashlib.sha256(render_to_string("ui/offline.html").encode())
     for name in PRECACHED_STATIC:
         path = finders.find(name)
@@ -84,7 +89,7 @@ def _cache_version():
     return digest.hexdigest()[:12]
 
 
-@require_GET
+@require_safe
 def service_worker(request):
     body = render_to_string(
         "ui/sw.js",
@@ -103,19 +108,20 @@ def service_worker(request):
     return response
 
 
-@require_GET
+@require_safe
 def offline(request):
     """Shown by the service worker when there is no network. No personal data."""
     return render(request, "ui/offline.html")
 
 
-@require_GET
+@require_safe
 def install(request):
     """How to add the application to the home screen (needed for notifications on iPhone)."""
     return render(request, "ui/install.html")
 
 
-@require_GET
+@require_safe
 def favicon(request):
     """Browsers ask for /favicon.ico even on pages without a link (admin site)."""
-    return redirect(static("ui/icons/favicon.ico"), permanent=True)
+    # Temporary: browsers keep a permanent redirect forever, even if the file moves.
+    return redirect(static("ui/icons/favicon.ico"))

@@ -37,6 +37,10 @@
   var deferredPrompt = null;
 
   window.addEventListener("beforeinstallprompt", function (event) {
+    // Keep the browser's own suggestion, except on the page that has its button.
+    if (!document.querySelector("[data-install-box]")) {
+      return;
+    }
     event.preventDefault();
     deferredPrompt = event;
     document.querySelectorAll("[data-install-box]").forEach(function (box) {
