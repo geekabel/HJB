@@ -22,32 +22,41 @@
   {% endif %}
 </header>
 
-<form class="row filters" method="get" role="search" aria-label="Rechercher et filtrer les résidents">
+<form class="filters" method="get" role="search" aria-label="Rechercher et filtrer les résidents">
   <div class="field filters__search">
     <label for="filter-q">Rechercher</label>
-    <input id="filter-q" name="q" type="search" value="{{ search }}" placeholder="Nom ou numéro de chambre" autocomplete="off">
+    <div class="search-box">
+      <input id="filter-q" name="q" type="search" value="{{ search }}" placeholder="Nom ou numéro de chambre" autocomplete="off">
+      <button class="search-box__button" type="submit">{% icon "search" %}<span class="visually-hidden">Rechercher</span></button>
+    </div>
   </div>
-  <div class="field">
-    <label for="filter-floor">Étage</label>
-    <select id="filter-floor" name="floor">
-      <option value="">Tous les étages</option>
-      {% for f in floors %}
-      <option value="{{ f.pk }}"{% if floor == f.pk|stringformat:"d" %} selected{% endif %}>{{ f }}</option>
-      {% endfor %}
-      <option value="none"{% if floor == "none" %} selected{% endif %}>Sans chambre</option>
-    </select>
-  </div>
-  <div class="field">
-    <label for="filter-account">Compte</label>
-    <select id="filter-account" name="account">
-      <option value="">Tous les comptes</option>
-      {% for value, label in states %}
-      <option value="{{ value }}"{% if account == value %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <button class="button button--quiet" type="submit">Filtrer</button>
-  {% if filters_active %}<a class="button button--quiet" href="{% url 'residents:list' %}">Effacer les filtres</a>{% endif %}
+  {# On a phone the two lists fold away (design card D8); on a wider screen app.js opens them. #}
+  <details class="filters__more" data-open-wide{% if floor or account %} open{% endif %}>
+    <summary class="button button--quiet">{% icon "filter" %}Filtres{% if floor or account %}<span class="counter">{% if floor and account %}2{% else %}1{% endif %}</span>{% endif %}</summary>
+    <div class="row filters__lists">
+      <div class="field">
+        <label for="filter-floor">Étage</label>
+        <select id="filter-floor" name="floor">
+          <option value="">Tous les étages</option>
+          {% for f in floors %}
+          <option value="{{ f.pk }}"{% if floor == f.pk|stringformat:"d" %} selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+          <option value="none"{% if floor == "none" %} selected{% endif %}>Sans chambre</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-account">Compte</label>
+        <select id="filter-account" name="account">
+          <option value="">Tous les comptes</option>
+          {% for value, label in states %}
+          <option value="{{ value }}"{% if account == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="button button--quiet" type="submit">Appliquer</button>
+    </div>
+  </details>
+  {% if filters_active %}<a class="button button--text" href="{% url 'residents:list' %}">Effacer les filtres</a>{% endif %}
 </form>
 
 {% if page_obj.object_list %}

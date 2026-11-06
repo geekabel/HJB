@@ -5,6 +5,7 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from accounts.activation_codes import redeem_code
 from accounts.models import ActivationCode
@@ -196,7 +197,7 @@ class ReturnTests(StaffTestCase):
         self.assertEqual(current_stay(self.awa).room, self.r304)
         entry = AuditEntry.objects.get(action=Action.RESIDENT_RETURNED)
         self.assertEqual(
-            entry.summary(), f"Chambre 304, retour le {timezone.localdate():%d/%m/%Y}."
+            entry.summary(), f"Chambre 304, retour le {date_format(timezone.localdate(), 'j F Y')}."
         )
         # The old login does not make the account look activated.
         self.assertIsNone(self.awa.last_login)

@@ -1540,6 +1540,92 @@
     flex: 1 1 16rem;
   }
 
+  /* Staff lists (design card D8): the search with its button inside the
+     field; the other filters fold away on a phone. */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--s-3);
+  }
+
+  .search-box {
+    display: flex;
+  }
+
+  .search-box input {
+    flex: 1;
+    min-width: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .search-box__button {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 3rem;
+    border: 1px solid var(--action-bg);
+    border-radius: 0 var(--r-small) var(--r-small) 0;
+    background: var(--action-bg);
+    color: var(--on-action);
+    cursor: pointer;
+  }
+
+  .search-box__button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .filters__more > summary {
+    list-style: none;
+  }
+
+  .filters__more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .filters__more > summary .counter {
+    position: static;
+  }
+
+  .filters__lists {
+    align-items: flex-end;
+    margin-block-start: var(--s-3);
+  }
+
+  @media (min-width: 48rem) {
+    /* Opened by app.js on a wide screen: the lists sit next to the search */
+    .filters__more[open] {
+      flex: 0 1 auto;
+    }
+
+    .filters__more[open] > summary {
+      display: none;
+    }
+
+    .filters__more[open] .filters__lists {
+      margin-block-start: 0;
+    }
+  }
+
+  /* Choices side by side keep one width, in a regular grid (design card D8) */
+  .row:has(> .choices) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  }
+
+  /* A legend at the top of a card sits inside it, not on its border */
+  fieldset.card > legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+  }
+
+  fieldset.card > legend + * {
+    clear: both;
+  }
+
   /* First cell of a row: a name, read as a row header */
   .table .table__row-header {
     color: var(--ink);

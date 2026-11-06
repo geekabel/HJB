@@ -3,6 +3,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+from django.utils.formats import date_format
 
 
 class Action(models.TextChoices):
@@ -106,14 +107,16 @@ class AuditEntry(models.Model):
             from datetime import date
 
             day = date.fromisoformat(self.details["arrival"])
-            return f"Chambre {self.details.get('room', '?')}, retour le {day:%d/%m/%Y}."
+            return (
+                f"Chambre {self.details.get('room', '?')}, retour le {date_format(day, 'j F Y')}."
+            )
         if self.action == Action.ACTIVATION_CODE_ISSUED and "expires_at" in self.details:
             from datetime import datetime
 
             from django.utils import timezone
 
             end = timezone.localtime(datetime.fromisoformat(self.details["expires_at"]))
-            text = f"Valable jusqu'au {end:%d/%m/%Y à %H:%M}."
+            text = f"Valable jusqu'au {date_format(end, 'j F Y à H:i')}."
             return f"Code du personnel. {text}" if self.details.get("staff") else text
         if self.action == Action.RESIDENT_DEPARTED:
             from datetime import date
@@ -123,7 +126,7 @@ class AuditEntry(models.Model):
                 parts.append(f"Chambre {self.details['room']}")
             if self.details.get("departure"):
                 day = date.fromisoformat(self.details["departure"])
-                parts.append(f"départ le {day:%d/%m/%Y}")
+                parts.append(f"départ le {date_format(day, 'j F Y')}")
             sessions = self.details.get("sessions_closed", 0)
             text = ", ".join(parts)
             text = text[:1].upper() + text[1:] + "."
@@ -141,7 +144,8 @@ class AuditEntry(models.Model):
             from datetime import date
 
             end = date.fromisoformat(self.details["expires_on"])
-            text = f"Chambre {self.details.get('room', '?')}, valable jusqu'au {end:%d/%m/%Y}."
+            room = self.details.get("room", "?")
+            text = f"Chambre {room}, valable jusqu'au {date_format(end, 'j F Y')}."
             return text + (" Mot de passe généré." if self.details.get("generated") else "")
         if self.action == Action.WIFI_PASSWORD_SHOWN and "room" in self.details:
             return f"Chambre {self.details['room']}."
@@ -176,7 +180,7 @@ class AuditEntry(models.Model):
                 parts.append(f"Chambre {self.details['room']}")
             if self.details.get("planned_departure"):
                 day = date.fromisoformat(self.details["planned_departure"])
-                parts.append(f"départ prévu le {day:%d/%m/%Y}")
+                parts.append(f"départ prévu le {date_format(day, 'j F Y')}")
             text = ", ".join(parts)
             text = (text[:1].upper() + text[1:] + ".") if text else ""
             if self.details.get("reason"):
@@ -232,7 +236,7 @@ def _message_summary(details):
     text = ", ".join(parts)
     if details.get("send_at"):
         when = datetime.fromisoformat(details["send_at"])
-        text = f"Prévu le {when:%d/%m/%Y à %H:%M}. " + (text[:1].upper() + text[1:])
+        text = f"Prévu le {date_format(when, 'j F Y à H:i')}. " + (text[:1].upper() + text[1:])
     elif text:
         text = text[:1].upper() + text[1:]
     if details.get("reminder"):
