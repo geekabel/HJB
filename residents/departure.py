@@ -120,9 +120,9 @@ def record_return(resident, room, on, *, request=None):
         )
         # No old passkey may survive the return (they are removed at
         # departure; this covers a passkey created at the last moment).
-        from django_otp_webauthn.utils import get_credential_model
+        from access.credentials import remove_all
 
-        get_credential_model().objects.filter(user=resident).delete()
+        remove_all(resident)
         stay = assign_room(resident, room, on)
         log_action(
             Action.RESIDENT_RETURNED,

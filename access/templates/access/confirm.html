@@ -6,12 +6,20 @@
 {% block content %}
 <header class="stack stack--tight">
   <h1>Confirmez que c'est vous</h1>
-  <p class="text-muted">Cette page protège des informations sensibles. Utilisez votre clé d'accès pour continuer.</p>
+  <p class="text-muted">Cette page protège des informations sensibles.</p>
 </header>
 
+{% if form %}
+<form class="stack" method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {{ form.code.as_field_group }}
+  <button class="button button--block" type="submit">Confirmer</button>
+</form>
+{% endif %}
 {% if has_passkey %}
 {% include "access/_passkey_button.html" with label="Confirmer avec ma clé d'accès" %}
-{% else %}
+{% elif not form %}
 <div class="alert alert--warning">{% icon "alert" %}<p>Votre compte n'a pas encore de clé d'accès. Cette page en demande une. Demandez un code d'activation à l'accueil, ou à un administrateur si vous faites partie du personnel.</p></div>
 {% endif %}
 

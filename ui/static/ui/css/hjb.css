@@ -1866,6 +1866,24 @@
     height: auto;
   }
 
+  /* QR code of the authenticator app (card T14c): on white, for any camera */
+  .qr-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-3);
+    margin: 0;
+    text-align: center;
+  }
+
+  .qr-card svg {
+    max-width: 100%;
+    height: auto;
+    padding: var(--s-2);
+    border-radius: var(--r-small);
+    background: #fff;
+  }
+
   .bullet-list {
     display: flex;
     flex-direction: column;

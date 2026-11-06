@@ -9,7 +9,7 @@
 <ol class="steps" aria-label="Étapes de l'activation">
   <li class="steps__step{% if step >= 1 %} steps__step--reached{% endif %}"{% if step == 1 %} aria-current="step"{% endif %}>1. Code reçu{% if step > 1 %}<span class="visually-hidden"> (fait)</span>{% endif %}</li>
   <li class="steps__step{% if step >= 2 %} steps__step--reached{% endif %}"{% if step == 2 %} aria-current="step"{% endif %}>2. Téléphone{% if step > 2 %}<span class="visually-hidden"> (fait)</span>{% endif %}</li>
-  <li class="steps__step{% if step >= 3 %} steps__step--reached{% endif %}"{% if step == 3 %} aria-current="step"{% endif %}>3. Clé d'accès</li>
+  <li class="steps__step{% if step >= 3 %} steps__step--reached{% endif %}"{% if step == 3 %} aria-current="step"{% endif %}>3. {{ step3_label|default:"Clé d'accès" }}</li>
 </ol>
 
 {% if messages %}

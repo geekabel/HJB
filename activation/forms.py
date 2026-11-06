@@ -30,3 +30,18 @@ class SmsCodeForm(forms.Form):
             }
         ),
     )
+
+
+class AppCodeForm(forms.Form):
+    code = forms.CharField(
+        label="Code affiché dans l'application",
+        max_length=12,
+        help_text="6 chiffres. Il change toutes les 30 secondes.",
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "one-time-code",
+                "inputmode": "numeric",
+                "class": "code-field",
+            }
+        ),
+    )

@@ -341,6 +341,16 @@ Les chemins ne changent pas. Seuls les noms changent.
 |---|---|
 | Lien de connexion sans clé (développement seulement) | commande `dev_login`, module `access.dev_login` (`make_link()`, `view`, `enabled()`), nom d'URL `dev_login` (`/dev/connexion/<jeton>/`, 404 sans `DEBUG`) |
 
+## Application de codes de l'équipe (carte T14c)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Application de codes (code à 6 chiffres qui change toutes les 30 secondes) | `TOTPDevice` (django-otp), `access/app_code.py` |
+| Toutes les façons de se connecter d'un compte | `access/credentials.py` (`passkeys`, `app_codes`, `remove_all`) |
+| Connexion avec le code de l'application | vue `access.views.login_app_code`, adresse /connexion/code/ |
+| Relier l'application à l'activation | vue `activation.views.app_code_setup`, adresse /activer/application/ |
+| Application de codes reliée (journal) | `Action.APP_CODE_CREATED` |
+
 ## Rendez-vous (cartes T26 à T29)
 
 | Mot du métier | Nom dans le code |
