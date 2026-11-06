@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     "polls",
     # Appointments with an educator (cards T26 to T29).
     "appointments",
+    # Reports of a problem in a room (cards T30 to T33).
+    "reports",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
@@ -283,3 +285,16 @@ TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBacken
 # reply link of an SMS (card T22), sent by the task worker.
 
 SITE_URL = ""
+
+
+# Reports, card T30
+# The photos stay private: they live outside the static files, and only a view
+# that checks who asks serves them (reports/views.py). No MEDIA_URL.
+# https://docs.djangoproject.com/en/6.1/topics/files/
+
+MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT") or BASE_DIR / "media")
+
+# Number to call at once for a serious problem (water leak, smell of gas...),
+# shown on the report form: the front desk, or the on-call number at night.
+# Empty: the form says "appelez l'accueil".
+EMERGENCY_PHONE = os.environ.get("DJANGO_EMERGENCY_PHONE", "")

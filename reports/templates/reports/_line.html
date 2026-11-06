@@ -1,0 +1,1 @@
+{% load icons %}<li><a href="{% url 'reports:detail' report.pk %}">{% icon report.icon %}<span><strong>{{ report.get_category_display }}</strong><small>n° {{ report.pk }} · {{ report.created_at|date:"j N" }}</small></span>{% include "reports/_status.html" %}{% icon "chevron" %}</a></li>

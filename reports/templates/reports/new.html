@@ -1,0 +1,76 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Signaler un problème{% endblock %}
+{% block body_class %}resident-page resident-page--task{% endblock %}
+{% block content %}
+<div class="task-bar">
+  <a class="icon-button" href="{% url 'reports:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux signalements</span></a>
+  <h1 class="task-bar__title">Signaler un problème</h1>
+</div>
+{% include "reports/_emergency.html" %}
+
+{% if not room %}
+<div class="empty-card">
+  <span class="empty-card__icon" aria-hidden="true">{% icon "door" %}</span>
+  <p>Aucune chambre n'est liée à votre compte. Passez à l'accueil.</p>
+</div>
+{% else %}
+{% if form.errors %}
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p>Il manque quelque chose : voyez les points en rouge.{% if photos_lost %} Ajoutez de nouveau vos photos.{% endif %}</p></div>
+{% endif %}
+<form class="stack report-form" method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <fieldset class="stack stack--tight"{% if form.category.errors %} aria-describedby="category-error"{% endif %}>
+    <legend><h2 class="rdv__step">1. Quel est le problème ?</h2></legend>
+    {% if form.category.errors %}<p class="field__error" id="category-error">{% icon "alert" %}{{ form.category.errors.0 }}</p>{% endif %}
+    <div class="tile-grid">
+      {% for value, label, icon_name in categories %}
+      <label class="tile"><input type="radio" name="category" value="{{ value }}" required{% if form.category.value == value %} checked{% endif %}>{% icon icon_name %}<span>{{ label }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div class="field">
+    <h2 class="rdv__step"><label for="{{ form.description.id_for_label }}">2. Décrivez en quelques mots</label></h2>
+    {% if form.description.errors %}<p class="field__error" id="description-error">{% icon "alert" %}{{ form.description.errors.0 }}</p>{% endif %}
+    <textarea id="{{ form.description.id_for_label }}" name="description" rows="3" maxlength="1000" required placeholder="Par exemple : la lampe de la salle de bain ne s'allume plus." data-autogrow{% if form.description.errors %} aria-invalid="true" aria-describedby="description-error"{% endif %}>{{ form.description.value|default:"" }}</textarea>
+  </div>
+
+  <div class="field">
+    <label for="{{ form.photos.id_for_label }}">Photos <span class="text-muted">(facultatif, {{ max_photos }} au plus)</span></label>
+    {% if form.photos.errors %}<p class="field__error" id="photos-error">{% icon "alert" %}{{ form.photos.errors.0 }}</p>{% endif %}
+    {# The real file field covers the drawn button: a tap opens the camera or the gallery. #}
+    <div class="photo-add">
+      <span class="photo-add__face" aria-hidden="true">{% icon "camera" %}<span data-photo-count>Ajouter des photos</span></span>
+      <input type="file" id="{{ form.photos.id_for_label }}" name="photos" multiple accept="image/jpeg,image/png,image/webp" data-photo-input data-max="{{ max_photos }}"{% if form.photos.errors %} aria-invalid="true" aria-describedby="photos-error"{% endif %}>
+    </div>
+    <ul class="photo-previews" data-photo-previews hidden></ul>
+  </div>
+
+  <fieldset class="stack stack--tight"{% if form.urgency.errors %} aria-describedby="urgency-error"{% endif %}>
+    <legend><h2 class="rdv__step">3. C'est gênant à quel point ?</h2></legend>
+    {% if form.urgency.errors %}<p class="field__error" id="urgency-error">{% icon "alert" %}{{ form.urgency.errors.0 }}</p>{% endif %}
+    <div class="tile-grid tile-grid--small">
+      {% for value, label, delay in urgencies %}
+      <label class="tile tile--text"><input type="radio" name="urgency" value="{{ value }}" required{% if form.urgency.value == value %} checked{% endif %}><span>{{ label }}</span><small>{{ delay }}</small></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="stack stack--tight"{% if form.access.errors %} aria-describedby="access-error"{% endif %}>
+    <legend><h2 class="rdv__step">4. Accès à votre chambre</h2></legend>
+    {% if form.access.errors %}<p class="field__error" id="access-error">{% icon "alert" %}{{ form.access.errors.0 }}</p>{% endif %}
+    <div class="row">
+      {% for value, label in access_choices %}
+      <label class="choices"><input type="radio" name="access" value="{{ value }}" required{% if form.access.value == value %} checked{% endif %}>{{ label }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div class="action-bar">
+    <p class="action-bar__summary text-muted">Chambre {{ room.number }}</p>
+    <button class="button" type="submit">{% icon "send" %}Envoyer</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

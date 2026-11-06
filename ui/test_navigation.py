@@ -13,11 +13,11 @@ class ResidentNavigationTests(TestCase):
         self.ines = make_user("ines", first_name="Inès")
         log_in_verified(self.client, self.ines)
 
-    def test_four_real_tabs_and_no_dead_link(self):
+    def test_five_real_tabs_and_no_dead_link(self):
         response = self.client.get(reverse("home"))
         save_page("home-resident-d1", response)
         nav = response.content.decode().split('class="resident-nav"')[1]
-        self.assertEqual(nav.count("<li>"), 4)
+        self.assertEqual(nav.count("<li>"), 5)  # Signaler came with card T30
         self.assertNotIn('href="#"', response.content.decode())
         # The brand shows on the home page only.
         self.assertContains(response, "resident-page__header")
