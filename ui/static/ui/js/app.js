@@ -142,7 +142,32 @@
     });
   }
 
+  // Install page (design card D2): show the steps of this phone first.
+  function openStepsOfThisPhone() {
+    var agent = navigator.userAgent || "";
+    var apple = /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
+    var android = /Android/.test(agent);
+    if (!apple && !android) {
+      return;
+    }
+    document.querySelectorAll("details[data-platform]").forEach(function (box) {
+      box.open = box.dataset.platform === (apple ? "ios" : "android");
+    });
+  }
+
+  // A strip that scrolls sideways shows its chosen item (the booking days).
+  function keepCurrentInView() {
+    document.querySelectorAll("[data-keep-current-in-view]").forEach(function (strip) {
+      var current = strip.querySelector("[aria-current]");
+      if (current) {
+        strip.scrollLeft = current.offsetLeft - strip.clientWidth / 2 + current.clientWidth / 2;
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    keepCurrentInView();
+    openStepsOfThisPhone();
     showInstallState();
     syncPushDevice();
     setUpStaffMenu();

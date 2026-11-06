@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 
 from access.session_policy import is_resident
 from accounts.models import User
+from appointments import direct
 from polls import services as polls
 from polls.services import VoteRefused, poll_of
 
@@ -188,6 +189,7 @@ def message(request, pk):
         {
             "active_nav": "messages",
             "campaign": campaign,
+            "short_type": inbox.SHORT_TYPES.get(campaign.type, "Message"),
             "delivery": delivery,
             "current": AttendanceReply.objects.filter(
                 campaign=campaign, resident=request.user
@@ -215,9 +217,15 @@ def inbox_list(request):
     key = request.GET.get("show", "all")
     if key not in inbox.FILTER_KEYS:
         key = "all"
-    page = Paginator(inbox.inbox(request.user, key), PER_PAGE).get_page(request.GET.get("page"))
+    # "À répondre": worked out once for the list and its count.
+    todo_ids = (
+        [item.delivery.pk for item in inbox.to_answer(request.user)] if key == "todo" else None
+    )
+    page = Paginator(inbox.inbox(request.user, key, todo_ids), PER_PAGE).get_page(
+        request.GET.get("page")
+    )
     current = next(item for item in inbox.FILTERS if item.key == key)
-    unread = inbox.unread_count(request.user, key)
+    unread = inbox.unread_count(request.user, key, todo_ids)
     total = unread if key == "all" else inbox.unread_count(request.user)
     response = render(
         request,
@@ -229,6 +237,11 @@ def inbox_list(request):
             "page_obj": page,
             "items": inbox.items(request.user, page.object_list),
             "unread": unread,
+            # Talks with the educators live here too (design card D2).
+            "conversations": direct.with_unread(
+                direct.resident_conversations(request.user).select_related("educator"),
+                request.user,
+            ).order_by("-updated_at"),
             # Replaces the context processor: no second count for the bar.
             "unread_messages": total,
         },

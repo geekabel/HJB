@@ -5,7 +5,7 @@ class ActivationCodeForm(forms.Form):
     code = forms.CharField(
         label="Code d'activation",
         max_length=20,
-        help_text="10 lettres et chiffres, par exemple ABCDE-FGHJK. Remis par l'accueil.",
+        help_text="10 lettres et chiffres, par exemple ABCDE-FGHJK",
         widget=forms.TextInput(
             attrs={
                 "autocomplete": "off",

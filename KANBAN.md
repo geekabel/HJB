@@ -65,13 +65,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D2 | Parcours des résidents | Design |
+| D3 | Écrans de l'équipe | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| D3 | Écrans de l'équipe | Design | D1 |
 | D4 | Système visuel et textes | Design | D2, D3 |
 | T30 | Signaler un problème | E7 Signalements | D4 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
@@ -127,6 +126,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T29 | Rappels et annulation de rendez-vous | 6 nov. 2026 |
 | T14c | Connexion de l'équipe avec une application de codes | 6 nov. 2026 |
 | D1 | Charpente et navigation | 7 nov. 2026 |
+| D2 | Parcours des résidents | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -334,11 +334,12 @@ Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page �
 - [x] Pages d'erreur 403, 404 et 500 aux couleurs de l'application
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Le menu de l'équipe ouvert restait collé en haut et cachait la page sur un petit écran : seule la barre reste en haut, et seulement avec le script ; un menu ouvert ne dépasse plus la hauteur de l'écran. Les champs et les ancres ne passent plus sous la barre. Un compte Maintenance arrivait sur l'accueil des résidents et tournait en rond : chaque compte de l'équipe arrive sur une page de l'équipe. Pas de colonne vide à gauche sur les pages sans navigation. Échap ne déplace plus le curseur depuis un champ. Le nom de la résidence n'est plus lu deux fois. Le lien du nom dit « Mon compte » aux lecteurs d'écran. Super-utilisateur sans rôle : « Équipe », plus « Résident ». Page en cours visible en mode contraste élevé.
 
-#### D2 Parcours des résidents
-- [ ] Accueil « À faire » (visite, vote, rendez-vous sous 48 h, wifi qui expire) puis raccourcis
-- [ ] Messages : annonces et discussions avec les éducateurs au même endroit, 3 filtres, statut en badge
-- [ ] Rendez-vous : mes rendez-vous et un bouton ; réservation sur sa propre page en 3 étapes
-- [ ] Connexion, activation, installation : textes courts, un seul bouton principal
+#### D2 Parcours des résidents (fait le 7 nov. 2026)
+- [x] Accueil « À faire » (réponse attendue, vote, nouveau message d'un éducateur, rendez-vous sous 48 h, wifi qui se termine), 5 au plus avec « Voir tout », puis raccourcis
+- [x] Messages : annonces et discussions avec les éducateurs au même endroit, 3 filtres (Tous, À répondre, Pour vous), statut en badge ; le compteur de l'onglet compte aussi les messages des éducateurs
+- [x] Rendez-vous : mes rendez-vous et un bouton ; réservation sur sa propre page en 3 étapes numérotées, jours sur une ligne, heures en tuiles groupées matin et après-midi ; l'ancienne adresse renvoie vers la réservation
+- [x] Connexion, activation, installation (seulement les étapes du téléphone utilisé), vote, réponse : textes plus courts, « Je serai là » et « Je ne serai pas là »
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Un wifi expiré affichait « Encore -3 jour » : il dit maintenant « Wifi expiré » ou « dernier jour ». La liste « À faire » s'arrête à 5. Le compteur s'étirait dans la liste des discussions. Le jour choisi reste visible dans la bande, avec son mois. Contour du focus visible sur les jours. Ancienne adresse /rendez-vous/ : un formulaire ouvert avant la mise à jour marche encore. Textes : « Voté », « Votre vote est définitif », « Aucun message personnel », pièce d'identité et « 10 lettres et chiffres » remis, rappel que le numéro de chambre ne sert jamais à se connecter gardé sur la première étape. La liste « À répondre » n'est calculée qu'une fois par page.
 
 #### D3 Écrans de l'équipe
 - [ ] Tableaux en cartes sur téléphone, ligne entière cliquable

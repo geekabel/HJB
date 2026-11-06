@@ -40,9 +40,7 @@ class ConversationTests(DirectTestCase):
         log_in_verified(self.client, self.ines)
         response = self.client.get(self.write_url(self.samia))
         save_page("appointments-write-empty", response)
-        self.assertContains(
-            response, "Samia répond en général du lundi au vendredi, de 9 h à 17 h."
-        )
+        self.assertContains(response, "Répond en général du lundi au vendredi, de 9 h à 17 h.")
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(
                 self.write_url(self.samia),
@@ -82,12 +80,12 @@ class ConversationTests(DirectTestCase):
         self.assertEqual(self.push.call_args.args[0], self.ines)
         self.assertEqual(self.push.call_args.kwargs["url"], self.write_url(self.samia))
 
-        # The resident sees the answer, and the counter on "Rendez-vous".
+        # The resident sees the answer under Messages, with its counter.
         log_in_verified(self.client, self.ines)
-        response = self.client.get(reverse("rdv:book"))
-        save_page("appointments-book-messages", response)
-        self.assertContains(response, "Mes messages")
-        self.assertContains(response, "1 message non lu")
+        response = self.client.get(reverse("inbox:list"))
+        save_page("messaging-inbox-talks", response)
+        self.assertContains(response, "Discussions avec un éducateur")
+        self.assertContains(response, '1<span class="visually-hidden"> non lu</span>')
         response = self.client.get(self.write_url(self.samia))
         save_page("appointments-write", response)
         self.assertContains(response, "Oui, bien sûr.")
@@ -154,7 +152,7 @@ class ConversationTests(DirectTestCase):
         log_in_verified(self.client, self.ines)
         self.assertContains(
             self.client.get(self.write_url(self.samia)),
-            "Samia répond en général le mardi et le jeudi.",
+            "Répond en général le mardi et le jeudi.",
         )
 
     def test_notification_task_is_best_effort(self):
@@ -258,8 +256,10 @@ class ReviewTests(DirectTestCase):
 
     def test_write_to_an_educator_without_open_times(self):
         log_in_verified(self.client, self.ines)
-        response = self.client.get(reverse("rdv:book"))
+        response = self.client.get(reverse("inbox:list"))
         self.assertContains(response, "Écrire à un éducateur")
+        response = self.client.get(reverse("rdv:educators"))
+        save_page("appointments-educators", response)
         self.assertContains(response, f'href="{self.write_url(self.samia)}"')
 
     def test_new_marker_and_cache_headers(self):

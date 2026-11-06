@@ -13,8 +13,8 @@ closes_at, thanks, error, action (address of the form, "" for the same page).
   {% else %}
   <form class="answer" method="post"{% if action %} action="{{ action }}"{% endif %}>
     {% csrf_token %}
-    <button class="button{% if current.answer == 'present' %} button--selected{% endif %}" type="submit" name="answer" value="present">{% icon "check" %}Présent</button>
-    <button class="button button--secondary{% if current.answer == 'absent' %} button--selected{% endif %}" type="submit" name="answer" value="absent">Absent</button>
+    <button class="button{% if current.answer == 'present' %} button--selected{% endif %}" type="submit" name="answer" value="present">{% icon "check" %}Je serai là</button>
+    <button class="button button--secondary{% if current.answer == 'absent' %} button--selected{% endif %}" type="submit" name="answer" value="absent">Je ne serai pas là</button>
   </form>
   <p class="text-muted text-small">{% if campaign.event_date %}Réponse possible jusqu'au <time datetime="{{ campaign.event_date|date:'Y-m-d' }}">{{ campaign.event_date|date:"l j F" }}</time> au soir.{% else %}Réponse possible jusqu'au <time datetime="{{ closes_at|date:'Y-m-d\TH:i:sO' }}">{{ closes_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
   {% endif %}

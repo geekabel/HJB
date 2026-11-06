@@ -1,0 +1,24 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Rendez-vous{% endblock %}
+{% block content %}
+<h1>Rendez-vous</h1>
+{% include "appointments/_messages.html" %}
+
+{% if upcoming %}
+<ul class="link-list">
+  {% for meeting in upcoming %}
+  <li><a href="{% url 'rdv:detail' meeting.pk %}">{% icon "calendar" %}<span><strong>{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</strong><small>avec {{ meeting.educator.first_name|default:meeting.educator.get_username }}</small></span>{% icon "chevron" %}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty-state">Aucun rendez-vous prévu.</p>
+{% endif %}
+
+{% if can_book %}
+<a class="button button--block" href="{% url 'rdv:book' %}">{% icon "plus" %}Prendre rendez-vous</a>
+{% else %}
+<p class="text-muted">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil.</p>
+{% endif %}
+<a class="button button--quiet button--block" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
+{% endblock %}

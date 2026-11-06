@@ -235,7 +235,7 @@ class ResidentPageTests(BookingTestCase):
         first = response.context["first"]
         response = self.client.get(BOOK, {"avec": self.samia.pk})
         save_page("appointments-book-samia", response)
-        self.assertContains(response, "Visible uniquement par Samia.")
+        self.assertContains(response, "Seul l'éducateur le voit.")
         day = timezone.localtime(first.start).date().isoformat()
         hhmm = timezone.localtime(first.start).strftime("%H%M")
         response = self.client.get(BOOK, {"avec": self.samia.pk, "jour": day, "heure": hhmm})
@@ -251,7 +251,11 @@ class ResidentPageTests(BookingTestCase):
         save_page("appointments-detail", response)
         self.assertContains(response, "Rendez-vous confirmé.")
         self.assertContains(response, "Démarches administratives")
-        self.assertContains(self.client.get(BOOK), "Mes rendez-vous")
+        # The Rendez-vous tab lists it, with the button to book another one.
+        response = self.client.get(reverse("rdv:list"))
+        save_page("appointments-overview", response)
+        self.assertContains(response, f'href="{reverse("rdv:detail", args=[meeting.pk])}"')
+        self.assertContains(response, "Prendre rendez-vous")
         # The same time again, by someone else: refused with a clear message.
         log_in_verified(self.client, self.yanis)
         response = self.client.post(

@@ -225,5 +225,20 @@ def home(request):
         if user.has_perm("accounts.send_messages"):
             return redirect("messaging:list")
         return redirect("account")
-    passkeys = get_credential_model().objects.filter(user=user).order_by("-created_at")
-    return render(request, "access/home.html", {"passkeys": passkeys, "active_nav": "home"})
+    from appointments import direct
+
+    from .home import SHOWN, todos
+
+    unread_direct = direct.unread_count(user)
+    found = todos(user, unread_direct)
+    return render(
+        request,
+        "access/home.html",
+        {
+            "todos": found[:SHOWN],
+            "more_todos": len(found) - SHOWN,
+            "active_nav": "home",
+            # Replaces the context processor: counted once for the page and the bar.
+            "unread_direct": unread_direct,
+        },
+    )

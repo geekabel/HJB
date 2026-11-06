@@ -218,9 +218,7 @@ class VotePageTests(VoteTestCase):
         url = self.link(campaign, self.yanis)
         response = client.get(url)
         save_page("polls-vote-link", response)
-        self.assertContains(
-            response, "Un seul choix · votre choix n'est pas enregistré à votre nom"
-        )
+        self.assertContains(response, "Un seul choix. Vote anonyme.")
         self.assertContains(
             response,
             '<legend class="vote__question">Soirée de fin d&#x27;année : quelle date ?</legend>',
@@ -261,7 +259,7 @@ class VotePageTests(VoteTestCase):
         campaign = self.sent_vote()
         log_in_verified(self.client, self.ines)
         inbox = self.client.get(reverse("inbox:list"))
-        self.assertContains(inbox, "Vote attendu")
+        self.assertContains(inbox, "À répondre</span>")
         self.assertContains(inbox, "Vote · clôture le ")
         url = reverse("inbox:message", args=[campaign.pk])
         response = self.client.get(url)
@@ -271,7 +269,7 @@ class VotePageTests(VoteTestCase):
         save_page("polls-vote-app-done", response)
         self.assertContains(response, "Merci, votre vote est enregistré. Il reste anonyme.")
         self.assertContains(response, "Vous avez voté.")
-        self.assertContains(self.client.get(reverse("inbox:list")), "Vous avez voté")
+        self.assertContains(self.client.get(reverse("inbox:list")), "Voté</span>")
         response = self.client.post(url, {"option": self.option(campaign, 1)})
         self.assertContains(response, "Vous avez déjà voté.", status_code=400)
         Poll.objects.filter(campaign=campaign).update(closes_at=timezone.now())
