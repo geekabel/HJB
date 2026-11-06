@@ -7,7 +7,7 @@ from accounts.roles import Role
 from accounts.tests.helpers import log_in_verified, make_user
 from tools.html_capture import save_page
 
-from .models import Action, AuditEntry, AuditEntryImmutable
+from .models import NO_DETAILS, Action, AuditEntry, AuditEntryImmutable
 from .service import log_action
 
 
@@ -165,7 +165,7 @@ class SummaryTests(TestCase):
             ),
             (Action.APP_CODE_CREATED, {"previous_removed": 2}, "Remplace 2 anciens accès."),
             (Action.APP_CODE_FAILURES, {"failures": 5}, "5 codes faux d'affilée."),
-            (Action.RESIDENT_RETURNED, {"room": "312"}, "–"),
+            (Action.RESIDENT_RETURNED, {"room": "312"}, NO_DETAILS),
         ]
         for action, details, expected in cases:
             with self.subTest(action=action, details=details):

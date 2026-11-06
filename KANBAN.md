@@ -65,13 +65,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D3 | Écrans de l'équipe | Design |
+| D4 | Système visuel et textes | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| D4 | Système visuel et textes | Design | D2, D3 |
 | T30 | Signaler un problème | E7 Signalements | D4 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
@@ -127,6 +126,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T14c | Connexion de l'équipe avec une application de codes | 6 nov. 2026 |
 | D1 | Charpente et navigation | 7 nov. 2026 |
 | D2 | Parcours des résidents | 7 nov. 2026 |
+| D3 | Écrans de l'équipe | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -341,10 +341,12 @@ Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page �
 - [x] Connexion, activation, installation (seulement les étapes du téléphone utilisé), vote, réponse : textes plus courts, « Je serai là » et « Je ne serai pas là »
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Un wifi expiré affichait « Encore -3 jour » : il dit maintenant « Wifi expiré » ou « dernier jour ». La liste « À faire » s'arrête à 5. Le compteur s'étirait dans la liste des discussions. Le jour choisi reste visible dans la bande, avec son mois. Contour du focus visible sur les jours. Ancienne adresse /rendez-vous/ : un formulaire ouvert avant la mise à jour marche encore. Textes : « Voté », « Votre vote est définitif », « Aucun message personnel », pièce d'identité et « 10 lettres et chiffres » remis, rappel que le numéro de chambre ne sert jamais à se connecter gardé sur la première étape. La liste « À répondre » n'est calculée qu'une fois par page.
 
-#### D3 Écrans de l'équipe
-- [ ] Tableaux en cartes sur téléphone, ligne entière cliquable
-- [ ] Fiche résident : résumé et actions d'abord, formulaire replié, confirmation pour couper l'accès
-- [ ] Nouveau message, suivi, disponibilités, discussions, journal (voir le doc d'audit)
+#### D3 Écrans de l'équipe (fait le 7 nov. 2026)
+- [x] Tableaux en cartes sur téléphone (résidents, messages, renouvellements wifi, suivi, journal), ligne entière cliquable, colonnes secondaires cachées sur tablette
+- [x] Fiche résident : actions d'abord (code, wifi, départ), contact visible par tous, formulaire replié, confirmation pour couper l'accès
+- [x] Nouveau message : carte des modèles corrigée, date de l'événement et heure d'envoi seulement si utiles ; suivi et résultats d'un vote en une ligne
+- [x] Disponibilités : rendez-vous d'abord, grille plus lisible (case fermée en pointillés, case ouverte « Libre ») ; discussions avec le dernier message, non lues d'abord ; journal en phrases, avec les noms
+- **Revue indépendante (7 nov.)** : corrigé après relecture. L'accueil ne voyait plus le téléphone d'un résident sans ouvrir le formulaire : une carte Contact le montre à tous. Revenir à « Maintenant » vide l'heure d'envoi cachée. Un vote dont le texte utilise {date} garde le champ de date. Le journal ne plante plus sur une ancienne entrée incomplète, et chaque action a sa phrase (relance annulée, accord du pluriel). Erreurs du formulaire : un lien en haut de la page y mène. Les étiquettes des cartes ne sont plus lues deux fois. Dates en toutes lettres dans les discussions. Tableau du suivi en cartes sur téléphone.
 
 #### D4 Système visuel et textes
 - [ ] Trois niveaux de titres, règle carte ou note, un seul bouton principal, espaces, zéro non barré, badges
