@@ -310,7 +310,7 @@ class ListAndDepartureTests(WifiPagesTestCase):
         self.log_in(self.educator, confirmed=False)
         response = self.client.get(reverse("residents:list"))
         save_page("residents-list-wifi", response)
-        self.assertContains(response, "Wifi valable jusqu'au</th>")
+        self.assertContains(response, "Wifi jusqu'au</th>")
         self.assertContains(response, "dans 12 j")
         self.assertNotContains(response, PASSWORD)
         self.assertNotContains(response, "ch312-ines")

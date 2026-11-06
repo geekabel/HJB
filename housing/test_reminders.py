@@ -176,7 +176,7 @@ class RenewalsPageTests(ReminderTestCase):
         self.assertNotContains(response, "vre8th")  # never the username nor the password
         self.assertContains(response, reverse("residents:wifi_access", args=[self.ines.pk]))
         listing = self.client.get(reverse("residents:list"))
-        self.assertContains(listing, "2 accès wifi à renouveler")
+        self.assertContains(listing, "2 wifi à renouveler")
 
     def test_educator_sees_without_renew_link(self):
         self.record(self.r312, 12)

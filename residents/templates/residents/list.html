@@ -5,15 +5,18 @@
 <header class="page-header">
   <div class="stack stack--tight">
     <h1>Résidents</h1>
-    <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluralize }} · {{ counts.active }} compte{{ counts.active|pluralize }} activé{{ counts.active|pluralize }} · {{ counts.pending }} pas encore activé{{ counts.pending|pluralize }}{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluralize }} résident{{ counts.former|pluralize }}</a>{% endif %}</p>
-    <p><a href="{% url 'residents:wifi_renewals' %}">{% if renewal_count %}{{ renewal_count }} accès wifi à renouveler{% else %}Accès wifi à renouveler : aucun{% endif %}</a></p>
+    <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluralize }} · {{ counts.pending }} compte{{ counts.pending|pluralize }} à activer{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluralize }}</a>{% endif %}</p>
+    {% if renewal_count %}<p><a class="badge badge--warning badge--link" href="{% url 'residents:wifi_renewals' %}">{% icon "wifi" %}{{ renewal_count }} wifi à renouveler</a></p>{% else %}<p class="text-small"><a href="{% url 'residents:wifi_renewals' %}">Wifi à renouveler : aucun</a></p>{% endif %}
   </div>
   {% if perms.accounts.manage_residents %}
   <div class="row">
-    {% if perms.accounts.view_wifi_password %}
-    <a class="button button--quiet" href="{% url 'residents:wifi_import' %}">{% icon "import" %}Importer la liste wifi</a>
-    {% endif %}
-    <a class="button button--quiet" href="{% url 'residents:import' %}">{% icon "import" %}Importer CSV ou Excel</a>
+    <details class="menu-button">
+      <summary class="button button--quiet">{% icon "import" %}Importer</summary>
+      <ul class="menu-button__list">
+        <li><a href="{% url 'residents:import' %}">Des résidents (CSV ou Excel)</a></li>
+        {% if perms.accounts.view_wifi_password %}<li><a href="{% url 'residents:wifi_import' %}">La liste wifi</a></li>{% endif %}
+      </ul>
+    </details>
     <a class="button" href="{% url 'residents:create' %}">{% icon "plus" %}Nouveau résident</a>
   </div>
   {% endif %}
@@ -50,29 +53,27 @@
 {% if page_obj.object_list %}
 <p class="text-muted text-small" aria-live="polite">{{ page_obj.paginator.count }} résultat{{ page_obj.paginator.count|pluralize }}</p>
 <div class="table-scroll" role="region" aria-labelledby="residents-caption" tabindex="0">
-  <table class="table">
+  <table class="table table--cards">
     <caption id="residents-caption" class="visually-hidden">Résidents, par ordre alphabétique</caption>
     <thead>
       <tr>
         <th scope="col">Résident</th>
         <th scope="col">Chambre</th>
-        <th scope="col">Téléphone</th>
+        <th scope="col" class="table__secondary">Téléphone</th>
         <th scope="col">Compte</th>
-        <th scope="col">Arrivée</th>
-        <th scope="col">Wifi valable jusqu'au</th>
-        <th scope="col"><span class="visually-hidden">Actions</span></th>
+        <th scope="col" class="table__secondary">Arrivée</th>
+        <th scope="col">Wifi jusqu'au</th>
       </tr>
     </thead>
     <tbody>
       {% for r in page_obj %}
       <tr>
-        <th scope="row" class="table__row-header">{{ r.get_full_name|default:r.get_username }}{% if r.is_moderator %} <span class="badge badge--neutral">Modérateur</span>{% endif %}</th>
-        <td class="table__number">{% if r.stay %}{{ r.stay.room.number }} · {{ r.stay.room.floor.short_label }}{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</td>
-        <td class="table__number">{% if r.phone %}<span class="masked-phone" aria-hidden="true">{{ r.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ r.phone|slice:"-2:" }}</span>{% else %}<span class="text-muted">Aucun</span>{% endif %}</td>
-        <td>{% with state=r.account_state %}<span class="badge {% if state == 'active' %}badge--info{% elif state == 'pending' %}badge--warning{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% endwith %}</td>
-        <td class="table__number">{% if r.stay %}<time datetime="{{ r.stay.arrival|date:'Y-m-d' }}">{{ r.stay.arrival|date:"j F Y" }}</time>{% else %}<span class="text-muted">–</span>{% endif %}</td>
-        <td class="table__number">{% if r.wifi %}<time datetime="{{ r.wifi.expires_on|date:'Y-m-d' }}">{{ r.wifi.expires_on|date:"j F Y" }}</time>{% if r.wifi.is_expired %} <span class="badge badge--error">Expiré</span>{% elif r.wifi.renew_soon %} <span class="badge badge--warning">dans {{ r.wifi.days_left }} j</span>{% endif %}{% elif r.stay %}<span class="text-muted">Aucun</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
-        <td class="table__action"><a href="{% url 'residents:detail' r.pk %}">{% if perms.accounts.manage_residents %}Gérer{% else %}Voir{% endif %}<span class="visually-hidden"> la fiche de {{ r.get_full_name|default:r.get_username }}</span></a></td>
+        <th scope="row" class="table__row-header"><a class="table__link" href="{% url 'residents:detail' r.pk %}">{{ r.get_full_name|default:r.get_username }}</a>{% if r.is_moderator %} <span class="badge badge--neutral">Modérateur</span>{% endif %}</th>
+        <td class="table__number" data-label="Chambre">{% if r.stay %}{{ r.stay.room.number }} · {{ r.stay.room.floor.short_label }}{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</td>
+        <td class="table__number table__secondary" data-label="Téléphone">{% if r.phone %}<span aria-hidden="true">{{ r.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ r.phone|slice:"-2:" }}</span>{% else %}<span class="text-muted">Aucun</span>{% endif %}</td>
+        <td data-label="Compte">{% with state=r.account_state %}<span class="badge {% if state == 'active' %}badge--info{% elif state == 'pending' %}badge--neutral{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% endwith %}</td>
+        <td class="table__number table__secondary" data-label="Arrivée">{% if r.stay %}<time datetime="{{ r.stay.arrival|date:'Y-m-d' }}">{{ r.stay.arrival|date:"j F Y" }}</time>{% else %}<span class="text-muted">–</span>{% endif %}</td>
+        <td class="table__number" data-label="Wifi jusqu'au">{% if r.wifi %}<time datetime="{{ r.wifi.expires_on|date:'Y-m-d' }}">{{ r.wifi.expires_on|date:"j F Y" }}</time>{% if r.wifi.is_expired %} <span class="badge badge--error">Expiré</span>{% elif r.wifi.renew_soon %} <span class="badge badge--warning">dans {{ r.wifi.days_left }} j</span>{% endif %}{% elif r.stay %}<span class="text-muted">Aucun</span>{% else %}<span class="text-muted">–</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

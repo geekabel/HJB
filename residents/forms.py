@@ -37,7 +37,7 @@ class ResidentForm(forms.ModelForm):
         label="Téléphone portable",
         max_length=30,
         required=False,
-        help_text="Par exemple 06 12 34 56 78. Il sert à envoyer les SMS et le code d'activation.",
+        help_text="Exemple : 06 12 34 56 78",
         widget=forms.TextInput(attrs={"type": "tel", "inputmode": "tel", **NO_AUTOCOMPLETE}),
     )
     room = RoomChoiceField(
@@ -77,10 +77,7 @@ class ResidentForm(forms.ModelForm):
             field = self.fields["room"]
             field.required = True
             field.empty_label = None
-            field.help_text = (
-                "Pour un déménagement dans la résidence, choisissez la nouvelle chambre "
-                "et mettez la date du changement."
-            )
+            field.help_text = "Changement de chambre : choisissez la nouvelle et la date."
             self.initial.setdefault("room", self.stay.room_id)
             self.initial.setdefault("arrival", self.stay.arrival)
         else:
@@ -172,10 +169,7 @@ class DepartureForm(forms.Form):
         # A planned departure: the form starts at its date, so that "change the
         # date" never records an immediate departure by mistake.
         self.fields["departure"].initial = (stay.planned_departure if stay else None) or today
-        self.fields["departure"].help_text = (
-            "Aujourd'hui ou avant : enregistré tout de suite. Plus tard : départ prévu, "
-            "enregistré automatiquement ce jour-là à midi."
-        )
+        self.fields["departure"].help_text = "Date future : départ enregistré ce jour-là à midi."
         self.fields["departure"].widget.attrs["max"] = (today + timedelta(days=365)).isoformat()
         if stay:
             self.fields["departure"].widget.attrs["min"] = stay.arrival.isoformat()
@@ -234,7 +228,7 @@ class WifiAccessForm(forms.Form):
         label="Identifiant",
         required=False,
         max_length=64,
-        help_text="Celui du portail wifi. Laissez vide pour en générer un.",
+        help_text="Vide : généré au format du portail.",
         widget=forms.TextInput(
             attrs={**NO_AUTOCOMPLETE, "spellcheck": "false", "autocapitalize": "off"}
         ),
@@ -243,7 +237,7 @@ class WifiAccessForm(forms.Form):
         label="Mot de passe",
         required=False,
         strip=False,
-        help_text="Celui du portail wifi. Laissez vide pour en générer un.",
+        help_text="Vide : généré au format du portail.",
         widget=SecretTextInput(
             attrs={**NO_AUTOCOMPLETE, "spellcheck": "false", "autocapitalize": "off"}
         ),

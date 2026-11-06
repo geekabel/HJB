@@ -14,18 +14,11 @@
   {% if form.errors %}
   <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>Le départ n'est pas enregistré.</strong> Corrigez la date.</p></div>
   {% endif %}
-  {% if stay.planned_departure %}<p class="alert alert--info">{% icon "clock" %}<span>Départ déjà prévu le <time datetime="{{ stay.planned_departure|date:'Y-m-d' }}">{{ stay.planned_departure|date:"l j F Y" }}</time>. Choisissez une autre date future pour le déplacer, ou la date d'aujourd'hui pour l'enregistrer tout de suite.</span></p>{% endif %}
-  <h2>Ce qui va se passer</h2>
-  <ul class="bullet-list">
-    {% if stay %}<li>Le séjour en {{ stay.room|lower }} se termine à la date choisie. La chambre redevient libre.</li>{% endif %}
-    <li>Le compte est désactivé : la personne ne peut plus se connecter, sur aucun appareil. Les connexions en cours sont fermées.</li>
-    <li>La fiche et l'historique des séjours sont gardés.</li>
-    <li>Le départ est noté dans le journal d'audit.</li>
-    <li>Une date future prévoit le départ : il sera enregistré automatiquement ce jour-là à midi, et rien ne change avant.</li>
-  </ul>
+  {% if stay.planned_departure %}<p class="alert alert--info">{% icon "clock" %}<span>Départ déjà prévu le <time datetime="{{ stay.planned_departure|date:'Y-m-d' }}">{{ stay.planned_departure|date:"l j F Y" }}</time>. Changez la date, ou mettez aujourd'hui pour l'enregistrer tout de suite.</span></p>{% endif %}
+  <p>{% if stay %}La {{ stay.room|lower }} sera libérée et le{% else %}Le{% endif %} compte désactivé, sur tous les appareils. La fiche est gardée.</p>
   {{ form.departure.as_field_group }}
   <div class="row">
-    <button class="button button--danger" type="submit">Enregistrer</button>
+    <button class="button button--danger" type="submit">Enregistrer le départ</button>
     <a class="button button--quiet" href="{% url 'residents:detail' resident.pk %}">Annuler</a>
   </div>
 </form>

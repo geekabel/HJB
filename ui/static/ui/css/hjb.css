@@ -1418,6 +1418,158 @@
     font-size: inherit;
   }
 
+  /* Tables that fit any screen (design card D3): the name is the link and
+     covers the row; secondary columns go below 64rem; below 48rem each row
+     becomes a card, each value with its label. */
+  .table--cards {
+    min-width: 0;
+  }
+
+  .table--cards tbody tr {
+    position: relative;
+  }
+
+  .table--cards tbody tr:hover {
+    background: var(--surface-2);
+  }
+
+  .table__link {
+    color: inherit;
+    font-weight: 700;
+  }
+
+  .table__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .table__link:focus-visible {
+    outline: none;
+  }
+
+  .table__link:focus-visible::after {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+    border-radius: var(--r-small);
+  }
+
+  @media (max-width: 63.99rem) {
+    .table--cards .table__secondary {
+      display: none;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .table-scroll:has(> .table--cards) {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+    }
+
+    .table--cards thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .table--cards,
+    .table--cards tbody,
+    .table--cards tr,
+    .table--cards th,
+    .table--cards td {
+      display: block;
+    }
+
+    .table--cards tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
+    }
+
+    .table--cards tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--s-1) var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--line);
+      border-radius: var(--r-large);
+      background: var(--surface);
+    }
+
+    .table--cards tbody tr > * {
+      padding: 0;
+      border: 0;
+      white-space: normal;
+    }
+
+    .table--cards .table__row-header {
+      flex-basis: 100%;
+      font-size: var(--t-body);
+    }
+
+    .table--cards td[data-label]::before {
+      content: attr(data-label) " : ";
+      color: var(--text-muted);
+    }
+  }
+
+  /* A badge that is a link (a count of things to do) */
+  .badge--link {
+    min-height: 2rem;
+    padding-inline: var(--s-3);
+    text-decoration: none;
+  }
+
+  .badge--link svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* A button that opens a short list of choices (details, no script) */
+  .menu-button {
+    position: relative;
+  }
+
+  .menu-button summary {
+    list-style: none;
+  }
+
+  .menu-button summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu-button__list {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 5;
+    min-width: 16rem;
+    margin: var(--s-1) 0 0;
+    padding: var(--s-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgb(6 32 47 / 0.15);
+    list-style: none;
+  }
+
+  .menu-button__list a {
+    display: flex;
+    align-items: center;
+    min-height: var(--target);
+    padding-inline: var(--s-3);
+    border-radius: var(--r-small);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .menu-button__list a:hover {
+    background: var(--surface-2);
+  }
+
   /* Column that holds explanations: wide enough for a sentence */
   .table__state {
     min-width: 16rem;

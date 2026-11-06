@@ -22,11 +22,7 @@
   {{ form.username.as_field_group }}
   {{ form.password.as_field_group }}
   {{ form.expires_on.as_field_group }}
-  <ul class="bullet-list text-muted text-small">
-    <li>Le mot de passe est chiffré. Il n'apparaît dans aucune liste.</li>
-    <li>Champ laissé vide : l'application le génère au format du portail ({{ wifi_settings.username_length }} caractères pour l'identifiant, {{ wifi_settings.password_length }} pour le mot de passe) et l'affiche une seule fois, pour le recopier sur le portail.</li>
-    <li>L'enregistrement est noté dans le journal d'audit.</li>
-  </ul>
+  <p class="text-muted text-small">Format du portail : {{ wifi_settings.username_length }} caractères pour l'identifiant, {{ wifi_settings.password_length }} pour le mot de passe. Mot de passe chiffré, montré une seule fois.</p>
   <div class="row">
     <button class="button" type="submit">Enregistrer l'accès</button>
     <a class="button button--quiet" href="{% url 'residents:detail' resident.pk %}">Annuler</a>

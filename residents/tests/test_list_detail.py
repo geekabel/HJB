@@ -65,8 +65,8 @@ class AccessTests(ResidentsTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, ">Résidents</a>")
         self.assertNotContains(response, "Nouveau résident")
-        self.assertNotContains(response, "Importer CSV ou Excel")
-        self.assertContains(response, ">Voir<span")
+        self.assertNotContains(response, "Des résidents (CSV ou Excel)")
+        self.assertContains(response, 'class="table__link"')
         # Profile: read only, without a form.
         response = self.client.get(reverse("residents:detail", args=[self.awa.pk]))
         save_page("residents-detail-read-only", response)
@@ -119,7 +119,7 @@ class ListTests(ResidentsTestCase):
             response.context["counts"],
             {"total": 3, "former": 0, "current": 3, "active": 2, "pending": 1, "disabled": 0},
         )
-        self.assertContains(response, "3 résidents · 2 comptes activés · 1 pas encore activé")
+        self.assertContains(response, "3 résidents · 1 compte à activer")
         self.assertContains(response, '<span class="badge badge--neutral">Modérateur</span>')
         self.assertContains(response, "312 · 3e")
         self.assertContains(response, "Sans chambre")
