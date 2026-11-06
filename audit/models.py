@@ -80,16 +80,16 @@ class AuditEntry(models.Model):
         )
 
     def summary(self):
-        """Details in plain words, for the audit log page; "–" when there are none.
+        """Details in plain words, for the audit log page; a dash when there are none.
 
-        Never fails: an old entry with missing details shows "–".
+        Never fails: an old entry with missing details shows the dash.
         """
         try:
             text = self._summary()
         except (KeyError, ValueError, TypeError):
             text = ""
         text = text.strip()
-        return text if text and text != "." else "–"
+        return text if text and text != "." else NO_DETAILS
 
     def _summary(self):
         if self.action == Action.ROLES_CHANGED:
@@ -195,6 +195,8 @@ class AuditEntry(models.Model):
             f"{DETAIL_LABELS.get(key, key)} : {value}" for key, value in self.details.items()
         )
 
+
+NO_DETAILS = "\u2013"  # an en dash, as in the empty cells of the other tables
 
 DETAIL_LABELS = {
     "recipients": "destinataires",
