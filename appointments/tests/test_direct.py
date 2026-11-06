@@ -1,6 +1,6 @@
 """Direct messages between a resident and an educator (card T28)."""
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from unittest import mock
 
 from django.test import TestCase
@@ -97,7 +97,9 @@ class ConversationTests(DirectTestCase):
         old = DirectMessage.objects.create(
             conversation=conversation, author=self.samia, text="Bonjour Inès."
         )
-        DirectMessage.objects.filter(pk=old.pk).update(sent_at=timezone.now() - timedelta(days=1))
+        yesterday = timezone.localdate() - timedelta(days=1)
+        noon = timezone.make_aware(datetime.combine(yesterday, time(12)))
+        DirectMessage.objects.filter(pk=old.pk).update(sent_at=noon)
         log_in_verified(self.client, self.ines)
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(

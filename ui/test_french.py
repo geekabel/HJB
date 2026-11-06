@@ -46,7 +46,8 @@ class JourTests(SimpleTestCase):
     def test_today_yesterday_and_other_days(self):
         now = timezone.now()
         self.assertEqual(jour(now), "Aujourd'hui")
-        self.assertEqual(jour(now - timedelta(days=1)), "Hier")
+        noon = datetime.combine(timezone.localdate() - timedelta(days=1), datetime.min.time())
+        self.assertEqual(jour(timezone.make_aware(noon.replace(hour=12))), "Hier")
         self.assertEqual(jour(None), "")
         year = timezone.localdate().year - 1
         self.assertEqual(

@@ -193,11 +193,19 @@
     });
   }
 
-  // A conversation opens on its last message, like the messaging apps.
+  // A conversation opens on its last message, like the messaging apps. Not
+  // when a warning says why a message was refused: it is at the top. Just
+  // after sending (#last-message), the focus goes to the sent message, so a
+  // screen reader reads it out: it says the message went.
   function showLastMessage() {
     var last = document.getElementById("last-message");
-    if (last && document.querySelector(".composer")) {
-      window.scrollTo(0, document.documentElement.scrollHeight);
+    if (!last || !document.querySelector(".composer") || document.querySelector("main .alert")) {
+      return;
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    if (window.location.hash === "#last-message") {
+      last.setAttribute("tabindex", "-1");
+      last.focus({ preventScroll: true });
     }
   }
 
@@ -208,13 +216,17 @@
     if (!form) {
       return;
     }
-    form.addEventListener("change", function (event) {
-      var input = event.target;
-      if (input.name === "heure" && input.checked) {
+    function show(input) {
+      if (input && input.name === "heure" && input.checked) {
         summary.textContent = summary.dataset.day + " à " + input.parentElement.textContent.trim();
         summary.classList.remove("text-muted");
       }
+    }
+    form.addEventListener("change", function (event) {
+      show(event.target);
     });
+    // A time the browser checked again (back button, restored form)
+    show(form.querySelector('input[name="heure"]:checked'));
   }
 
   document.addEventListener("DOMContentLoaded", function () {

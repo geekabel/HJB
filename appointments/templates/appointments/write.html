@@ -12,8 +12,8 @@
 </div>
 {% include "appointments/_messages.html" %}
 
-<p class="text-muted text-small icon-text thread-note">{% icon "lock" %}<span>Lu par {{ educator.first_name|default:educator.get_username }} seulement. Urgence : appelez l'accueil.</span></p>
+<p class="text-muted text-small icon-text thread-note" id="thread-note">{% icon "lock" %}<span>Lu par {{ educator.first_name|default:educator.get_username }} seulement. Urgence : appelez l'accueil.</span></p>
 
 {% include "appointments/_thread.html" with me=user %}
-{% include "appointments/_composer.html" %}
+{% include "appointments/_composer.html" with note="thread-note" %}
 {% endblock %}
