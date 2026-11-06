@@ -65,13 +65,16 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| | *(vide)* | |
+| D1 | Charpente et navigation | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T30 | Signaler un problème | E7 Signalements | T13 |
+| D2 | Parcours des résidents | Design | D1 |
+| D3 | Écrans de l'équipe | Design | D1 |
+| D4 | Système visuel et textes | Design | D2, D3 |
+| T30 | Signaler un problème | E7 Signalements | D4 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
@@ -122,7 +125,8 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T26 | Disponibilités des éducateurs | 5 nov. 2026 |
 | T27 | Réservation d'un rendez-vous | 5 nov. 2026 |
 | T28 | Messages directs avec un éducateur | 5 nov. 2026 |
-| T29 | Rappels et annulation de rendez-vous | 5 nov. 2026 |
+| T29 | Rappels et annulation de rendez-vous | 6 nov. 2026 |
+| T14c | Connexion de l'équipe avec une application de codes | 6 nov. 2026 |
 
 ## Détail des cartes
 
@@ -313,6 +317,36 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 - [x] Mêmes tests (367), W3C, contrôle avant déploiement et essais de bout en bout (résident et administrateur) qu'avant ; documentation mise à jour
 - **Notes** : le [glossaire](docs/glossaire.md) relie chaque ancien nom au nouveau. Traduction faite en parallèle, application par application, avec ce glossaire comme référence unique. Contrôles en plus : la feuille de style a gardé exactement la même structure (chaque ancienne classe correspond à une seule nouvelle), chaque classe utilisée dans un gabarit existe, et les captures d'écran des pages des résidents sont identiques au pixel près. Changements pour l'installation : variables d'environnement renommées (`DJANGO_SMS_PROVIDER`, `DJANGO_WEBAUTHN_ORIGINS`, `SMSGATE_TOKEN`, `SMSGATE_USERNAME`, `SMSGATE_PASSWORD`, `OVH_SMS_SENDER`), commande `activation_code --phone`. Les paramètres de filtre de la liste des résidents sont en anglais (`?floor=`, `?account=`).
 - **Revue indépendante (5 nov.)** : aucun changement de comportement trouvé (code comparé module par module, variables des gabarits suivies pendant les tests). Corrigé : des champs sans libellé s'affichaient en anglais dans l'administration (« User » au lieu de « utilisateur ») ; les erreurs d'envoi de SMS lues par l'exploitant sont revenues en français, comme les contrôles et les commandes ; trois noms harmonisés. La règle de langue est écrite dans le glossaire.
+
+### Design (audit du 6 nov. 2026)
+
+Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page à revoir sur téléphone, tablette et ordinateur, parcours à simplifier. 38 pages capturées en 3 tailles, deux revues indépendantes, règles tirées de GOV.UK, DSFR, FALC, Nielsen Norman Group, WCAG 2.2, Android et Apple. Le détail et les règles retenues sont dans le doc « Audit design et parcours HJB ».
+
+#### D1 Charpente et navigation
+- **Docs** : [modèles d'erreur 403, 404, 500](https://docs.djangoproject.com/en/6.1/ref/views/#error-views), [menus hamburger (NN/g)](https://www.nngroup.com/articles/hamburger-menus/), [classes de taille d'écran (Android)](https://developer.android.com/develop/ui/views/layout/use-window-size-classes).
+- [x] Résidents : barre du bas à 4 onglets réels (Accueil, Messages, Rendez-vous, Mon compte), plus de lien mort ; « Signaler » revient avec T30
+- [x] Résidents : nouvelle page Mon compte (notifications, wifi, installer, connexion, se déconnecter) ; l'accueil ne montre plus les clés ni la déconnexion
+- [x] Résidents : en-tête au logo seulement sur l'accueil et les pages sans navigation ; plus de flèche retour sur les onglets
+- [x] Résidents sur ordinateur (64rem et plus) : menu à gauche au lieu de la barre du bas
+- [x] Équipe : barre du haut avec un bouton « Menu » sous 64rem ; menu à gauche au-dessus ; sans JavaScript, le menu reste ouvert
+- [x] Équipe : « Se déconnecter » et le lien vers Mon compte sous le nom ; liens morts retirés (Tableau de bord, Signalements reviennent avec T31 et T35) ; « Discussions » a son entrée et son compteur
+- [x] Équipe : l'éducateur arrive sur ses rendez-vous, l'accueil et l'administration sur les résidents
+- [x] Pages d'erreur 403, 404 et 500 aux couleurs de l'application
+
+#### D2 Parcours des résidents
+- [ ] Accueil « À faire » (visite, vote, rendez-vous sous 48 h, wifi qui expire) puis raccourcis
+- [ ] Messages : annonces et discussions avec les éducateurs au même endroit, 3 filtres, statut en badge
+- [ ] Rendez-vous : mes rendez-vous et un bouton ; réservation sur sa propre page en 3 étapes
+- [ ] Connexion, activation, installation : textes courts, un seul bouton principal
+
+#### D3 Écrans de l'équipe
+- [ ] Tableaux en cartes sur téléphone, ligne entière cliquable
+- [ ] Fiche résident : résumé et actions d'abord, formulaire replié, confirmation pour couper l'accès
+- [ ] Nouveau message, suivi, disponibilités, discussions, journal (voir le doc d'audit)
+
+#### D4 Système visuel et textes
+- [ ] Trois niveaux de titres, règle carte ou note, un seul bouton principal, espaces, zéro non barré, badges
+- [ ] Relecture de tous les textes selon les règles retenues
 
 ### E3 Wifi
 

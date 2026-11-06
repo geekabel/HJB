@@ -191,7 +191,7 @@ def conversations(request):
         render(
             request,
             "appointments/conversations.html",
-            {"active_nav": "appointments", "conversations": found},
+            {"active_nav": "conversations", "conversations": found},
         )
     )
 
@@ -223,7 +223,7 @@ def conversation(request, pk):
             request,
             "appointments/conversation.html",
             {
-                "active_nav": "appointments",
+                "active_nav": "conversations",
                 "conversation": found,
                 "room": stay.room.number if stay else "",
                 "thread": found.messages.select_related("author"),

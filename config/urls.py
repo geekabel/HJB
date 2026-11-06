@@ -27,6 +27,7 @@ from ui import pwa
 
 urlpatterns = [
     path("", access_views.home, name="home"),
+    path("compte/", access_views.account, name="account"),
     # Installable application (card T18): at the root, for the scope of the worker.
     path("manifest.webmanifest", pwa.manifest, name="manifest"),
     path("sw.js", pwa.service_worker, name="service_worker"),

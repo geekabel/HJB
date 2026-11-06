@@ -247,7 +247,7 @@ class ViewTests(PushTestCase):
         log_in_verified(self.client, nadia)
         response = self.client.get(reverse("push:settings"))
         save_page("push-settings-staff", response)
-        self.assertContains(response, 'aria-current="page">Mes notifications</a>')
+        self.assertContains(response, '<a href="/compte/" aria-current="page">')
 
     def test_enable_then_sync(self):
         log_in_verified(self.client, self.ines)

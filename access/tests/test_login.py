@@ -270,8 +270,11 @@ class LogoutAndHomeTests(LoginTestBase):
         self.log_in()
         response = self.client.get(reverse("home"))
         self.assertContains(response, "Bonjour Awa")
-        self.assertContains(response, "Créée le <time")
-        self.assertContains(response, "utilisée le <time")
+        # How I log in, and logout: on Mon compte (design card D1).
+        response = self.client.get(reverse("account"))
+        save_page("account-resident", response)
+        self.assertContains(response, "Clé d'accès créée le <time")
+        self.assertContains(response, "Me déconnecter")
 
 
 class DepartureTests(LoginTestBase):

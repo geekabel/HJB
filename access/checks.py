@@ -11,6 +11,7 @@ from django.core.checks import Error, Tags, Warning, register
 RESERVED_SEGMENTS = {
     "",
     "connexion",
+    "compte",
     "activer",
     "equipe",
     "guide",

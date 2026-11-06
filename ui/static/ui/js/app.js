@@ -113,9 +113,35 @@
       });
   }
 
+  // Staff menu below 64rem (design card D1): the "Menu" button opens and
+  // closes it. Without JavaScript the button stays hidden and the menu open.
+  function setUpStaffMenu() {
+    var menu = document.querySelector(".staff-menu");
+    var toggle = document.querySelector("[data-menu-toggle]");
+    if (!menu || !toggle) {
+      return;
+    }
+    function setOpen(open) {
+      toggle.setAttribute("aria-expanded", String(open));
+      menu.classList.toggle("staff-menu--closed", !open);
+    }
+    toggle.hidden = false;
+    setOpen(false);
+    toggle.addEventListener("click", function () {
+      setOpen(toggle.getAttribute("aria-expanded") !== "true");
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     showInstallState();
     syncPushDevice();
+    setUpStaffMenu();
     document.querySelectorAll("[data-install-button]").forEach(function (button) {
       button.addEventListener("click", function () {
         if (!deferredPrompt) {
