@@ -65,13 +65,15 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| | *(vide)* | |
+| D5 | Écrans de tâche des résidents | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T30 | Signaler un problème | E7 Signalements | D4 |
+| D6 | Pages pleines, ordinateur et tablette | Design | D5 |
+| D8 | Écrans de l'équipe, deuxième passe | Design | D6 |
+| T30 | Signaler un problème | E7 Signalements | D8 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
@@ -128,6 +130,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D2 | Parcours des résidents | 7 nov. 2026 |
 | D3 | Écrans de l'équipe | 7 nov. 2026 |
 | D4 | Système visuel et textes | 7 nov. 2026 |
+| D7 | Chiffres et typographie | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -357,6 +360,32 @@ Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page �
 - [x] Badges : vert pour un compte activé, bleu pour un compte à activer, jaune seulement quand il faut agir
 - [x] Textes relus et raccourcis : notifications, wifi, discussions, compte, installation, grille des créneaux (« Enregistrer les créneaux »)
 - **Notes** : le zéro barré de la police Atkinson Hyperlegible est gardé : il évite de confondre 0 et O. Vérification finale indépendante avant et après sur 38 pages en 3 tailles : 18 % de texte en moins, aucune page qui défile de côté, plus de liens morts. Ses remarques sont appliquées (date du rendez-vous, guillemets, « Réponse : Absent », bouton des discussions, étape de l'installation, conseils du compte pour l'équipe).
+
+### Design, deuxième passe (7 nov. 2026)
+
+Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, portable, grand écran), en haut et en bas de chaque page. Les défauts trouvés et le plan sont dans le document d'audit.
+
+#### D7 Chiffres et typographie (fait le 7 nov. 2026)
+- **Docs** : [MDN : unicode-range](https://developer.mozilla.org/fr/docs/Web/CSS/@font-face/unicode-range), [web.dev : typographie](https://web.dev/learn/design/typography).
+- [x] Zéro sans barre dans les textes : « 09:00 » ressemblait à un créneau barré. Les chiffres viennent de Bricolage Grotesque, déjà servie
+- [x] Les identifiants et mots de passe wifi gardent une police à chasse fixe, où 0 et O restent différents
+- [x] Une seule échelle de tailles (12, 14, 16, 18, 20, 22 px et le titre de page)
+- [x] Le lien retour colle à son titre, sans soulignement
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Police à chasse fixe pour le wifi (fiche, mot de passe, formulaire). Le lien retour ne se colle plus à une alerte. Menu de l'équipe un peu plus large : « Messages aux résidents » tient sur une ligne.
+
+#### D5 Écrans de tâche des résidents
+- [ ] Réservation et conversation en plein écran sur téléphone, sans la barre du bas ; barre de titre en haut
+- [ ] Réservation : barre en bas avec l'heure choisie et « Réserver »
+- [ ] Conversation : champ d'une ligne qui grandit, bouton rond, bulles groupées par jour, l'heure seule dans la bulle
+- [ ] Aucun champ caché sous une barre (scroll-padding)
+
+#### D6 Pages pleines, ordinateur et tablette
+- [ ] Rendez-vous : une carte forte pour le prochain, les prochains créneaux libres
+- [ ] Ordinateur : mise en page plus large ; tablette : rail dès 600 px
+
+#### D8 Écrans de l'équipe, deuxième passe
+- [ ] Filtres sans bouton, types de message en grille régulière, journal en phrases
+- [ ] Bouton collé en bas des longs formulaires
 
 ### E3 Wifi
 

@@ -230,7 +230,12 @@ class WifiAccessForm(forms.Form):
         max_length=64,
         help_text="Vide : généré au format du portail.",
         widget=forms.TextInput(
-            attrs={**NO_AUTOCOMPLETE, "spellcheck": "false", "autocapitalize": "off"}
+            attrs={
+                **NO_AUTOCOMPLETE,
+                "spellcheck": "false",
+                "autocapitalize": "off",
+                "class": "credential",
+            }
         ),
     )
     password = forms.CharField(
@@ -239,7 +244,12 @@ class WifiAccessForm(forms.Form):
         strip=False,
         help_text="Vide : généré au format du portail.",
         widget=SecretTextInput(
-            attrs={**NO_AUTOCOMPLETE, "spellcheck": "false", "autocapitalize": "off"}
+            attrs={
+                **NO_AUTOCOMPLETE,
+                "spellcheck": "false",
+                "autocapitalize": "off",
+                "class": "credential",
+            }
         ),
     )
     expires_on = forms.DateField(

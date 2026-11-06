@@ -68,7 +68,7 @@
       {% if wifi_access %}
       <dl class="details">
         <dt>Identifiant</dt>
-        <dd>{{ wifi_access.username }}</dd>
+        <dd class="credential">{{ wifi_access.username }}</dd>
         <dt>Valable jusqu'au</dt>
         <dd><time datetime="{{ wifi_access.expires_on|date:'Y-m-d' }}">{{ wifi_access.expires_on|date:"j F Y" }}</time>{% if wifi_access.is_expired %} <span class="badge badge--error">Expiré</span>{% elif wifi_access.renew_soon %} <span class="badge badge--warning">À renouveler</span>{% endif %}</dd>
       </dl>
