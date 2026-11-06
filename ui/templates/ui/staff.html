@@ -1,5 +1,5 @@
 {% extends "ui/base.html" %}
-{% load icons %}
+{% load icons french %}
 {% comment %}
   Section template for the staff area.
   Variables: ``active_nav`` (messages, appointments, conversations, residents,
@@ -27,7 +27,7 @@
       {% if perms.accounts.manage_appointments %}
       <li><a href="{% url 'appointments:availability' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>Rendez-vous</a></li>
       {% with direct=unread_direct %}
-      <li><a href="{% url 'appointments:conversations' %}"{% if active_nav == "conversations" %} aria-current="page"{% endif %}>Discussions{% if direct %}<span class="visually-hidden">, </span> <span class="counter"><span aria-hidden="true">{% if direct > 99 %}99+{% else %}{{ direct }}{% endif %}</span><span class="visually-hidden">{{ direct }} message{{ direct|pluralize }} non lu{{ direct|pluralize }}</span></span>{% endif %}</a></li>
+      <li><a href="{% url 'appointments:conversations' %}"{% if active_nav == "conversations" %} aria-current="page"{% endif %}>Discussions{% if direct %}<span class="visually-hidden">, </span> <span class="counter"><span aria-hidden="true">{% if direct > 99 %}99+{% else %}{{ direct }}{% endif %}</span><span class="visually-hidden">{{ direct }} message{{ direct|pluriel }} non lu{{ direct|pluriel }}</span></span>{% endif %}</a></li>
       {% endwith %}
       {% endif %}
       {% if perms.accounts.view_audit_log %}

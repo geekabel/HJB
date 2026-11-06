@@ -1,4 +1,5 @@
 {% extends "ui/staff.html" %}
+{% load french %}
 {% block title %}Discussions{% endblock %}
 {% block content %}
 <header class="stack stack--tight">
@@ -15,7 +16,7 @@
     </span>
     <span class="stack stack--tight conversation-line__side">
       <span class="text-muted text-small">{{ item.updated_at|date:"j F à H:i" }}</span>
-      {% if item.unread %}<span class="badge badge--warning">À vous de répondre<span class="visually-hidden">, {{ item.unread }} non lu{{ item.unread|pluralize }}</span></span>{% endif %}
+      {% if item.unread %}<span class="badge badge--warning">À vous de répondre<span class="visually-hidden">, {{ item.unread }} non lu{{ item.unread|pluriel }}</span></span>{% endif %}
     </span>
   </a></li>
   {% endfor %}

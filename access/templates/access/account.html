@@ -1,5 +1,5 @@
 {% extends layout %}
-{% load icons %}
+{% load icons french %}
 {% block title %}Mon compte{% endblock %}
 {% block content %}
 <header class="stack stack--tight">
@@ -16,7 +16,7 @@
 {% endif %}
 
 <ul class="link-list">
-  <li><a href="{% url 'push:settings' %}">{% icon "bell" %}<span>Notifications<small>{% if devices %}Activées sur {{ devices }} appareil{{ devices|pluralize }}{% else %}Pas encore activées{% endif %}</small></span>{% icon "chevron" %}</a></li>
+  <li><a href="{% url 'push:settings' %}">{% icon "bell" %}<span>Notifications<small>{% if devices %}Activées sur {{ devices }} appareil{{ devices|pluriel }}{% else %}Pas encore activées{% endif %}</small></span>{% icon "chevron" %}</a></li>
   {% if layout == "ui/resident.html" %}
   <li><a href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span>Mon wifi</span>{% icon "chevron" %}</a></li>
   {% endif %}
@@ -26,7 +26,7 @@
 <section class="stack stack--tight" aria-labelledby="login-title">
   <h2 id="login-title" class="section-title">Connexion</h2>
   {% if passkey %}
-  <p>Clé d'accès créée le <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>{% if other_passkeys %}, et {{ other_passkeys }} autre{{ other_passkeys|pluralize }}{% endif %}.</p>
+  <p>Clé d'accès créée le <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>{% if other_passkeys %}, et {{ other_passkeys }} autre{{ other_passkeys|pluriel }}{% endif %}.</p>
   {% elif app_code %}
   <p>Application de codes reliée.</p>
   {% else %}

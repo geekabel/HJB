@@ -1,11 +1,11 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
+{% load icons french %}
 {% block title %}Résidents{% endblock %}
 {% block content %}
 <header class="page-header">
   <div class="stack stack--tight">
     <h1>Résidents</h1>
-    <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluralize }} · {{ counts.pending }} compte{{ counts.pending|pluralize }} à activer{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluralize }}</a>{% endif %}</p>
+    <p class="text-muted">{{ counts.current }} résident{{ counts.current|pluriel }} · {{ counts.pending }} compte{{ counts.pending|pluriel }} à activer{% if can_manage and counts.former and account != "disabled" %} · <a href="?account=disabled">{{ counts.former }} ancien{{ counts.former|pluriel }}</a>{% endif %}</p>
     {% if renewal_count %}<p><a class="badge badge--warning badge--link" href="{% url 'residents:wifi_renewals' %}">{% icon "wifi" %}{{ renewal_count }} wifi à renouveler</a></p>{% else %}<p class="text-small"><a href="{% url 'residents:wifi_renewals' %}">Wifi à renouveler : aucun</a></p>{% endif %}
   </div>
   {% if perms.accounts.manage_residents %}
@@ -51,7 +51,7 @@
 </form>
 
 {% if page_obj.object_list %}
-<p class="text-muted text-small" aria-live="polite">{{ page_obj.paginator.count }} résultat{{ page_obj.paginator.count|pluralize }}</p>
+<p class="text-muted text-small" aria-live="polite">{{ page_obj.paginator.count }} résultat{{ page_obj.paginator.count|pluriel }}</p>
 <div class="table-scroll" role="region" aria-labelledby="residents-caption" tabindex="0">
   <table class="table table--cards">
     <caption id="residents-caption" class="visually-hidden">Résidents, par ordre alphabétique</caption>

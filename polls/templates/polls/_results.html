@@ -1,11 +1,11 @@
-{% load icons %}
+{% load icons french %}
 {% comment %}
 Results of a vote for the staff (card T25). Variables: poll, results, reached
 (people who got the message).
 {% endcomment %}
 <section class="stack" aria-labelledby="results-title">
   <h2 id="results-title" class="section-title">Vote</h2>
-  <p class="summary-line"><strong>{{ results.voters }}</strong> votant{{ results.voters|pluralize }} sur {{ reached }} · clôture le <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"j F à H:i" }}</time></p>
+  <p class="summary-line"><strong>{{ results.voters }}</strong> votant{{ results.voters|pluriel }} sur {{ reached }} · clôture le <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"j F à H:i" }}</time></p>
   {% if results.shown %}
   <div class="card stack">
     <h3>Résultats</h3>
