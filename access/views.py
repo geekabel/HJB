@@ -190,7 +190,7 @@ def logout_view(request):
 def account(request):
     """Mon compte: how I log in, notifications, installation, logout (design card D1)."""
     user = request.user
-    staff = user.has_perm("accounts.access_staff_area")
+    staff = not is_resident(user)
     passkeys = list(get_credential_model().objects.filter(user=user).order_by("-created_at"))
     return render(
         request,
@@ -215,11 +215,15 @@ def home(request):
     """
     user = request.user
     if not is_resident(user):
+        # Never the resident home for a staff member (Maintenance included).
         if user.groups.filter(name=GROUP_BY_ROLE[Role.EDUCATOR]).exists() and user.has_perm(
             "accounts.manage_appointments"
         ):
             return redirect("appointments:availability")
         if user.has_perm("accounts.view_residents"):
             return redirect("residents:list")
+        if user.has_perm("accounts.send_messages"):
+            return redirect("messaging:list")
+        return redirect("account")
     passkeys = get_credential_model().objects.filter(user=user).order_by("-created_at")
     return render(request, "access/home.html", {"passkeys": passkeys, "active_nav": "home"})

@@ -126,12 +126,16 @@
       menu.classList.toggle("staff-menu--closed", !open);
     }
     toggle.hidden = false;
+    menu.classList.add("staff-menu--enhanced");
     setOpen(false);
     toggle.addEventListener("click", function () {
       setOpen(toggle.getAttribute("aria-expanded") !== "true");
     });
     document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+      if (event.defaultPrevented || event.key !== "Escape") {
+        return;
+      }
+      if (toggle.getAttribute("aria-expanded") === "true" && menu.contains(document.activeElement)) {
         setOpen(false);
         toggle.focus();
       }

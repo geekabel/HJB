@@ -13,7 +13,7 @@
 {% block body %}
 <nav class="staff-menu" aria-label="Menu de l'équipe">
   <div class="staff-menu__bar">
-    <a class="staff-menu__brand" href="{% url 'home' %}"><span class="logo-tile">{% roofs %}</span>Espace équipe</a>
+    <a class="staff-menu__brand" href="{% url 'home' %}"><span class="logo-tile">{% roofs "" %}</span>Espace équipe</a>
     <button class="staff-menu__toggle" type="button" aria-expanded="false" aria-controls="staff-menu-panel" data-menu-toggle hidden>{% icon "menu" %}<span>Menu</span></button>
   </div>
   <div class="staff-menu__panel" id="staff-menu-panel">
@@ -36,8 +36,8 @@
     </ul>
     {% if user.is_authenticated %}
     <div class="staff-menu__person">
-      <a href="{% url 'account' %}"{% if active_nav == "account" or active_nav == "notifications" %} aria-current="page"{% endif %}>
-        <span>{{ user.get_full_name|default:user.get_username }}<small>{{ user.roles_label }}</small></span>{% icon "chevron" %}
+      <a href="{% url 'account' %}"{% if active_nav == "account" %} aria-current="page"{% elif active_nav == "notifications" %} aria-current="true"{% endif %}>
+        <span><span class="visually-hidden">Mon compte : </span>{{ user.get_full_name|default:user.get_username }}<small>{{ user.roles_label }}</small></span>{% icon "chevron" %}
       </a>
       <form method="post" action="{% url 'access:logout' %}">
         {% csrf_token %}

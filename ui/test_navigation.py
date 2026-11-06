@@ -68,6 +68,16 @@ class StaffNavigationTests(TestCase):
             reverse("residents:list"),
             fetch_redirect_response=False,
         )
+        # Maintenance never gets the resident home (it looped on its tabs).
+        log_in_verified(self.client, make_user("marc", Role.MAINTENANCE))
+        response = self.client.get(reverse("home"), follow=True)
+        self.assertContains(response, "staff-menu")
+        self.assertNotContains(response, "resident-nav")
+        self.assertNotContains(response, "Mon wifi")
+
+    def test_superuser_without_roles_is_not_called_resident(self):
+        root = make_user("root", is_staff=True, is_superuser=True)
+        self.assertEqual(root.roles_label, "Équipe")
 
 
 class ErrorPageTests(TestCase):

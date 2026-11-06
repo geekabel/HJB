@@ -333,26 +333,24 @@
 
   /* On a computer, the navigation becomes a rail on the left (design card D1) */
   @media (min-width: 64rem) {
-    .resident-page {
+    .resident-page:has(> .resident-nav) {
       display: grid;
       grid-template-columns: 15rem minmax(0, 1fr);
       grid-template-rows: auto 1fr;
     }
 
-    .resident-page__header,
-    .resident-page__content {
+    .resident-page:has(> .resident-nav) .resident-page__content {
       grid-column: 2;
+      grid-row: 1 / span 2;
       max-width: 46rem;
       padding-inline: var(--s-10);
+      padding-block-start: var(--s-8);
       margin-inline: 0;
     }
 
-    .resident-page__content {
-      padding-block-start: var(--s-8);
-    }
-
-    .resident-page:not(:has(.resident-page__header)) .resident-page__content {
-      grid-row: 1 / span 2;
+    /* The rail already shows the brand */
+    .resident-page:has(> .resident-nav) .resident-page__header {
+      display: none;
     }
   }
 
@@ -962,7 +960,7 @@
     color: var(--ink);
   }
 
-  .resident-nav a[aria-current="page"] {
+  .resident-nav a[aria-current] {
     color: var(--action);
     font-weight: 700;
   }
@@ -1025,7 +1023,7 @@
       background: var(--surface-2);
     }
 
-    .resident-nav a[aria-current="page"] {
+    .resident-nav a[aria-current] {
       background: var(--action-soft);
     }
 
@@ -1038,9 +1036,6 @@
   /* Staff menu (design card D1): a top bar with a "Menu" button below 64rem,
      a column on the left above. Without JavaScript the panel stays open. */
   .staff-menu {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 20;
     display: flex;
     flex-direction: column;
     background: var(--menu-bg);
@@ -1098,6 +1093,28 @@
     display: none;
   }
 
+  /* With the script, the bar stays at the top below 64rem. Without it, the
+     menu is always open, so it scrolls away with the page. An open menu
+     never grows taller than the screen. */
+  @media (max-width: 63.99rem) {
+    .staff-menu--enhanced {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 20;
+    }
+
+    .staff-menu--enhanced .staff-menu__panel {
+      max-height: calc(100vh - 3.5rem);
+      max-height: calc(100dvh - 3.5rem);
+      overflow-y: auto;
+    }
+
+    /* Focused fields and anchors never hide under the sticky bar (WCAG 2.4.11) */
+    html:has(.staff-menu--enhanced) {
+      scroll-padding-block-start: 4.5rem;
+    }
+  }
+
   .staff-menu ul {
     display: flex;
     flex-direction: column;
@@ -1107,7 +1124,8 @@
     list-style: none;
   }
 
-  .staff-menu a,
+  .staff-menu ul a,
+  .staff-menu__person a,
   .staff-menu__person button {
     display: flex;
     align-items: center;
@@ -1121,13 +1139,14 @@
     text-decoration: none;
   }
 
-  .staff-menu a:hover,
+  .staff-menu ul a:hover,
+  .staff-menu__person a:hover,
   .staff-menu__person button:hover {
     background: var(--menu-active);
     color: #ffffff;
   }
 
-  .staff-menu a[aria-current="page"] {
+  .staff-menu a[aria-current] {
     background: var(--menu-active);
     color: #ffffff;
     font-weight: 700;
@@ -1170,6 +1189,8 @@
 
   @media (min-width: 64rem) {
     .staff-menu {
+      position: sticky;
+      inset-block-start: 0;
       height: 100vh;
       height: 100dvh;
       padding-block: var(--s-4);
@@ -2215,6 +2236,12 @@
     .badge,
     .choices {
       border: 1px solid CanvasText;
+    }
+
+    .resident-nav a[aria-current],
+    .staff-menu a[aria-current] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
     }
   }
 }

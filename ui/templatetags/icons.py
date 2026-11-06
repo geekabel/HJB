@@ -101,5 +101,9 @@ def icon(name, label="", css_class=""):
 
 @register.simple_tag
 def roofs(label="Habitat Jeunes Belfort", css_class=""):
-    """The three roofs of the logo."""
+    """The three roofs of the logo. ``label=""``: decorative, next to the written name."""
+    if not label:
+        return format_html(
+            ROOFS.replace(' role="img" aria-label="{}"', ' aria-hidden="true"'), css_class
+        )
     return format_html(ROOFS, css_class, label)

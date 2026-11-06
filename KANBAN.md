@@ -65,13 +65,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D1 | Charpente et navigation | Design |
+| D2 | Parcours des résidents | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| D2 | Parcours des résidents | Design | D1 |
 | D3 | Écrans de l'équipe | Design | D1 |
 | D4 | Système visuel et textes | Design | D2, D3 |
 | T30 | Signaler un problème | E7 Signalements | D4 |
@@ -127,6 +126,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T28 | Messages directs avec un éducateur | 5 nov. 2026 |
 | T29 | Rappels et annulation de rendez-vous | 6 nov. 2026 |
 | T14c | Connexion de l'équipe avec une application de codes | 6 nov. 2026 |
+| D1 | Charpente et navigation | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -322,7 +322,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page à revoir sur téléphone, tablette et ordinateur, parcours à simplifier. 38 pages capturées en 3 tailles, deux revues indépendantes, règles tirées de GOV.UK, DSFR, FALC, Nielsen Norman Group, WCAG 2.2, Android et Apple. Le détail et les règles retenues sont dans le doc « Audit design et parcours HJB ».
 
-#### D1 Charpente et navigation
+#### D1 Charpente et navigation (fait le 7 nov. 2026)
 - **Docs** : [modèles d'erreur 403, 404, 500](https://docs.djangoproject.com/en/6.1/ref/views/#error-views), [menus hamburger (NN/g)](https://www.nngroup.com/articles/hamburger-menus/), [classes de taille d'écran (Android)](https://developer.android.com/develop/ui/views/layout/use-window-size-classes).
 - [x] Résidents : barre du bas à 4 onglets réels (Accueil, Messages, Rendez-vous, Mon compte), plus de lien mort ; « Signaler » revient avec T30
 - [x] Résidents : nouvelle page Mon compte (notifications, wifi, installer, connexion, se déconnecter) ; l'accueil ne montre plus les clés ni la déconnexion
@@ -332,6 +332,7 @@ Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page �
 - [x] Équipe : « Se déconnecter » et le lien vers Mon compte sous le nom ; liens morts retirés (Tableau de bord, Signalements reviennent avec T31 et T35) ; « Discussions » a son entrée et son compteur
 - [x] Équipe : l'éducateur arrive sur ses rendez-vous, l'accueil et l'administration sur les résidents
 - [x] Pages d'erreur 403, 404 et 500 aux couleurs de l'application
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Le menu de l'équipe ouvert restait collé en haut et cachait la page sur un petit écran : seule la barre reste en haut, et seulement avec le script ; un menu ouvert ne dépasse plus la hauteur de l'écran. Les champs et les ancres ne passent plus sous la barre. Un compte Maintenance arrivait sur l'accueil des résidents et tournait en rond : chaque compte de l'équipe arrive sur une page de l'équipe. Pas de colonne vide à gauche sur les pages sans navigation. Échap ne déplace plus le curseur depuis un champ. Le nom de la résidence n'est plus lu deux fois. Le lien du nom dit « Mon compte » aux lecteurs d'écran. Super-utilisateur sans rôle : « Équipe », plus « Résident ». Page en cours visible en mode contraste élevé.
 
 #### D2 Parcours des résidents
 - [ ] Accueil « À faire » (visite, vote, rendez-vous sous 48 h, wifi qui expire) puis raccourcis

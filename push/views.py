@@ -23,7 +23,7 @@ def _layout(user):
     """(template, active menu entry): the staff keep their menu."""
     if user.has_perm("accounts.access_staff_area"):
         return "ui/staff.html", "notifications"
-    return "ui/resident.html", "account"
+    return "ui/resident.html", "account_section"
 
 
 @require_GET
