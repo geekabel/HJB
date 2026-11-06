@@ -3,6 +3,7 @@
 ``pluriel``: the French plural mark. Unlike Django's ``pluralize``, 0 takes
 the singular: "0 notification", "1 message", "2 messages".
 ``jour``: the day above a group of direct messages (design card D5).
+``dans``: how far a meeting is, on the Rendez-vous tab (design card D6).
 Docs: https://docs.djangoproject.com/en/6.1/howto/custom-template-tags/#writing-custom-template-filters
 """
 
@@ -38,3 +39,17 @@ def jour(value):
     if day == today - timedelta(days=1):
         return "Hier"
     return date_format(day, "l j F" if day.year == today.year else "l j F Y")
+
+
+@register.filter
+def dans(value):
+    """How far ``value`` (a datetime) is from today: "Aujourd'hui", "Demain",
+    "Dans 3 jours" (design card D6)."""
+    if not value:
+        return ""
+    days = (timezone.localtime(value).date() - timezone.localdate()).days
+    if days <= 0:
+        return "Aujourd'hui"
+    if days == 1:
+        return "Demain"
+    return f"Dans {days} jours"

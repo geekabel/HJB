@@ -65,13 +65,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D6 | Pages pleines et ordinateur | Design |
+| D8 | Écrans de l'équipe, deuxième passe | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| D8 | Écrans de l'équipe, deuxième passe | Design | D6 |
 | T30 | Signaler un problème | E7 Signalements | D8 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
@@ -131,6 +130,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D4 | Système visuel et textes | 7 nov. 2026 |
 | D7 | Chiffres et typographie | 7 nov. 2026 |
 | D5 | Écrans de tâche des résidents | 7 nov. 2026 |
+| D6 | Pages pleines et ordinateur | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -381,9 +381,13 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Aucun champ caché sous une barre (scroll-padding) ; sur Android, le clavier réduit la page (interactive-widget)
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Un message refusé ne fait plus défiler la page loin de son avertissement. Heure de mes bulles plus contrastée, texte d'exemple lisible en mode sombre. Après l'envoi, le lecteur d'écran lit le message envoyé. La note « Lu par Samia seulement » décrit le champ. Sur tablette, les barres vont d'un bord à l'autre et la barre d'action reste en bas. Tests sûrs au changement d'heure.
 
-#### D6 Pages pleines et ordinateur
-- [ ] Rendez-vous : une carte forte pour le prochain, les prochains créneaux libres
-- [ ] Ordinateur : mise en page plus large ; tablette : rail dès 600 px
+#### D6 Pages pleines et ordinateur (fait le 7 nov. 2026)
+- **Docs** : [NN/g : états vides](https://www.nngroup.com/articles/empty-state-interface-design/), [Apple : barres d'onglets](https://developer.apple.com/design/human-interface-guidelines/tab-bars).
+- [x] Rendez-vous : le prochain dans une carte avec la date en tuile et « Dans 3 jours » ; les 3 premiers créneaux libres ouvrent la réservation avec l'heure choisie
+- [x] Listes vides : une icône dans un rond et une ligne
+- [x] Ordinateur : la colonne des résidents est centrée à côté du menu
+- **Notes** : sur tablette, la barre du bas reste. Apple la garde sur iPad, et la colonne de 40rem se lit bien à 768 px.
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Un lien `.venv` avait été ajouté par erreur : retiré, et le `.gitignore` le couvre. Les créneaux proposés ne chevauchent jamais un rendez-vous du résident, et disparaissent quand il en a déjà le maximum (une ligne dit pourquoi). Dates lues en entier par les lecteurs d'écran. Cartes vides avec un bord, coins identiques. Tests sûrs au changement d'heure.
 
 #### D8 Écrans de l'équipe, deuxième passe
 - [ ] Filtres sans bouton, types de message en grille régulière, journal en phrases

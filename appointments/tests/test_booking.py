@@ -267,6 +267,23 @@ class ResidentPageTests(BookingTestCase):
         save_page("appointments-overview", response)
         self.assertContains(response, f'href="{reverse("rdv:detail", args=[meeting.pk])}"')
         self.assertContains(response, "Prendre rendez-vous")
+        # Design card D6: the next meeting in a card, and the first free
+        # times as links that open the booking with the time chosen.
+        self.assertEqual(response.context["next_meeting"], meeting)
+        free = response.context["next_free"]
+        self.assertEqual(len(free), 3)
+        # Julien is free at the same time, but it overlaps her meeting.
+        self.assertNotIn(meeting.start, [slot.start for slot in free])
+        first_free = timezone.localtime(free[0].start)
+        self.assertContains(
+            response,
+            f"?avec=libre&amp;jour={first_free:%Y-%m-%d}&amp;heure={first_free:%H%M}",
+        )
+        # With the most meetings allowed, no quick times: booking would refuse.
+        booking.book(self.ines, free[0].start, [self.samia, self.julien])
+        response = self.client.get(reverse("rdv:list"))
+        self.assertEqual(response.context["next_free"], [])
+        self.assertContains(response, "c'est le maximum")
         # The same time again, by someone else: refused with a clear message.
         log_in_verified(self.client, self.yanis)
         response = self.client.post(
