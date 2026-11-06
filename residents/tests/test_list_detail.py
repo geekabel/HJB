@@ -412,3 +412,20 @@ class ModelTests(TestCase):
         self.assertEqual(lina.account_state, AccountState.ACTIVE)
         lina.is_active = False
         self.assertEqual(lina.account_state, AccountState.DISABLED)
+
+
+class DesignTests(ResidentsTestCase):
+    """The resident page after the design audit (card D3)."""
+
+    def test_actions_first_contact_for_everyone(self):
+        log_in_verified(self.client, self.front_desk)
+        url = reverse("residents:detail", args=[self.awa.pk])
+        response = self.client.get(url)
+        page = response.content.decode()
+        self.assertIn('href="tel:+33612345647"', page)  # without opening the form
+        self.assertLess(page.index("activation-title"), page.index('id="edit"'))
+        self.assertNotIn("Identifiant interne", page)  # front desk: not needed
+        # Errors: the form opens and a link at the top leads to it.
+        response = self.client.post(url, {"first_name": "", "last_name": "Koné"})
+        self.assertContains(response, 'id="edit" open')
+        self.assertContains(response, '<a href="#edit">Voir les champs à corriger</a>')

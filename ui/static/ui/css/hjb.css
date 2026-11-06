@@ -1512,7 +1512,7 @@
     }
 
     .table--cards td[data-label]::before {
-      content: attr(data-label) " : ";
+      content: attr(data-label) " : " / "";
       color: var(--text-muted);
     }
   }
@@ -1922,8 +1922,8 @@
 
   /* Only what the chosen options need (design card D3), never a field with
      an error: a vote has no date of event, "Maintenant" has no send time. */
-  .compose:not(:has(.compose__missing)):has(input[name="type"][value="vote"]:checked)
-    .compose__event:not(:has(.field__errors)) {
+  .compose:has(input[name="type"][value="vote"]:checked)
+    .compose__event:not(.compose__event--used, :has(.field__errors)) {
     display: none;
   }
 

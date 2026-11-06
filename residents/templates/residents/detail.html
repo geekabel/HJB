@@ -8,13 +8,17 @@
   {% if resident %}
   <h1>{{ resident.get_full_name|default:resident.get_username }}</h1>
   {% with state=resident.account_state %}
-  <p class="row"><span class="badge {% if state == 'active' %}badge--info{% elif state == 'pending' %}badge--warning{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% if stay %}<span class="text-muted">{{ stay.room }} · {{ stay.room.floor }}</span>{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</p>
+  <p class="row"><span class="badge {% if state == 'active' %}badge--success{% elif state == 'pending' %}badge--info{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% if stay %}<span class="text-muted">{{ stay.room }} · {{ stay.room.floor }}</span>{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</p>
   {% endwith %}
   {% else %}
   <h1>Nouveau résident</h1>
   <p class="text-muted">La personne activera son compte avec un code donné à l'accueil.</p>
   {% endif %}
 </header>
+
+{% if resident and form.errors %}
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>La fiche n'est pas enregistrée.</strong> <a href="#edit">Voir les champs à corriger</a></p></div>
+{% endif %}
 
 {% if resident %}
 <div class="profile">
@@ -48,7 +52,7 @@
         <summary>Téléphone perdu ? Couper l'accès</summary>
         <form method="post" action="{% url 'residents:cut_access' resident.pk %}">
           {% csrf_token %}
-          <p class="text-small">Le téléphone est déconnecté. Donnez ensuite un nouveau code.</p>
+          <p class="text-small">Le téléphone sera déconnecté et ses codes annulés. Donnez ensuite un nouveau code.</p>
           <button class="button button--danger" type="submit">Oui, couper l'accès</button>
         </form>
       </details>
@@ -109,68 +113,24 @@
     {% endif %}
 
     {% if form %}
-    <details class="card stack"{% if form.errors %} open{% endif %}>
+    <details class="card stack" id="edit"{% if form.errors %} open{% endif %}>
       <summary class="card__title">Modifier la fiche</summary>
-  <form class="stack stack--loose" method="post" novalidate>
-    {% csrf_token %}
-    {% if form.errors %}
-    <div class="alert alert--warning" role="alert">
-      {% icon "alert" %}
-      <div class="stack stack--tight">
-        <p><strong>La fiche n'est pas enregistrée.</strong> Corrigez les champs signalés.</p>
-        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
-      </div>
-    </div>
-    {% endif %}
-
-    <section class="stack" aria-labelledby="identity-title">
-      <h2 id="identity-title">Identité et contact</h2>
-      <div class="grid-auto">
-        {{ form.first_name.as_field_group }}
-        {{ form.last_name.as_field_group }}
-      </div>
-      {{ form.phone.as_field_group }}
-      {{ form.email.as_field_group }}
-    </section>
-
-    <section class="stack" aria-labelledby="housing-title">
-      <h2 id="housing-title">Logement</h2>
-      {% if form.fields.room %}
-      <div class="grid-auto">
-        {{ form.room.as_field_group }}
-        {{ form.arrival.as_field_group }}
-      </div>
-      {% else %}
-      <p class="text-muted">Cette personne a quitté la résidence{% if last_departure %} le <time datetime="{{ last_departure|date:'Y-m-d' }}">{{ last_departure|date:"j F Y" }}</time>{% endif %}. Son compte est désactivé.</p>
-      {% endif %}
-    </section>
-
-    <div class="row">
-      <button class="button" type="submit">{% if resident %}Enregistrer{% else %}Créer la fiche{% endif %}</button>
-      <a class="button button--quiet" href="{% if resident %}{% url 'residents:detail' resident.pk %}{% else %}{% url 'residents:list' %}{% endif %}">Annuler</a>
-    </div>
-  </form>
+      {% include "residents/_form.html" %}
     </details>
-    {% else %}
-  <section class="card stack" aria-labelledby="identity-title">
-    <h2 id="identity-title">Identité et contact</h2>
-    <dl class="details">
-      <dt>Prénom</dt>
-      <dd>{{ resident.first_name|default:"–" }}</dd>
-      <dt>Nom</dt>
-      <dd>{{ resident.last_name|default:"–" }}</dd>
-      <dt>Téléphone</dt>
-      <dd>{% if resident.phone %}<a href="tel:{{ resident.phone }}">{{ resident.phone_display }}</a>{% else %}Aucun{% endif %}</dd>
-      <dt>Adresse e-mail</dt>
-      <dd>{% if resident.email %}<a href="mailto:{{ resident.email }}">{{ resident.email }}</a>{% else %}Aucune{% endif %}</dd>
-      <dt>Chambre</dt>
-      <dd>{% if stay %}{{ stay.room }} · {{ stay.room.floor }}{% else %}Sans chambre{% endif %}</dd>
-    </dl>
-    <p class="text-muted text-small">Pour modifier cette fiche, adressez-vous à l'accueil.</p>
-  </section>
     {% endif %}
   </div>
   <div class="stack">
+    <section class="card stack" aria-labelledby="contact-title">
+      <h2 id="contact-title" class="card__title">Contact</h2>
+      <dl class="details details--stacked">
+        <dt>Téléphone</dt>
+        <dd>{% if resident.phone %}<a href="tel:{{ resident.phone }}">{{ resident.phone_display }}</a>{% else %}Aucun{% endif %}</dd>
+        <dt>Adresse e-mail</dt>
+        <dd>{% if resident.email %}<a href="mailto:{{ resident.email }}">{{ resident.email }}</a>{% else %}Aucune{% endif %}</dd>
+      </dl>
+      {% if not form %}<p class="text-muted text-small">Pour modifier la fiche, voyez l'accueil.</p>{% endif %}
+    </section>
+
     <section class="card stack" aria-labelledby="account-title">
       <h2 id="account-title" class="card__title">Compte</h2>
       <dl class="details details--stacked">
@@ -204,45 +164,7 @@
 </div>
 {% else %}
 <div class="profile">
-  <form class="card stack stack--loose" method="post" novalidate>
-    {% csrf_token %}
-    {% if form.errors %}
-    <div class="alert alert--warning" role="alert">
-      {% icon "alert" %}
-      <div class="stack stack--tight">
-        <p><strong>La fiche n'est pas enregistrée.</strong> Corrigez les champs signalés.</p>
-        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
-      </div>
-    </div>
-    {% endif %}
-
-    <section class="stack" aria-labelledby="identity-title">
-      <h2 id="identity-title">Identité et contact</h2>
-      <div class="grid-auto">
-        {{ form.first_name.as_field_group }}
-        {{ form.last_name.as_field_group }}
-      </div>
-      {{ form.phone.as_field_group }}
-      {{ form.email.as_field_group }}
-    </section>
-
-    <section class="stack" aria-labelledby="housing-title">
-      <h2 id="housing-title">Logement</h2>
-      {% if form.fields.room %}
-      <div class="grid-auto">
-        {{ form.room.as_field_group }}
-        {{ form.arrival.as_field_group }}
-      </div>
-      {% else %}
-      <p class="text-muted">Cette personne a quitté la résidence{% if last_departure %} le <time datetime="{{ last_departure|date:'Y-m-d' }}">{{ last_departure|date:"j F Y" }}</time>{% endif %}. Son compte est désactivé.</p>
-      {% endif %}
-    </section>
-
-    <div class="row">
-      <button class="button" type="submit">{% if resident %}Enregistrer{% else %}Créer la fiche{% endif %}</button>
-      <a class="button button--quiet" href="{% if resident %}{% url 'residents:detail' resident.pk %}{% else %}{% url 'residents:list' %}{% endif %}">Annuler</a>
-    </div>
-  </form>
+  {% include "residents/_form.html" %}
 </div>
 {% endif %}
 {% endblock %}

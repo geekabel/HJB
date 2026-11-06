@@ -14,7 +14,7 @@
       <span class="text-muted text-small">{% if item.last_author == user.pk %}Vous : {% endif %}{{ item.last_text|truncatechars:80 }}</span>
     </span>
     <span class="stack stack--tight conversation-line__side">
-      <span class="text-muted text-small">{{ item.updated_at|date:"j M, H:i" }}</span>
+      <span class="text-muted text-small">{{ item.updated_at|date:"j F à H:i" }}</span>
       {% if item.unread %}<span class="badge badge--warning">À vous de répondre<span class="visually-hidden">, {{ item.unread }} non lu{{ item.unread|pluralize }}</span></span>{% endif %}
     </span>
   </a></li>

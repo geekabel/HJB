@@ -54,6 +54,12 @@ def fill(text, values):
     return FIELD.sub(lambda m: values.get(m.group(1), m.group(0)), text or "")
 
 
+def uses_event_fields(campaign):
+    """Whether the texts use {date}, {début} or {fin}: their fields stay shown."""
+    used = set().union(*(fields_in(t) for t in (campaign.title, campaign.body, campaign.sms_body)))
+    return bool(used & {"date", "début", "fin"})
+
+
 def missing_values(campaign):
     """Fields used in the texts whose value is not given (date, start, end)."""
     used = set().union(*(fields_in(t) for t in (campaign.title, campaign.body, campaign.sms_body)))

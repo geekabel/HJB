@@ -95,12 +95,12 @@
       <legend class="compose__step">3. Message</legend>
       {{ form.body.as_field_group }}
       <p class="text-small">Champs possibles : {% for name, label in fields.items %}<code title="{{ label }}">{{ "{" }}{{ name }}{{ "}" }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
-      <div class="grid-auto compose__event">
+      <div class="grid-auto compose__event{% if uses_event %} compose__event--used{% endif %}">
         {{ form.event_date.as_field_group }}
         {{ form.start_time.as_field_group }}
         {{ form.end_time.as_field_group }}
       </div>
-      {% if missing %}<div class="alert alert--warning compose__missing" role="status">{% icon "alert" %}<p>Le texte utilise {% for name in missing %}{{ "{" }}{{ name }}{{ "}" }}{% if not forloop.last %}, {% endif %}{% endfor %} : indiquez {% if missing|length > 1 %}leurs valeurs{% else %}sa valeur{% endif %} ci-dessus.</p></div>{% endif %}
+      {% if missing %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le texte utilise {% for name in missing %}{{ "{" }}{{ name }}{{ "}" }}{% if not forloop.last %}, {% endif %}{% endfor %} : indiquez {% if missing|length > 1 %}leurs valeurs{% else %}sa valeur{% endif %} ci-dessus.</p></div>{% endif %}
       {{ form.ask_reply.as_field_group }}
       {{ form.sms_body.as_field_group }}
     </fieldset>

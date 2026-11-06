@@ -271,3 +271,16 @@ class ReviewTests(DirectTestCase):
         self.assertIn("no-store", response["Cache-Control"])
         self.assertNotContains(self.client.get(self.write_url(self.samia)), "thread__new")
         self.assertIn("no-store", self.client.get(reverse("rdv:book"))["Cache-Control"])
+
+
+class EducatorListTests(DirectTestCase):
+    def test_unread_first_with_last_words(self):
+        old = direct.send(None, self.ines, "Bonjour", resident=self.ines, educator=self.samia)
+        direct.send(old.conversation, self.samia, "Je vous réponds demain.")
+        direct.send(None, self.yanis, "Une question", resident=self.yanis, educator=self.samia)
+        log_in_verified(self.client, self.samia)
+        response = self.client.get(reverse("appointments:conversations"))
+        page = response.content.decode()
+        self.assertLess(page.index("Yanis"), page.index("Inès"))  # unread first
+        self.assertIn("Vous : Je vous réponds demain.", page)
+        self.assertIn("À vous de répondre", page)

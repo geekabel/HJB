@@ -138,3 +138,35 @@ class AuditPageTests(TestCase):
         log_in_verified(self.client, self.front_desk)
         response = self.client.get(reverse("ui:guide"))
         self.assertNotContains(response, reverse("audit:list"))
+
+
+class SummaryTests(TestCase):
+    """Every entry reads as French words, even an old one with missing details."""
+
+    def test_every_action_with_no_details(self):
+        for action in Action:
+            with self.subTest(action=action):
+                text = AuditEntry(action=action, details={}).summary()
+                self.assertTrue(text)
+                self.assertNotIn(" : ", text.replace("Avant : ", "").replace("Après : ", ""))
+
+    def test_real_details(self):
+        cases = [
+            (
+                Action.MESSAGE_SENT,
+                {"recipients": 2, "push": 0, "sms": 1, "segments": 2, "failed": 1},
+                "2 destinataires, 0 notification, 1 SMS (2 facturés), 1 échec.",
+            ),
+            (Action.MESSAGE_CANCELLED, {"reminder": True}, "Relance annulée."),
+            (
+                Action.MESSAGE_CANCELLED,
+                {"reminder_too_late": True},
+                "Relance trop tardive : elle n'est pas partie.",
+            ),
+            (Action.APP_CODE_CREATED, {"previous_removed": 2}, "Remplace 2 anciens accès."),
+            (Action.APP_CODE_FAILURES, {"failures": 5}, "5 codes faux d'affilée."),
+            (Action.RESIDENT_RETURNED, {"room": "312"}, "–"),
+        ]
+        for action, details, expected in cases:
+            with self.subTest(action=action, details=details):
+                self.assertEqual(AuditEntry(action=action, details=details).summary(), expected)

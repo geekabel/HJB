@@ -80,7 +80,18 @@ class AuditEntry(models.Model):
         )
 
     def summary(self):
-        """Details in plain words, for the audit log page."""
+        """Details in plain words, for the audit log page; "–" when there are none.
+
+        Never fails: an old entry with missing details shows "–".
+        """
+        try:
+            text = self._summary()
+        except (KeyError, ValueError, TypeError):
+            text = ""
+        text = text.strip()
+        return text if text and text != "." else "–"
+
+    def _summary(self):
         if self.action == Action.ROLES_CHANGED:
             from accounts.roles import Role
 
@@ -150,7 +161,11 @@ class AuditEntry(models.Model):
         if self.action == Action.MESSAGE_CANCELLED:
             if self.details.get("reason"):
                 return self.details["reason"]
-            if self.details.get("too_late") or self.details.get("reminder_too_late"):
+            if self.details.get("reminder_too_late"):
+                return "Relance trop tardive : elle n'est pas partie."
+            if self.details.get("reminder"):
+                return "Relance annulée."
+            if self.details.get("too_late"):
                 return "Trop tard pour l'envoyer : rien n'est parti."
             return "Remis en brouillon." if self.details.get("back_to_draft") else "Envoi annulé."
         if self.action in (Action.DEPARTURE_PLANNED, Action.DEPARTURE_PLAN_CANCELLED):
@@ -169,9 +184,12 @@ class AuditEntry(models.Model):
             return text.strip()
         if self.action == Action.APP_CODE_CREATED:
             previous = self.details.get("previous_removed", 0)
-            return f"Remplace {previous} ancien accès." if previous else "Premier accès."
+            if not previous:
+                return "Premier accès."
+            return f"Remplace {previous} ancien{'s' if previous > 1 else ''} accès."
         if self.action == Action.APP_CODE_FAILURES:
-            return f"{self.details.get('failures', '?')} codes faux de suite."
+            failures = self.details.get("failures")
+            return f"{failures} codes faux d'affilée." if failures else ""
         # Any other detail: never a raw key on the page.
         return " · ".join(
             f"{DETAIL_LABELS.get(key, key)} : {value}" for key, value in self.details.items()
@@ -194,7 +212,8 @@ def _message_summary(details):
     from datetime import datetime
 
     def count(n, word, plural=None):
-        return f"{n} {word if n == 1 else (plural or word + 's')}"
+        # French: the singular for 0 and 1.
+        return f"{n} {word if n <= 1 else (plural or word + 's')}"
 
     parts = []
     if "recipients" in details:

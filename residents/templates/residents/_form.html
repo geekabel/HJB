@@ -1,0 +1,46 @@
+{% load icons %}
+{% comment %}
+  The resident form (create and edit). Variables: form, resident, last_departure.
+  Its section titles are h3 in the edit card, h2 on the create page.
+{% endcomment %}
+{% with level=resident|yesno:"3,2" %}
+  <form class="{% if resident %}stack{% else %}card stack{% endif %} stack--loose" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.errors %}
+    <div class="alert alert--warning" role="alert">
+      {% icon "alert" %}
+      <div class="stack stack--tight">
+        <p><strong>La fiche n'est pas enregistrée.</strong> Corrigez les champs signalés.</p>
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <section class="stack" aria-labelledby="identity-title">
+      <h{{ level }} id="identity-title">Identité et contact</h{{ level }}>
+      <div class="grid-auto">
+        {{ form.first_name.as_field_group }}
+        {{ form.last_name.as_field_group }}
+      </div>
+      {{ form.phone.as_field_group }}
+      {{ form.email.as_field_group }}
+    </section>
+
+    <section class="stack" aria-labelledby="housing-title">
+      <h{{ level }} id="housing-title">Logement</h{{ level }}>
+      {% if form.fields.room %}
+      <div class="grid-auto">
+        {{ form.room.as_field_group }}
+        {{ form.arrival.as_field_group }}
+      </div>
+      {% else %}
+      <p class="text-muted">Cette personne a quitté la résidence{% if last_departure %} le <time datetime="{{ last_departure|date:'Y-m-d' }}">{{ last_departure|date:"j F Y" }}</time>{% endif %}. Son compte est désactivé.</p>
+      {% endif %}
+    </section>
+
+    <div class="row">
+      <button class="button" type="submit">{% if resident %}Enregistrer{% else %}Créer la fiche{% endif %}</button>
+      <a class="button button--quiet" href="{% if resident %}{% url 'residents:detail' resident.pk %}{% else %}{% url 'residents:list' %}{% endif %}">Annuler</a>
+    </div>
+  </form>
+{% endwith %}
