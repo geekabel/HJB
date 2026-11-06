@@ -217,7 +217,6 @@ def conversation(request, pk):
         except direct.MessageRefused as refused:
             messages.warning(request, str(refused))
         else:
-            messages.success(request, "Réponse envoyée.")
             return redirect(reverse("appointments:conversation", args=[found.pk]) + "#last-message")
     new_ids = direct.mark_read(found, request.user)
     stays = Stay.objects.current().filter(resident=found.resident).select_related("room")

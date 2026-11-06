@@ -178,7 +178,49 @@
     });
   }
 
+  // Message field (design card D5): it grows with the text, up to the
+  // max-height of the CSS. Enter keeps making a new line, like a textarea.
+  function growWithText() {
+    document.querySelectorAll("textarea[data-autogrow]").forEach(function (field) {
+      function fit() {
+        field.style.height = "auto";
+        field.style.height = field.scrollHeight + 2 + "px";
+      }
+      field.addEventListener("input", fit);
+      if (field.value) {
+        fit();
+      }
+    });
+  }
+
+  // A conversation opens on its last message, like the messaging apps.
+  function showLastMessage() {
+    var last = document.getElementById("last-message");
+    if (last && document.querySelector(".composer")) {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    }
+  }
+
+  // Booking (design card D5): the bar at the bottom says which time is chosen.
+  function showChosenTime() {
+    var summary = document.querySelector("[data-booking-summary]");
+    var form = summary && summary.closest("form");
+    if (!form) {
+      return;
+    }
+    form.addEventListener("change", function (event) {
+      var input = event.target;
+      if (input.name === "heure" && input.checked) {
+        summary.textContent = summary.dataset.day + " à " + input.parentElement.textContent.trim();
+        summary.classList.remove("text-muted");
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    growWithText();
+    showLastMessage();
+    showChosenTime();
     clearHiddenSendTime();
     keepCurrentInView();
     openStepsOfThisPhone();

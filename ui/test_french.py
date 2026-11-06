@@ -1,5 +1,10 @@
+from datetime import datetime, timedelta
+
 from django.template import Context, Template
 from django.test import SimpleTestCase
+from django.utils import timezone
+
+from ui.templatetags.french import jour
 
 
 class PlurielTests(SimpleTestCase):
@@ -33,3 +38,23 @@ class QuotesTests(SimpleTestCase):
                 if "« " in line or " »" in line:
                     found.append(f"{path.relative_to(root)}:{number}")
         self.assertEqual(found, [], "Use a non-breaking space inside « »")
+
+
+class JourTests(SimpleTestCase):
+    """The day above a group of direct messages (design card D5)."""
+
+    def test_today_yesterday_and_other_days(self):
+        now = timezone.now()
+        self.assertEqual(jour(now), "Aujourd'hui")
+        self.assertEqual(jour(now - timedelta(days=1)), "Hier")
+        self.assertEqual(jour(None), "")
+        year = timezone.localdate().year - 1
+        self.assertEqual(
+            jour(timezone.make_aware(datetime(year, 3, 5, 10))),
+            "{} 5 mars {}".format(
+                ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"][
+                    datetime(year, 3, 5).weekday()
+                ],
+                year,
+            ),
+        )

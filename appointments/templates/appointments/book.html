@@ -1,10 +1,11 @@
 {% extends "ui/resident.html" %}
 {% load icons %}
 {% block title %}Prendre rendez-vous{% endblock %}
+{% block body_class %}resident-page resident-page--task{% endblock %}
 {% block content %}
-<div class="row">
+<div class="task-bar">
   <a class="icon-button" href="{% url 'rdv:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>
-  <h1>Prendre rendez-vous</h1>
+  <h1 class="task-bar__title">Prendre rendez-vous</h1>
 </div>
 {% include "appointments/_messages.html" %}
 
@@ -62,7 +63,10 @@
     </select>
     <span class="field__help icon-text" id="motif-help">{% icon "lock" %}<span>Seul l'éducateur le voit.</span></span>
   </div>
-  <button class="button button--block" type="submit">{% icon "calendar" %}Réserver</button>
+  <div class="action-bar">
+    <p class="action-bar__summary{% if not chosen %} text-muted{% endif %}" data-booking-summary data-day="{{ day|date:'l j F' }}">{% if chosen %}{{ chosen.start|date:"l j F" }} à {{ chosen.start|time:"H:i" }}{% else %}Choisissez une heure{% endif %}</p>
+    <button class="button" type="submit">{% icon "calendar" %}Réserver</button>
+  </div>
 </form>
 {% endif %}
 {% endif %}

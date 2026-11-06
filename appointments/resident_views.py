@@ -143,6 +143,10 @@ def book(request):
     day, slots, found = _day(request.GET.get("jour", ""), days)
     times = _times(slots)
     wanted = request.GET.get("heure", "") if found else ""
+    # The time asked in the link ("Le plus tôt"), if it is still free that day
+    chosen = next(
+        (s for s in times if timezone.localtime(s.start).strftime("%H%M") == wanted), None
+    )
     if not found:
         messages.info(
             request, "Ce jour n'a plus de créneau libre : voici le premier jour possible."
@@ -166,6 +170,7 @@ def book(request):
                 "day": day,
                 "times": times,
                 "wanted": wanted,
+                "chosen": chosen,
                 "first": first,
                 "length": length,
                 "reasons": Appointment.Reason.choices,
@@ -229,7 +234,6 @@ def write(request, educator_pk):
         except direct.MessageRefused as refused:
             messages.warning(request, str(refused))
         else:
-            messages.success(request, "Message envoyé.")
             return redirect(reverse("rdv:write", args=[educator.pk]) + "#last-message")
     new_ids = direct.mark_read(conversation, request.user) if conversation else []
     return _page(
