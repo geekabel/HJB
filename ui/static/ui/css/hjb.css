@@ -380,7 +380,7 @@
   @media (min-width: 64rem) {
     .staff-page {
       display: grid;
-      grid-template-columns: 14rem minmax(0, 1fr);
+      grid-template-columns: 15rem minmax(0, 1fr);
       align-items: start;
     }
   }
@@ -1422,23 +1422,15 @@
     gap: var(--s-8);
   }
 
-  .back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-2);
-    min-height: var(--target);
-    font-weight: 700;
-  }
-
-  .back-link svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
   /* The back link belongs to the title below it: no full gap between them,
      no underline (it reads as the way back, like the arrow of an app). */
   .back-link {
+    display: inline-flex;
+    align-items: center;
     align-self: flex-start;
+    gap: var(--s-2);
+    min-height: var(--target);
+    font-weight: 700;
     text-decoration: none;
   }
 
@@ -1446,12 +1438,18 @@
     text-decoration: underline;
   }
 
-  .staff-page__content > .back-link + * {
+  .back-link svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .staff-page__content > .back-link + :is(header, h1) {
     margin-block-start: calc(var(--s-2) - var(--s-6));
   }
 
-  .resident-page__content > .back-link + * {
-    margin-block-start: calc(var(--s-2) - var(--s-4));
+  /* Wifi names and passwords: 0 and O must stay different (design card D7) */
+  .credential {
+    font-family: var(--font-code);
   }
 
   /* Search and filter bar above a list */
