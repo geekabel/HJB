@@ -240,6 +240,17 @@ class ResidentPageTests(BookingTestCase):
         hhmm = timezone.localtime(first.start).strftime("%H%M")
         response = self.client.get(BOOK, {"avec": self.samia.pk, "jour": day, "heure": hhmm})
         self.assertContains(response, f'value="{hhmm}" required checked')
+        # Design card D5: a task screen; the bar at the bottom shows the time.
+        self.assertContains(response, "resident-page--task")
+        when = timezone.localtime(first.start)
+        self.assertEqual(
+            response.context["chosen"].start, first.start, msg="the asked time is free"
+        )
+        self.assertContains(response, f"à {when:%H:%M}</p>")
+        # A time that is not free that day is never shown as chosen.
+        response = self.client.get(BOOK, {"avec": self.samia.pk, "jour": day, "heure": "2359"})
+        self.assertIsNone(response.context["chosen"])
+        self.assertContains(response, "Choisissez une heure")
         response = self.client.post(
             BOOK, {"avec": self.samia.pk, "jour": day, "heure": hhmm, "motif": "papers"}
         )

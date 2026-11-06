@@ -1,6 +1,6 @@
 """Direct messages between a resident and an educator (card T28)."""
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from unittest import mock
 
 from django.test import TestCase
@@ -90,6 +90,31 @@ class ConversationTests(DirectTestCase):
         save_page("appointments-write", response)
         self.assertContains(response, "Oui, bien sûr.")
         self.assertEqual(direct.unread_count(self.ines), 0)
+
+    def test_chat_screen(self):
+        """Design card D5: a task screen, one line per day, no "sent" banner."""
+        conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        old = DirectMessage.objects.create(
+            conversation=conversation, author=self.samia, text="Bonjour Inès."
+        )
+        yesterday = timezone.localdate() - timedelta(days=1)
+        noon = timezone.make_aware(datetime.combine(yesterday, time(12)))
+        DirectMessage.objects.filter(pk=old.pk).update(sent_at=noon)
+        log_in_verified(self.client, self.ines)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                self.write_url(self.samia), {"text": "Merci !"}, follow=True
+            )
+        self.assertContains(response, "resident-page--task")
+        self.assertContains(response, 'class="composer"')
+        self.assertNotContains(response, "Message envoyé")
+        page = response.content.decode()
+        self.assertLess(page.index(">Hier</time>"), page.index(">Aujourd&#x27;hui</time>"))
+        # Who wrote is read out, not shown: the side and the color say it.
+        self.assertContains(response, '<span class="visually-hidden">Vous&nbsp;: </span>Merci !')
+        self.assertContains(
+            response, '<span class="visually-hidden">Samia&nbsp;: </span>Bonjour Inès.'
+        )
 
     def test_only_the_two_people(self):
         conversation = Conversation.objects.create(resident=self.ines, educator=self.samia)

@@ -65,13 +65,12 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D5 | Écrans de tâche des résidents | Design |
+| D6 | Pages pleines et ordinateur | Design |
 
 ### À faire
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| D6 | Pages pleines, ordinateur et tablette | Design | D5 |
 | D8 | Écrans de l'équipe, deuxième passe | Design | D6 |
 | T30 | Signaler un problème | E7 Signalements | D8 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
@@ -131,6 +130,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D3 | Écrans de l'équipe | 7 nov. 2026 |
 | D4 | Système visuel et textes | 7 nov. 2026 |
 | D7 | Chiffres et typographie | 7 nov. 2026 |
+| D5 | Écrans de tâche des résidents | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -373,13 +373,15 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Le lien retour colle à son titre, sans soulignement
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Police à chasse fixe pour le wifi (fiche, mot de passe, formulaire). Le lien retour ne se colle plus à une alerte. Menu de l'équipe un peu plus large : « Messages aux résidents » tient sur une ligne.
 
-#### D5 Écrans de tâche des résidents
-- [ ] Réservation et conversation en plein écran sur téléphone, sans la barre du bas ; barre de titre en haut
-- [ ] Réservation : barre en bas avec l'heure choisie et « Réserver »
-- [ ] Conversation : champ d'une ligne qui grandit, bouton rond, bulles groupées par jour, l'heure seule dans la bulle
-- [ ] Aucun champ caché sous une barre (scroll-padding)
+#### D5 Écrans de tâche des résidents (fait le 7 nov. 2026)
+- **Docs** : [Apple : barres d'onglets](https://developer.apple.com/design/human-interface-guidelines/tab-bars), [Chrome : clavier et viewport](https://developer.chrome.com/blog/viewport-resize-behavior), [MDN : scroll-padding](https://developer.mozilla.org/fr/docs/Web/CSS/scroll-padding).
+- [x] Réservation et conversation en plein écran sur téléphone, sans la barre du bas ; barre de titre en haut
+- [x] Réservation : barre en bas avec l'heure choisie et « Réserver »
+- [x] Conversation : champ d'une ligne qui grandit, bouton rond, bulles groupées par jour, l'heure seule dans la bulle ; plus de bandeau « Message envoyé »
+- [x] Aucun champ caché sous une barre (scroll-padding) ; sur Android, le clavier réduit la page (interactive-widget)
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Un message refusé ne fait plus défiler la page loin de son avertissement. Heure de mes bulles plus contrastée, texte d'exemple lisible en mode sombre. Après l'envoi, le lecteur d'écran lit le message envoyé. La note « Lu par Samia seulement » décrit le champ. Sur tablette, les barres vont d'un bord à l'autre et la barre d'action reste en bas. Tests sûrs au changement d'heure.
 
-#### D6 Pages pleines, ordinateur et tablette
+#### D6 Pages pleines et ordinateur
 - [ ] Rendez-vous : une carte forte pour le prochain, les prochains créneaux libres
 - [ ] Ordinateur : mise en page plus large ; tablette : rail dès 600 px
 

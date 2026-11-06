@@ -178,7 +178,61 @@
     });
   }
 
+  // Message field (design card D5): it grows with the text, up to the
+  // max-height of the CSS. Enter keeps making a new line, like a textarea.
+  function growWithText() {
+    document.querySelectorAll("textarea[data-autogrow]").forEach(function (field) {
+      function fit() {
+        field.style.height = "auto";
+        field.style.height = field.scrollHeight + 2 + "px";
+      }
+      field.addEventListener("input", fit);
+      if (field.value) {
+        fit();
+      }
+    });
+  }
+
+  // A conversation opens on its last message, like the messaging apps. Not
+  // when a warning says why a message was refused: it is at the top. Just
+  // after sending (#last-message), the focus goes to the sent message, so a
+  // screen reader reads it out: it says the message went.
+  function showLastMessage() {
+    var last = document.getElementById("last-message");
+    if (!last || !document.querySelector(".composer") || document.querySelector("main .alert")) {
+      return;
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    if (window.location.hash === "#last-message") {
+      last.setAttribute("tabindex", "-1");
+      last.focus({ preventScroll: true });
+    }
+  }
+
+  // Booking (design card D5): the bar at the bottom says which time is chosen.
+  function showChosenTime() {
+    var summary = document.querySelector("[data-booking-summary]");
+    var form = summary && summary.closest("form");
+    if (!form) {
+      return;
+    }
+    function show(input) {
+      if (input && input.name === "heure" && input.checked) {
+        summary.textContent = summary.dataset.day + " à " + input.parentElement.textContent.trim();
+        summary.classList.remove("text-muted");
+      }
+    }
+    form.addEventListener("change", function (event) {
+      show(event.target);
+    });
+    // A time the browser checked again (back button, restored form)
+    show(form.querySelector('input[name="heure"]:checked'));
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    growWithText();
+    showLastMessage();
+    showChosenTime();
     clearHiddenSendTime();
     keepCurrentInView();
     openStepsOfThisPhone();

@@ -9,26 +9,14 @@
     <p class="text-muted">{% if room %}Chambre {{ room }}{% else %}Plus de séjour en cours{% endif %}</p>
   </div>
 </header>
-<div class="profile">
-  <section class="card stack" aria-labelledby="thread-title">
-    <h2 id="thread-title" class="card__title">Conversation</h2>
-    {% include "appointments/_thread.html" with me=user %}
-    {% if left %}
-    <p class="alert alert--info">{% icon "info" %}<span>Cette personne a quitté la résidence : elle ne peut plus lire de message.</span></p>
-    {% else %}
-    <form class="stack" method="post">
-      {% csrf_token %}
-      <div class="field">
-        <label for="text">Votre réponse</label>
-        <textarea id="text" name="text" rows="4" maxlength="{{ max_length }}" required>{{ text }}</textarea>
-      </div>
-      <button class="button" type="submit">{% icon "send" %}Répondre</button>
-    </form>
-    {% endif %}
-  </section>
-  <aside class="card stack">
-    <p class="text-small">Vous répondez {{ reply_hours }} (<a href="{% url 'appointments:availability' %}#settings-title">modifier</a>).</p>
-    <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Conversation privée.</span></p>
-  </aside>
+<p class="text-muted text-small icon-text thread-note">{% icon "lock" %}<span>Conversation privée. Vous répondez {{ reply_hours }} (<a href="{% url 'appointments:availability' %}#settings-title">modifier</a>).</span></p>
+
+<div class="conversation">
+  {% include "appointments/_thread.html" with me=user %}
+  {% if left %}
+  <p class="alert alert--info">{% icon "info" %}<span>Cette personne a quitté la résidence : elle ne peut plus lire de message.</span></p>
+  {% else %}
+  {% include "appointments/_composer.html" %}
+  {% endif %}
 </div>
 {% endblock %}
