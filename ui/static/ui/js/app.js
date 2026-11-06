@@ -237,6 +237,7 @@
     }
     document.querySelectorAll("details[data-open-wide]").forEach(function (box) {
       box.open = true;
+      box.classList.add("filters__more--wide");
     });
   }
 

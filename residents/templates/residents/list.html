@@ -32,7 +32,7 @@
   </div>
   {# On a phone the two lists fold away (design card D8); on a wider screen app.js opens them. #}
   <details class="filters__more" data-open-wide{% if floor or account %} open{% endif %}>
-    <summary class="button button--quiet">{% icon "filter" %}Filtres{% if floor or account %}<span class="counter">{% if floor and account %}2{% else %}1{% endif %}</span>{% endif %}</summary>
+    <summary class="button button--quiet">{% icon "filter" %}Filtres{% if floor or account %}{% if floor and account %}<span class="counter" aria-hidden="true">2</span><span class="visually-hidden">, 2 actifs</span>{% else %}<span class="counter" aria-hidden="true">1</span><span class="visually-hidden">, 1 actif</span>{% endif %}{% endif %}</summary>
     <div class="row filters__lists">
       <div class="field">
         <label for="filter-floor">Étage</label>

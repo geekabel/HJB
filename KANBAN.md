@@ -65,7 +65,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D8 | Écrans de l'équipe, deuxième passe | Design |
+| | *(vide)* | |
 
 ### À faire
 
@@ -131,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D7 | Chiffres et typographie | 7 nov. 2026 |
 | D5 | Écrans de tâche des résidents | 7 nov. 2026 |
 | D6 | Pages pleines et ordinateur | 7 nov. 2026 |
+| D8 | Écrans de l'équipe, deuxième passe | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -389,9 +390,13 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Notes** : sur tablette, la barre du bas reste. Apple la garde sur iPad, et la colonne de 40rem se lit bien à 768 px.
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Un lien `.venv` avait été ajouté par erreur : retiré, et le `.gitignore` le couvre. Les créneaux proposés ne chevauchent jamais un rendez-vous du résident, et disparaissent quand il en a déjà le maximum (une ligne dit pourquoi). Dates lues en entier par les lecteurs d'écran. Cartes vides avec un bord, coins identiques. Tests sûrs au changement d'heure.
 
-#### D8 Écrans de l'équipe, deuxième passe
-- [ ] Filtres sans bouton, types de message en grille régulière, journal en phrases
-- [ ] Bouton collé en bas des longs formulaires
+#### D8 Écrans de l'équipe, deuxième passe (fait le 7 nov. 2026)
+- **Docs** : [Refactoring UI : étiquettes](https://www.refactoringui.com/previews/labels-are-a-last-resort), [formats de date Django](https://docs.djangoproject.com/en/6.1/ref/templates/builtins/#date).
+- [x] Résidents : bouton de recherche dans le champ ; étage et compte repliés sous « Filtres » sur téléphone, à côté de la recherche sur un écran large
+- [x] Choix (type de message, envoi, étages) en grille régulière ; titre d'étape dans sa carte, plus sur le bord
+- [x] Modèles : « Modifier » en bouton texte ; journal : dates en mots
+- **Notes** : pas de barre d'action collée en bas du nouveau message. Le formulaire et son récapitulatif sont dans une grille ; une barre collée demanderait de le refaire. À revoir si l'équipe l'utilise surtout sur téléphone.
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Mois abrégés à la française (« juil. »). Tuiles de même hauteur, la grille ne saute plus. Le compteur des filtres se lit « 2 actifs ». Sans JavaScript, le bouton « Filtres » reste pour replier. Contour du focus entier sur la recherche. Règles CSS inutiles retirées.
 
 ### E3 Wifi
 

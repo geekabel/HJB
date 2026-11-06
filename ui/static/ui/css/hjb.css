@@ -1537,7 +1537,7 @@
 
   /* Search and filter bar above a list */
   .filters__search {
-    flex: 1 1 16rem;
+    flex: 1 1 12rem;
   }
 
   /* Staff lists (design card D8): the search with its button inside the
@@ -1551,6 +1551,11 @@
 
   .search-box {
     display: flex;
+  }
+
+  .search-box input:focus-visible {
+    position: relative;
+    z-index: 1;
   }
 
   .search-box input {
@@ -1585,26 +1590,23 @@
     display: none;
   }
 
-  .filters__more > summary .counter {
-    position: static;
-  }
-
   .filters__lists {
     align-items: flex-end;
     margin-block-start: var(--s-3);
   }
 
   @media (min-width: 48rem) {
-    /* Opened by app.js on a wide screen: the lists sit next to the search */
-    .filters__more[open] {
+    /* Opened by app.js on a wide screen (class --wide): the lists sit next
+       to the search. Without it, the summary stays to fold them again. */
+    .filters__more--wide[open] {
       flex: 0 1 auto;
     }
 
-    .filters__more[open] > summary {
+    .filters__more--wide[open] > summary {
       display: none;
     }
 
-    .filters__more[open] .filters__lists {
+    .filters__more--wide[open] .filters__lists {
       margin-block-start: 0;
     }
   }
@@ -1612,6 +1614,7 @@
   /* Choices side by side keep one width, in a regular grid (design card D8) */
   .row:has(> .choices) {
     display: grid;
+    align-items: stretch;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
   }
 
@@ -1622,9 +1625,6 @@
     padding: 0;
   }
 
-  fieldset.card > legend + * {
-    clear: both;
-  }
 
   /* First cell of a row: a name, read as a row header */
   .table .table__row-header {
