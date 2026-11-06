@@ -60,6 +60,12 @@ ICONS = {
         '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
         '<path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'
     ),
+    # Navigation (design card D1).
+    "chevron": '<path d="m9 6 6 6-6 6"/>',
+    "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+    "logout": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+    "menu": '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    "close": '<path d="M18 6 6 18M6 6l12 12"/>',
 }
 
 # The three roofs of the logo, in color (not line style).
@@ -95,5 +101,9 @@ def icon(name, label="", css_class=""):
 
 @register.simple_tag
 def roofs(label="Habitat Jeunes Belfort", css_class=""):
-    """The three roofs of the logo."""
+    """The three roofs of the logo. ``label=""``: decorative, next to the written name."""
+    if not label:
+        return format_html(
+            ROOFS.replace(' role="img" aria-label="{}"', ' aria-hidden="true"'), css_class
+        )
     return format_html(ROOFS, css_class, label)

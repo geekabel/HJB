@@ -79,8 +79,8 @@ class PagesTests(TestCase):
 
     def test_home_shortcut(self):
         log_in_verified(self.client, make_user("ines"))
-        response = self.client.get(reverse("home"))
-        self.assertContains(response, 'href="/installer/" data-hide-when-installed')
+        response = self.client.get(reverse("account"))
+        self.assertContains(response, '<li data-hide-when-installed><a href="/installer/">')
 
 
 class ReviewTests(TestCase):

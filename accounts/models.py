@@ -122,7 +122,10 @@ class User(AbstractUser):
     @property
     def roles_label(self):
         """Roles in plain words, for example "Accueil, Maintenance"."""
-        return ", ".join(sorted(r.label for r in self.roles)) or "Résident"
+        label = ", ".join(sorted(r.label for r in self.roles))
+        if label:
+            return label
+        return "Équipe" if (self.is_staff or self.is_superuser) else "Résident"
 
     @property
     def account_state(self):

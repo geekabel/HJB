@@ -115,7 +115,7 @@ class AuditPageTests(TestCase):
         self.assertContains(response, "Avant : aucun (résident). Après : Accueil.")
         self.assertContains(response, "Départ d&#x27;un résident")
         # Text written literally in the template: Django does not escape it.
-        self.assertContains(response, 'aria-current="page">Journal d\'audit</a>')
+        self.assertContains(response, 'aria-current="page">Journal</a>')
         # On mobile, the table scrolls: the area must be reachable with the keyboard.
         self.assertContains(response, 'role="region" aria-labelledby="audit-caption" tabindex="0"')
         save_page("audit-log", response)

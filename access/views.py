@@ -17,6 +17,7 @@ from django_otp import login as otp_login
 from django_otp_webauthn.utils import get_credential_model
 
 from accounts.models import User
+from accounts.roles import GROUP_BY_ROLE, Role
 from audit.service import client_ip
 
 from . import app_code, rate_limits, session_policy
@@ -186,10 +187,43 @@ def logout_view(request):
 
 @never_cache
 @login_required
-def home(request):
-    """Temporary home page, to be replaced by cards T34 (residents) and T35 (staff)."""
+def account(request):
+    """Mon compte: how I log in, notifications, installation, logout (design card D1)."""
     user = request.user
-    if not is_resident(user) and user.has_perm("accounts.view_residents"):
-        return redirect("residents:list")
+    staff = not is_resident(user)
+    passkeys = list(get_credential_model().objects.filter(user=user).order_by("-created_at"))
+    return render(
+        request,
+        "access/account.html",
+        {
+            "layout": "ui/staff.html" if staff else "ui/resident.html",
+            "active_nav": "account",
+            "passkey": passkeys[0] if passkeys else None,
+            "other_passkeys": len(passkeys) - 1 if passkeys else 0,
+            "app_code": app_code.device_of(user) if app_code.allowed(user) else None,
+            "devices": user.push_subscriptions.count(),
+        },
+    )
+
+
+@never_cache
+@login_required
+def home(request):
+    """Home page. Staff start on their main task: meetings for an educator, residents otherwise.
+
+    To be replaced by cards T34 (residents) and T35 (staff).
+    """
+    user = request.user
+    if not is_resident(user):
+        # Never the resident home for a staff member (Maintenance included).
+        if user.groups.filter(name=GROUP_BY_ROLE[Role.EDUCATOR]).exists() and user.has_perm(
+            "accounts.manage_appointments"
+        ):
+            return redirect("appointments:availability")
+        if user.has_perm("accounts.view_residents"):
+            return redirect("residents:list")
+        if user.has_perm("accounts.send_messages"):
+            return redirect("messaging:list")
+        return redirect("account")
     passkeys = get_credential_model().objects.filter(user=user).order_by("-created_at")
     return render(request, "access/home.html", {"passkeys": passkeys, "active_nav": "home"})

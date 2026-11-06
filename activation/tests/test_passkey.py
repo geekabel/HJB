@@ -97,7 +97,7 @@ class PasskeyStepTests(PasskeyTestBase):
         response = self.client.get(reverse("home"))
         save_page("home-resident", response)
         self.assertContains(response, "Bonjour Awa")
-        self.assertContains(response, "Me déconnecter")
+        self.assertContains(response, 'href="/compte/"')
 
     def test_get_denied(self):
         self.assertEqual(self.client.get(reverse("activation:passkey_begin")).status_code, 405)

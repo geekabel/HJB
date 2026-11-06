@@ -63,7 +63,7 @@ class AccessTests(ResidentsTestCase):
         log_in_verified(self.client, make_user("sam", Role.EDUCATOR))
         response = self.client.get(reverse("residents:list"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Résidents et wifi")
+        self.assertContains(response, ">Résidents</a>")
         self.assertNotContains(response, "Nouveau résident")
         self.assertNotContains(response, "Importer CSV ou Excel")
         self.assertContains(response, ">Voir<span")
@@ -93,7 +93,7 @@ class AccessTests(ResidentsTestCase):
         response = self.client.get(reverse("residents:list"))
         self.assertContains(
             response,
-            f'<a href="{reverse("residents:list")}" aria-current="page">Résidents et wifi</a>',
+            f'<a href="{reverse("residents:list")}" aria-current="page">Résidents</a>',
             html=True,
         )
         # Maintenance has no access to the profiles: no link.
