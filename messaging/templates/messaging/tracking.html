@@ -23,7 +23,7 @@
 {% elif campaign.status == "cancelled" %}
 <p class="alert alert--info">{% icon "info" %}<span>Cet envoi a été annulé. Rien n'est parti.</span></p>
 {% else %}
-<p class="summary-line" aria-label="Bilan de l'envoi"><strong>{{ stats.recipients }}</strong> destinataire{{ stats.recipients|pluralize }} · <strong>{{ stats.push }}</strong> notification{{ stats.push|pluralize }} · <strong>{{ stats.sms }}</strong> SMS ({{ stats.segments }} facturé{{ stats.segments|pluralize }}) · {% if stats.failed %}<strong class="text-warning">{{ stats.failed }} échec{{ stats.failed|pluralize }}</strong>{% else %}aucun échec{% endif %}</p>
+<p class="summary-line"><strong>{{ stats.recipients }}</strong> destinataire{{ stats.recipients|pluralize }} · <strong>{{ stats.push }}</strong> notification{{ stats.push|pluralize }} · <strong>{{ stats.sms }}</strong> SMS ({{ stats.segments }} facturé{{ stats.segments|pluralize }}) · {% if stats.failed %}<strong class="text-warning">{{ stats.failed }} échec{{ stats.failed|pluralize }}</strong>{% else %}aucun échec{% endif %}</p>
 {% if to_warn %}
 <section class="card card--framed stack" aria-labelledby="warn-title">
   <h2 id="warn-title" class="icon-text">{% icon "alert" %}<span>{{ to_warn|length }} personne{{ to_warn|length|pluralize }} à prévenir autrement</span></h2>

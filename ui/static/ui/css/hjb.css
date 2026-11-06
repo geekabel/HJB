@@ -1635,7 +1635,17 @@
 
   .details dd {
     margin: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+  }
+
+  /* Each value under its label: for the narrow side column (design card D3) */
+  .details--stacked {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .details--stacked dd + dt {
+    margin-block-start: var(--s-2);
   }
 
   /* Card highlighted by a frame (import preview waiting for confirmation) */
@@ -2188,16 +2198,17 @@
     border-color: var(--ink);
   }
 
+  /* The legend is a small open slot, the same as in the grid */
   .slot-key {
-    display: inline-block;
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 4px;
-  }
-
-  .slot-key--open {
-    border: 2px solid var(--action);
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--s-2);
+    border: 1px solid var(--action);
+    border-radius: var(--r-small);
+    box-shadow: inset 0 0 0 1px var(--action);
     background: var(--action-soft);
+    color: var(--action);
+    font-weight: 700;
   }
 
   /* A link that skips a long block: hidden until it gets the focus */
@@ -2548,6 +2559,10 @@
     display: inline-flex;
     align-items: center;
     min-height: var(--target);
+    color: var(--error);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
     cursor: pointer;
   }
 

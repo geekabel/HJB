@@ -12,11 +12,10 @@
   {% endwith %}
   {% else %}
   <h1>Nouveau résident</h1>
-  <p class="text-muted">Le compte sera activé par la personne elle-même, avec le code remis à l'accueil.</p>
+  <p class="text-muted">La personne activera son compte avec un code donné à l'accueil.</p>
   {% endif %}
 </header>
 
-<div class="profile">
 {% if resident %}
 <div class="profile">
   <div class="stack">
@@ -174,7 +173,7 @@
   <div class="stack">
     <section class="card stack" aria-labelledby="account-title">
       <h2 id="account-title" class="card__title">Compte</h2>
-      <dl class="details">
+      <dl class="details details--stacked">
         <dt>Fiche créée le</dt>
         <dd><time datetime="{{ resident.date_joined|date:'Y-m-d' }}">{{ resident.date_joined|date:"j F Y" }}</time></dd>
         <dt>Téléphone vérifié</dt>
