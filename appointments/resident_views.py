@@ -88,21 +88,30 @@ def overview(request):
                 "next_meeting": upcoming[0] if upcoming else None,
                 "later": upcoming[1:],
                 "can_book": bool(educators),
-                "next_free": _next_free(educators) if educators else [],
+                "full": len(upcoming) >= booking.MAX_UPCOMING,
+                "max_upcoming": booking.MAX_UPCOMING,
+                "next_free": _next_free(educators, upcoming)
+                if educators and len(upcoming) < booking.MAX_UPCOMING
+                else [],
                 "any_key": ANY,
             },
         )
     )
 
 
-def _next_free(educators, count=3):
-    """The first free times with anyone (design card D6): one tap books them."""
+def _next_free(educators, mine, count=3):
+    """The first free times with anyone (design card D6): one tap opens the
+    booking with the time chosen. Never a time that overlaps a meeting of the
+    resident (``mine``): the booking would refuse it."""
     found = []
     for _, slots in booking.days_with_slots(educators):
         for slot in _times(slots):
+            if any(slot.start < meeting.end and meeting.start < slot.end for meeting in mine):
+                continue
             found.append(slot)
             if len(found) == count:
                 return found
+    return found
     return found
 
 

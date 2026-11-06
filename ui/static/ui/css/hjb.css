@@ -2537,7 +2537,8 @@
     align-items: center;
     gap: var(--s-3);
     padding: var(--s-4);
-    border-radius: var(--r-large);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
     background: var(--surface);
     color: var(--text-muted);
   }
@@ -2574,7 +2575,7 @@
     gap: var(--s-4);
     padding: var(--s-4);
     border: 1px solid var(--line);
-    border-radius: var(--r-large);
+    border-radius: var(--r);
     background: var(--surface);
     color: var(--ink);
     text-decoration: none;

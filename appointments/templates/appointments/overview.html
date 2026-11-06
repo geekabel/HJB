@@ -10,13 +10,13 @@
   <span class="date-tile" aria-hidden="true"><span>{{ next_meeting.start|date:"D" }}</span><strong>{{ next_meeting.start|date:"j" }}</strong><span>{{ next_meeting.start|date:"b" }}</span></span>
   <span class="next-meeting__body">
     <span class="next-meeting__when">{{ next_meeting.start|dans }}</span>
-    <strong><span class="visually-hidden">{{ next_meeting.start|date:"l j F" }}, </span>{{ next_meeting.start|time:"H:i" }} – {{ next_meeting.end|time:"H:i" }}</strong>
+    <strong><span class="visually-hidden">, {{ next_meeting.start|date:"l j F" }}, de {{ next_meeting.start|time:"H:i" }} à {{ next_meeting.end|time:"H:i" }}</span><span aria-hidden="true">{{ next_meeting.start|time:"H:i" }} – {{ next_meeting.end|time:"H:i" }}</span></strong>
     <span class="text-muted">avec {{ next_meeting.educator.first_name|default:next_meeting.educator.get_username }}</span>
   </span>
   {% icon "chevron" %}
 </a>
 {% if later %}
-<ul class="link-list">
+<ul class="link-list" aria-label="Rendez-vous suivants">
   {% for meeting in later %}
   <li><a href="{% url 'rdv:detail' meeting.pk %}">{% icon "calendar" %}<span><strong>{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</strong><small>avec {{ meeting.educator.first_name|default:meeting.educator.get_username }}</small></span>{% icon "chevron" %}</a></li>
   {% endfor %}
@@ -32,10 +32,12 @@
 {% if can_book %}
 <section class="stack stack--tight" aria-labelledby="book-title">
   <h2 id="book-title" class="section-title">Prendre rendez-vous</h2>
-  {% if next_free %}
+  {% if full %}
+  <p class="text-muted text-small">Vous avez déjà {{ max_upcoming }} rendez-vous à venir : c'est le maximum.</p>
+  {% elif next_free %}
   <ul class="quick-times" aria-label="Premiers créneaux libres">
     {% for slot in next_free %}
-    <li><a class="quick-time" href="{% url 'rdv:book' %}?avec={{ any_key }}&amp;jour={{ slot.start|date:'Y-m-d' }}&amp;heure={{ slot.start|time:'Hi' }}"><span>{{ slot.start|date:"D j b" }}</span><strong>{{ slot.start|time:"H:i" }}</strong></a></li>
+    <li><a class="quick-time" href="{% url 'rdv:book' %}?avec={{ any_key }}&amp;jour={{ slot.start|date:'Y-m-d' }}&amp;heure={{ slot.start|time:'Hi' }}"><span aria-hidden="true">{{ slot.start|date:"D j b" }}</span><strong aria-hidden="true">{{ slot.start|time:"H:i" }}</strong><span class="visually-hidden">{{ slot.start|date:"l j F" }} à {{ slot.start|time:"H:i" }}</span></a></li>
     {% endfor %}
   </ul>
   {% endif %}

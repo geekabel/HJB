@@ -65,8 +65,11 @@ class DansTests(SimpleTestCase):
     """How far a meeting is, on the Rendez-vous tab (design card D6)."""
 
     def test_days_ahead(self):
-        now = timezone.now()
-        self.assertEqual(dans(now), "Aujourd'hui")
-        self.assertEqual(dans(now + timedelta(days=1)), "Demain")
-        self.assertEqual(dans(now + timedelta(days=4)), "Dans 4 jours")
+        def noon_in(days):  # local noon: safe around the clock changes
+            day = timezone.localdate() + timedelta(days=days)
+            return timezone.make_aware(datetime.combine(day, datetime.min.time()).replace(hour=12))
+
+        self.assertEqual(dans(noon_in(0)), "Aujourd'hui")
+        self.assertEqual(dans(noon_in(1)), "Demain")
+        self.assertEqual(dans(noon_in(4)), "Dans 4 jours")
         self.assertEqual(dans(None), "")
