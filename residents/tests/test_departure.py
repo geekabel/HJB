@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from accounts.models import User
 from accounts.roles import Role
@@ -73,7 +74,8 @@ class ServiceTests(DepartureTestCase):
         self.assertEqual(entry.target_label, "Awa Koné (awa.kone)")
         self.assertEqual(entry.details["sessions_closed"], 2)
         self.assertEqual(
-            entry.summary(), f"Chambre 312, départ le {on:%d/%m/%Y}. 2 sessions fermées."
+            entry.summary(),
+            f"Chambre 312, départ le {date_format(on, 'j F Y')}. 2 sessions fermées.",
         )
         # Both devices are logged out.
         for client in (phone, computer):

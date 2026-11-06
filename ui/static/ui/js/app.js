@@ -229,7 +229,20 @@
     show(form.querySelector('input[name="heure"]:checked'));
   }
 
+  // Staff lists (design card D8): the folded filters open on a wide screen,
+  // where they fit next to the search.
+  function openFiltersWhenWide() {
+    if (!window.matchMedia("(min-width: 48rem)").matches) {
+      return;
+    }
+    document.querySelectorAll("details[data-open-wide]").forEach(function (box) {
+      box.open = true;
+      box.classList.add("filters__more--wide");
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    openFiltersWhenWide();
     growWithText();
     showLastMessage();
     showChosenTime();

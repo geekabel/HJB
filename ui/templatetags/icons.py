@@ -66,6 +66,8 @@ ICONS = {
     "logout": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
     "menu": '<path d="M4 6h16M4 12h16M4 18h16"/>',
     "close": '<path d="M18 6 6 18M6 6l12 12"/>',
+    "search": '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    "filter": '<path d="M3 5h18M6 12h12M10 19h4"/>',
 }
 
 # The three roofs of the logo, in color (not line style).
