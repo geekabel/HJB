@@ -1,8 +1,10 @@
 """Resident pages of the appointments (card T27): book, then see the meeting.
 
-The steps are links and one form (no script needed): the educator (or "le
-premier libre"), the day, then the time and the reason, which only the
-educator of the meeting can read.
+The Rendez-vous tab lists the meetings to come, with one button to book
+(design card D2). Booking is its own page, in three numbered steps that are
+links and one form (no script needed): the educator (or "le premier libre"),
+the day, then the time and the reason, which only the educator of the
+meeting can read. Writing to an educator lives under Messages.
 """
 
 from datetime import datetime, time
@@ -59,6 +61,40 @@ def _times(slots):
 def _page(response):
     add_never_cache_headers(response)
     return response
+
+
+@login_required
+@require_safe
+def overview(request):
+    """The Rendez-vous tab: my meetings to come, and the button to book one."""
+    if not is_resident(request.user):
+        return redirect("home")
+    return _page(
+        render(
+            request,
+            "appointments/overview.html",
+            {
+                "active_nav": "appointments",
+                "upcoming": booking.upcoming(request.user).select_related("educator"),
+                "can_book": booking.educators().exists(),
+            },
+        )
+    )
+
+
+@login_required
+@require_safe
+def educators_to_write(request):
+    """Choose who to write to: any active educator, even without open times (card T28)."""
+    if not is_resident(request.user):
+        return redirect("home")
+    return _page(
+        render(
+            request,
+            "appointments/educators.html",
+            {"active_nav": "messages", "educators": direct.educators()},
+        )
+    )
 
 
 @login_required
@@ -125,13 +161,10 @@ def book(request):
                 "first": first,
                 "length": length,
                 "reasons": Appointment.Reason.choices,
-                "upcoming": booking.upcoming(request.user),
-                "conversations": direct.with_unread(
-                    direct.resident_conversations(request.user).select_related("educator"),
-                    request.user,
-                ),
-                # Write to any educator, even one without open times (card T28).
-                "writable": direct.educators(),
+                "time_groups": [
+                    ("Matin", [s for s in times if timezone.localtime(s.start).hour < 12]),
+                    ("Après-midi", [s for s in times if timezone.localtime(s.start).hour >= 12]),
+                ],
             },
         )
     )
@@ -196,7 +229,7 @@ def write(request, educator_pk):
             request,
             "appointments/write.html",
             {
-                "active_nav": "appointments",
+                "active_nav": "messages",
                 "educator": educator,
                 "reply_hours": settings_of(educator).reply_hours,
                 "thread": conversation.messages.select_related("author") if conversation else [],

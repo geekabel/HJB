@@ -1,0 +1,7 @@
+{% load icons %}{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% else %}{% icon "info" %}{% endif %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}

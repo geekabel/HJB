@@ -1,69 +1,41 @@
 {% extends "ui/resident.html" %}
 {% load icons %}
-{% block title %}Rendez-vous{% endblock %}
+{% block title %}Prendre rendez-vous{% endblock %}
 {% block content %}
 <div class="row">
-  <h1>Rendez-vous</h1>
+  <a class="icon-button" href="{% url 'rdv:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>
+  <h1>Prendre rendez-vous</h1>
 </div>
-
-{% if messages %}
-<div class="stack" role="status">
-  {% for message in messages %}
-  <div class="alert alert--{{ message.level_tag }}">{% if message.level_tag == "success" %}{% icon "check" %}{% else %}{% icon "info" %}{% endif %}<p>{{ message }}</p></div>
-  {% endfor %}
-</div>
-{% endif %}
-
-{% if upcoming %}
-<section class="stack stack--tight" aria-labelledby="upcoming-title">
-  <h2 id="upcoming-title">Mes rendez-vous</h2>
-  <ul class="plain-list stack stack--tight">
-    {% for meeting in upcoming %}
-    <li><a class="card card--link rdv-line" href="{% url 'rdv:detail' meeting.pk %}"><span><strong>{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</strong><br><span class="text-muted text-small">avec {{ meeting.educator.first_name|default:meeting.educator.get_username }}</span></span>{% icon "calendar" %}</a></li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
-
-{% if conversations %}
-<section class="stack stack--tight" aria-labelledby="conversations-title">
-  <h2 id="conversations-title">Mes messages</h2>
-  <ul class="plain-list stack stack--tight">
-    {% for conversation in conversations %}
-    <li><a class="card card--link rdv-line" href="{% url 'rdv:write' conversation.educator_id %}"><span>Avec {{ conversation.educator.first_name|default:conversation.educator.get_username }}</span>{% if conversation.unread %}<span class="visually-hidden">, </span><span class="counter">{{ conversation.unread }}<span class="visually-hidden"> non lu{{ conversation.unread|pluralize }}</span></span>{% endif %}</a></li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
+{% include "appointments/_messages.html" %}
 
 {% if not educators %}
-<p class="card text-muted">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil pour en parler.</p>
+<p class="empty-state">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil.</p>
 {% else %}
 <section class="stack stack--tight" aria-labelledby="who-title">
-  <h2 id="who-title" class="rdv__step">Avec qui ?</h2>
+  <h2 id="who-title" class="rdv__step">1. Avec qui ?</h2>
   <ul class="rdv-people">
+    <li><a class="rdv-person" href="?avec={{ any_key }}"{% if not educator %} aria-current="true"{% endif %}><span class="rdv-person__initial rdv-person__initial--any" aria-hidden="true">{% icon "group" %}</span>Le premier libre</a></li>
     {% for person in educators %}
     <li><a class="rdv-person" href="?avec={{ person.pk }}"{% if educator == person %} aria-current="true"{% endif %}><span class="rdv-person__initial" aria-hidden="true">{{ person.first_name|default:person.get_username|slice:":1"|upper }}</span>{{ person.first_name|default:person.get_username }}</a></li>
     {% endfor %}
-    <li><a class="rdv-person" href="?avec={{ any_key }}"{% if not educator %} aria-current="true"{% endif %}><span class="rdv-person__initial rdv-person__initial--any" aria-hidden="true">{% icon "group" %}</span>Le premier libre</a></li>
   </ul>
 </section>
 
 {% if not days %}
-<p class="card text-muted">Pas de créneau libre dans les deux semaines à venir{% if educator %} avec {{ educator.first_name }}{% endif %}. {% if educator %}Essayez « Le premier libre », ou r{% else %}R{% endif %}éessayez dans quelques jours.</p>
+<p class="empty-state">Pas de créneau libre dans les 2 semaines{% if educator %} avec {{ educator.first_name }}. Essayez « Le premier libre »{% endif %}.</p>
 {% else %}
-{% if first %}
+{% if first and not wanted %}
 <div class="card rdv-line">
-  <p class="stack stack--tight"><span class="text-muted text-small">Prochain créneau libre</span><strong>{{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</strong></p>
-  <a class="button button--secondary" href="?avec={{ key }}&amp;jour={{ first.start|date:'Y-m-d' }}&amp;heure={{ first.start|time:'Hi' }}">Choisir<span class="visually-hidden"> le {{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</span></a>
+  <p class="stack stack--tight"><span class="text-muted text-small">Le plus tôt</span><strong>{{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</strong></p>
+  <a class="button button--secondary" href="?avec={{ key }}&amp;jour={{ first.start|date:'Y-m-d' }}&amp;heure={{ first.start|time:'Hi' }}#time-title">Choisir<span class="visually-hidden"> le {{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</span></a>
 </div>
 {% endif %}
 
 <section class="stack stack--tight" aria-labelledby="day-title">
-  <h2 id="day-title" class="rdv__step">Quel jour ?</h2>
+  <h2 id="day-title" class="rdv__step">2. Quel jour ? <span class="text-muted">{{ day|date:"F" }}</span></h2>
   <ul class="rdv-days">
     {% for each, slots in days %}
-    <li><a class="rdv-day" href="?avec={{ key }}&amp;jour={{ each|date:'Y-m-d' }}"{% if each == day %} aria-current="true"{% endif %}><span class="text-small" aria-hidden="true">{{ each|date:"D" }}</span><strong aria-hidden="true">{{ each|date:"j" }}</strong><span class="visually-hidden">{{ each|date:"l j F" }}</span></a></li>
+    <li><a class="rdv-day" href="?avec={{ key }}&amp;jour={{ each|date:'Y-m-d' }}#time-title"{% if each == day %} aria-current="true"{% endif %}><span class="text-small" aria-hidden="true">{{ each|date:"D" }}</span><strong aria-hidden="true">{{ each|date:"j" }}</strong><span class="visually-hidden">{{ each|date:"l j F" }}</span></a></li>
     {% endfor %}
   </ul>
 </section>
@@ -73,33 +45,25 @@
   <input type="hidden" name="avec" value="{{ key }}">
   <input type="hidden" name="jour" value="{{ day|date:'Y-m-d' }}">
   <fieldset class="stack stack--tight">
-    <legend><h2 class="rdv__step">Quelle heure ? <span class="text-muted">{{ day|date:"l j F" }}{% if length %}, {{ length }} min{% endif %}</span></h2></legend>
+    <legend><h2 id="time-title" class="rdv__step">3. Quelle heure ? <span class="text-muted">{{ day|date:"l j F" }}{% if length %}, {{ length }} min{% endif %}</span></h2></legend>
+    {% for label, group in time_groups %}{% if group %}
+    <p class="rdv-times__label">{{ label }}</p>
     <div class="rdv-times">
-      {% for slot in times %}
-      <label class="choices"><input type="radio" name="heure" value="{{ slot.start|time:'Hi' }}" required{% if slot.start|time:'Hi' == wanted %} checked{% endif %}>{{ slot.start|time:"H:i" }}</label>
+      {% for slot in group %}
+      <label class="rdv-time"><input type="radio" name="heure" value="{{ slot.start|time:'Hi' }}" required{% if slot.start|time:'Hi' == wanted %} checked{% endif %}><span>{{ slot.start|time:"H:i" }}</span></label>
       {% endfor %}
     </div>
+    {% endif %}{% endfor %}
   </fieldset>
   <div class="field">
     <label for="motif">Motif <span class="text-muted">(facultatif)</span></label>
     <select id="motif" name="motif" aria-describedby="motif-help">
       {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
     </select>
-    <span class="field__help icon-text" id="motif-help">{% icon "lock" %}<span>Visible uniquement par {% if educator %}{{ educator.first_name|default:educator.get_username }}{% else %}l'éducateur du rendez-vous{% endif %}.</span></span>
+    <span class="field__help icon-text" id="motif-help">{% icon "lock" %}<span>Seul l'éducateur le voit.</span></span>
   </div>
   <button class="button button--block" type="submit">{% icon "calendar" %}Réserver</button>
 </form>
 {% endif %}
-{% if educator %}
-<a class="button button--secondary button--block" href="{% url 'rdv:write' educator.pk %}">{% icon "message" %}Plutôt écrire à {{ educator.first_name|default:educator.get_username }}</a>
-{% endif %}
-{% endif %}
-{% if writable and not educator %}
-<details class="card">
-  <summary>Écrire à un éducateur</summary>
-  <ul class="plain-list stack stack--tight">
-    {% for person in writable %}<li><a href="{% url 'rdv:write' person.pk %}">Écrire à {{ person.first_name|default:person.get_username }}</a></li>{% endfor %}
-  </ul>
-</details>
 {% endif %}
 {% endblock %}

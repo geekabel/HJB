@@ -225,5 +225,6 @@ def home(request):
         if user.has_perm("accounts.send_messages"):
             return redirect("messaging:list")
         return redirect("account")
-    passkeys = get_credential_model().objects.filter(user=user).order_by("-created_at")
-    return render(request, "access/home.html", {"passkeys": passkeys, "active_nav": "home"})
+    from .home import todos
+
+    return render(request, "access/home.html", {"todos": todos(user), "active_nav": "home"})

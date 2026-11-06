@@ -166,7 +166,7 @@ def cancel_notice_task(meeting_id):
             meeting.resident,
             title="Rendez-vous annulé",
             body=body,
-            url=reverse("rdv:book"),
+            url=reverse("rdv:list"),
             tag=f"rendez-vous-{meeting.pk}",
             sms=f"HJB : {body}",
             ttl=_until(meeting.start, timezone.now()),

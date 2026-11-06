@@ -5,7 +5,7 @@
 <header class="stack stack--tight">
   <h1>Vérifions que c'est bien vous</h1>
   {% if person.phone %}
-  <p class="text-muted">Bonjour {{ person.first_name }}. {% if code_sent %}Nous avons envoyé un code à 6 chiffres au{% else %}Nous allons envoyer un code à 6 chiffres au{% endif %} <strong><span aria-hidden="true">{{ person.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ person.phone|slice:"-2:" }}</span></strong>, le numéro donné à l'accueil.</p>
+  <p class="text-muted">Bonjour {{ person.first_name }}. {% if code_sent %}Code envoyé au{% else %}Nous envoyons un code au{% endif %} <strong><span aria-hidden="true">{{ person.phone_masked }}</span><span class="visually-hidden">numéro finissant par {{ person.phone|slice:"-2:" }}</span></strong>.</p>
   {% endif %}
 </header>
 
@@ -34,11 +34,4 @@
 <p><a href="{% url 'activation:wrong_number' %}">Ce n'est pas mon numéro</a></p>
 {% endif %}
 
-<section class="card row row--top" aria-labelledby="next-step-title">
-  {% icon "lock" %}
-  <div class="stack stack--tight">
-    <h2 id="next-step-title" class="card__title">Étape suivante : votre clé d'accès</h2>
-    <p class="text-muted text-small">Vous vous connecterez ensuite avec Face ID, votre empreinte ou le code de votre téléphone. Pas de mot de passe à retenir.</p>
-  </div>
-</section>
 {% endblock %}

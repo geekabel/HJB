@@ -10,14 +10,27 @@
 </div>
 {% endif %}
 
-<header class="stack stack--tight">
-  <h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
-</header>
+<h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
 
-<nav class="grid-2" aria-label="Raccourcis">
-  <a class="card card--link" href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span class="card__title">Mon wifi</span></a>
-  <a class="card card--link" href="{% url 'inbox:list' %}">{% icon "message" %}<span class="card__title">Messages</span></a>
-  <a class="card card--link" href="{% url 'rdv:book' %}">{% icon "calendar" %}<span class="card__title">Voir un éducateur</span></a>
-  <a class="card card--link" href="{% url 'account' %}">{% icon "person" %}<span class="card__title">Mon compte</span></a>
-</nav>
+<section class="stack stack--tight" aria-labelledby="todo-title">
+  <h2 id="todo-title" class="section-title">À faire</h2>
+  {% if todos %}
+  <ul class="link-list link-list--todo">
+    {% for todo in todos %}
+    <li><a href="{{ todo.url }}">{% icon todo.icon %}<span>{{ todo.title }}<small>{{ todo.detail }}</small></span>{% icon "chevron" %}</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state icon-text">{% icon "check" %}<span>Rien à faire pour le moment.</span></p>
+  {% endif %}
+</section>
+
+<section class="stack stack--tight" aria-labelledby="shortcuts-title">
+  <h2 id="shortcuts-title" class="section-title">Raccourcis</h2>
+  <ul class="link-list">
+    <li><a href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span>Mon wifi</span>{% icon "chevron" %}</a></li>
+    <li><a href="{% url 'rdv:book' %}">{% icon "calendar" %}<span>Prendre rendez-vous</span>{% icon "chevron" %}</a></li>
+    <li><a href="{% url 'rdv:educators' %}">{% icon "message" %}<span>Écrire à un éducateur</span>{% icon "chevron" %}</a></li>
+  </ul>
+</section>
 {% endblock %}

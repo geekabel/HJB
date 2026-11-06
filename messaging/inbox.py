@@ -7,7 +7,7 @@ not count: SMS apps open links by themselves to make a preview.
 
 from dataclasses import dataclass
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -25,12 +25,11 @@ class Filter:
     empty: str
 
 
+# Three filters (design card D2): what waits for an answer matters more than the type.
 FILTERS = (
     Filter("all", "Tous", "Aucun message pour le moment."),
-    Filter("visit", "Visites", "Aucune visite annoncée."),
-    Filter("announcement", "Annonces", "Aucune annonce."),
-    Filter("vote", "Votes", "Aucun vote ni demande d'avis."),
-    Filter("mine", "Pour moi", "Aucun message qui vous est adressé personnellement."),
+    Filter("todo", "À répondre", "Rien à répondre pour le moment."),
+    Filter("mine", "Pour vous", "Aucun message rien que pour vous."),
 )
 FILTER_KEYS = {item.key for item in FILTERS}
 
@@ -67,9 +66,23 @@ def inbox(user, key="all"):
     deliveries = received(user)
     if key == "mine":
         return deliveries.filter(personal=True)
-    if key in FILTER_KEYS - {"all"}:
-        return deliveries.filter(campaign__type=key)
+    if key == "todo":
+        return deliveries.filter(pk__in=[item.delivery.pk for item in to_answer(user)])
     return deliveries
+
+
+# Messages that can still wait for an answer are recent: no need to look further.
+TO_ANSWER_LOOKUP = 100
+
+
+def to_answer(user):
+    """The messages that wait for an answer of ``user``: "Présent ou Absent", or a vote."""
+    if not user.is_authenticated:
+        return []
+    candidates = received(user).filter(
+        Q(campaign__reply_type=ReplyType.ATTENDANCE) | Q(campaign__poll__isnull=False)
+    )[:TO_ANSWER_LOOKUP]
+    return [item for item in items(user, candidates) if item.waiting or item.vote_waiting]
 
 
 def unread_count(user, key="all"):

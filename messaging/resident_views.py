@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 
 from access.session_policy import is_resident
 from accounts.models import User
+from appointments import direct
 from polls import services as polls
 from polls.services import VoteRefused, poll_of
 
@@ -188,6 +189,7 @@ def message(request, pk):
         {
             "active_nav": "messages",
             "campaign": campaign,
+            "short_type": inbox.SHORT_TYPES.get(campaign.type, "Message"),
             "delivery": delivery,
             "current": AttendanceReply.objects.filter(
                 campaign=campaign, resident=request.user
@@ -229,6 +231,11 @@ def inbox_list(request):
             "page_obj": page,
             "items": inbox.items(request.user, page.object_list),
             "unread": unread,
+            # Talks with the educators live here too (design card D2).
+            "conversations": direct.with_unread(
+                direct.resident_conversations(request.user).select_related("educator"),
+                request.user,
+            ).order_by("-updated_at"),
             # Replaces the context processor: no second count for the bar.
             "unread_messages": total,
         },

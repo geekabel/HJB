@@ -142,7 +142,21 @@
     });
   }
 
+  // Install page (design card D2): show the steps of this phone first.
+  function openStepsOfThisPhone() {
+    var agent = navigator.userAgent || "";
+    var apple = /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1);
+    var android = /Android/.test(agent);
+    if (!apple && !android) {
+      return;
+    }
+    document.querySelectorAll("details[data-platform]").forEach(function (box) {
+      box.open = box.dataset.platform === (apple ? "ios" : "android");
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    openStepsOfThisPhone();
     showInstallState();
     syncPushDevice();
     setUpStaffMenu();
