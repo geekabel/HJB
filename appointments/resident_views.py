@@ -77,17 +77,33 @@ def overview(request):
         return book(request)
     if request.GET.get("avec") or request.GET.get("jour"):
         return redirect(f"{reverse('rdv:book')}?{request.GET.urlencode()}")
+    educators = list(booking.educators())
+    upcoming = list(booking.upcoming(request.user).select_related("educator"))
     return _page(
         render(
             request,
             "appointments/overview.html",
             {
                 "active_nav": "appointments",
-                "upcoming": booking.upcoming(request.user).select_related("educator"),
-                "can_book": booking.educators().exists(),
+                "next_meeting": upcoming[0] if upcoming else None,
+                "later": upcoming[1:],
+                "can_book": bool(educators),
+                "next_free": _next_free(educators) if educators else [],
+                "any_key": ANY,
             },
         )
     )
+
+
+def _next_free(educators, count=3):
+    """The first free times with anyone (design card D6): one tap books them."""
+    found = []
+    for _, slots in booking.days_with_slots(educators):
+        for slot in _times(slots):
+            found.append(slot)
+            if len(found) == count:
+                return found
+    return found
 
 
 @login_required

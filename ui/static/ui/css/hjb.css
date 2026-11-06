@@ -365,7 +365,9 @@
       max-width: 46rem;
       padding-inline: var(--s-10);
       padding-block-start: var(--s-8);
-      margin-inline: 0;
+      /* Centered in the space next to the rail: the page looks balanced
+         without stretching lines (design card D6) */
+      margin-inline: auto;
     }
 
     /* The rail already shows the brand */
@@ -2526,6 +2528,138 @@
     margin: 0;
     padding: var(--s-4) 0;
     color: var(--text-muted);
+  }
+
+  /* An empty list (design card D6): an icon in a soft circle and one line,
+     instead of a grey sentence lost on the page (NN/g, empty states). */
+  .empty-card {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    border-radius: var(--r-large);
+    background: var(--surface);
+    color: var(--text-muted);
+  }
+
+  .empty-card p {
+    margin: 0;
+  }
+
+  .empty-card__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .empty-card__icon svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .empty-card--done .empty-card__icon {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  /* The next meeting (design card D6): a date tile like a calendar page */
+  .next-meeting {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-large);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .next-meeting:hover {
+    border-color: var(--action);
+  }
+
+  .next-meeting > svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-inline-start: auto;
+    color: var(--text-muted);
+  }
+
+  .next-meeting__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    min-width: 0;
+  }
+
+  .next-meeting__when {
+    color: var(--action);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .date-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 4rem;
+    height: 4.5rem;
+    border-radius: var(--r);
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-size: var(--t-tiny);
+    line-height: 1.2;
+    text-transform: lowercase;
+  }
+
+  .date-tile strong {
+    font-family: var(--font-title);
+    font-size: var(--t-h2);
+    line-height: 1.1;
+  }
+
+  /* The first free times: one tap opens the booking with the time chosen */
+  .quick-times {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .quick-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 4rem;
+    padding: var(--s-2);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: var(--t-small);
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .quick-time strong {
+    font-size: var(--t-large);
+  }
+
+  .quick-time:hover {
+    border-color: var(--action);
+    background: var(--action-soft);
   }
 
   /* A round initial, in lists of people */

@@ -267,6 +267,16 @@ class ResidentPageTests(BookingTestCase):
         save_page("appointments-overview", response)
         self.assertContains(response, f'href="{reverse("rdv:detail", args=[meeting.pk])}"')
         self.assertContains(response, "Prendre rendez-vous")
+        # Design card D6: the next meeting in a card, and the first free
+        # times as links that open the booking with the time chosen.
+        self.assertEqual(response.context["next_meeting"], meeting)
+        free = response.context["next_free"]
+        self.assertEqual(len(free), 3)
+        first_free = timezone.localtime(free[0].start)
+        self.assertContains(
+            response,
+            f"?avec=libre&amp;jour={first_free:%Y-%m-%d}&amp;heure={first_free:%H%M}",
+        )
         # The same time again, by someone else: refused with a clear message.
         log_in_verified(self.client, self.yanis)
         response = self.client.post(

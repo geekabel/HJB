@@ -4,7 +4,7 @@ from django.template import Context, Template
 from django.test import SimpleTestCase
 from django.utils import timezone
 
-from ui.templatetags.french import jour
+from ui.templatetags.french import dans, jour
 
 
 class PlurielTests(SimpleTestCase):
@@ -59,3 +59,14 @@ class JourTests(SimpleTestCase):
                 year,
             ),
         )
+
+
+class DansTests(SimpleTestCase):
+    """How far a meeting is, on the Rendez-vous tab (design card D6)."""
+
+    def test_days_ahead(self):
+        now = timezone.now()
+        self.assertEqual(dans(now), "Aujourd'hui")
+        self.assertEqual(dans(now + timedelta(days=1)), "Demain")
+        self.assertEqual(dans(now + timedelta(days=4)), "Dans 4 jours")
+        self.assertEqual(dans(None), "")

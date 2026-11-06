@@ -22,7 +22,10 @@
   </ul>
   {% if more_todos > 0 %}<a href="{% url 'inbox:list' %}?show=todo">Voir tout ({{ more_todos }} de plus)</a>{% endif %}
   {% else %}
-  <p class="empty-state icon-text">{% icon "check" %}<span>Rien à faire pour le moment.</span></p>
+  <div class="empty-card empty-card--done">
+    <span class="empty-card__icon" aria-hidden="true">{% icon "check" %}</span>
+    <p>Rien à faire pour le moment.</p>
+  </div>
   {% endif %}
 </section>
 
