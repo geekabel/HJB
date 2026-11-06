@@ -80,14 +80,9 @@ class CampaignForm(forms.ModelForm):
             ),
         }
         help_texts = {
-            "title": "Titre de la notification.",
-            "body": (
-                "Texte complet, dans l'application. Les {champs} sont remplis pour chaque personne."
-            ),
-            "sms_body": (
-                "Pour les résidents sans l'application. Vide : le texte complet est envoyé. "
-                "Les caractères hors de l'alphabet SMS (ê, ç, guillemets) sont remplacés."
-            ),
+            "title": "Titre de la notification",
+            "body": "Les {champs} sont remplis pour chaque personne.",
+            "sms_body": "Pour ceux sans l'application. Vide : le texte complet part par SMS.",
         }
 
     def __init__(self, *args, **kwargs):

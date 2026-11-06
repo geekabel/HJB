@@ -3,7 +3,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import OuterRef, Prefetch, Subquery
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -17,7 +17,7 @@ from housing.models import Stay
 from . import availability, booking, direct
 from .forms import AbsenceForm, SettingsForm
 from .holidays import holiday_name
-from .models import Absence, Appointment, Availability, Conversation
+from .models import Absence, Appointment, Availability, Conversation, DirectMessage
 
 PERMISSION = "accounts.manage_appointments"
 
@@ -90,11 +90,6 @@ def my_availability(request):
                 educator=educator, last_day__gte=timezone.localdate()
             ),
             "absence_form": AbsenceForm(),
-            # Unread first: an unread conversation never drops off the card.
-            "conversations": direct.with_unread(
-                Conversation.objects.filter(educator=educator).select_related("resident"),
-                educator,
-            ).order_by("-unread", "-updated_at")[:5],
         },
     )
     # Names, rooms and reasons: never kept by the browser or a proxy.
@@ -183,9 +178,18 @@ def _private(response):
 @permission_required(PERMISSION, raise_exception=True)
 def conversations(request):
     """Direct messages of the educator who is logged in (card T28)."""
-    found = direct.with_unread(
-        Conversation.objects.filter(educator=request.user).select_related("resident"),
-        request.user,
+    last = DirectMessage.objects.filter(conversation=OuterRef("pk")).order_by("-sent_at", "-pk")
+    found = (
+        direct.with_unread(
+            Conversation.objects.filter(educator=request.user).select_related("resident"),
+            request.user,
+        )
+        .annotate(
+            last_author=Subquery(last.values("author_id")[:1]),
+            last_text=Subquery(last.values("text")[:1]),
+        )
+        # Unread first, then the most recent (design card D3).
+        .order_by("-unread", "-updated_at")
     )
     return _private(
         render(

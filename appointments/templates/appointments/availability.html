@@ -5,74 +5,13 @@
 <header class="page-header">
   <div class="stack stack--tight">
     <h1>Mes disponibilités</h1>
-    <p class="text-muted">Les créneaux ouverts se répètent chaque semaine.</p>
+    <p class="text-muted">Vos rendez-vous, vos créneaux et vos absences.</p>
   </div>
-  <p class="row text-small" aria-hidden="true"><span class="slot-key slot-key--open"></span>Ouvert à la réservation</p>
 </header>
 
 {% if not is_educator %}
 <p class="alert alert--info">{% icon "info" %}<span>Vous n'avez pas le rôle Éducateur : les résidents ne peuvent pas réserver avec vous, même avec des créneaux ouverts.</span></p>
 {% endif %}
-
-<form class="profile" method="post">
-  {% csrf_token %}
-  <div class="card stack">
-    <a class="text-small" href="#settings-title">Passer la grille : aller aux réglages et à l'enregistrement</a>
-    <div class="table-scroll" role="region" aria-labelledby="grid-caption" tabindex="0">
-      <table class="slot-grid" data-slot-grid>
-        <caption id="grid-caption" class="visually-hidden">Créneaux ouverts chaque semaine, par demi-heure</caption>
-        <thead>
-          <tr>
-            <td></td>
-            {% for day, label in days %}<th scope="col">{{ label|capfirst }}</th>{% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr{% if row.full_hour %} class="slot-grid__hour"{% endif %}>
-            <th scope="row">{{ row.time|time:"H:i" }}</th>
-            {% for cell in row.cells %}
-            <td>
-              <label class="slot">
-                <input class="visually-hidden" type="checkbox" name="cell" value="{{ cell.key }}"{% if cell.key in opened %} checked{% endif %}>
-                <span class="slot__face"><span class="visually-hidden">{{ cell.day|capfirst }} de {{ row.time|time:"H:i" }} à {{ row.end|time:"H:i" }}</span><span class="slot__text" aria-hidden="true">Libre</span></span>
-              </label>
-            </td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <p class="text-muted text-small">Cochez une case pour l'ouvrir. À la souris, cliquez et glissez pour ouvrir ou fermer plusieurs cases d'un coup.</p>
-  </div>
-
-  <aside class="stack">
-    <section class="card stack" aria-labelledby="settings-title">
-      <h2 id="settings-title" class="card__title">Réglages</h2>
-      {{ form.slot_minutes.as_field_group }}
-      {{ form.notice.as_field_group }}
-      {{ form.remind_residents.as_field_group }}
-      {{ form.reply_hours.as_field_group }}
-      <button class="button" type="submit">{% icon "check" %}Enregistrer</button>
-    </section>
-    {% if is_educator %}
-    <section class="card stack" aria-labelledby="direct-title">
-      <h2 id="direct-title" class="card__title">Messages directs</h2>
-      {% if conversations %}
-      <ul class="plain-list stack stack--tight">
-        {% for item in conversations %}
-        <li><a href="{% url 'appointments:conversation' item.pk %}">{{ item.resident.get_full_name|default:item.resident.get_username }}</a>{% if item.unread %} <span class="counter">{{ item.unread }}<span class="visually-hidden"> non lu{{ item.unread|pluralize }}</span></span>{% endif %}</li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="text-muted text-small">Aucun message pour le moment.</p>
-      {% endif %}
-      <a href="{% url 'appointments:conversations' %}">Tous les messages directs</a>
-    </section>
-    {% endif %}
-  </aside>
-</form>
 
 <div class="profile">
   <section class="card stack" aria-labelledby="meetings-title">
@@ -114,7 +53,7 @@
 
   <section class="card stack" aria-labelledby="absences-title">
     <h2 id="absences-title" class="card__title">Absences</h2>
-    <p class="text-small">Congés, formation : personne ne peut réserver ces jours-là. Les jours fériés sont fermés d'office.</p>
+    <p class="text-small">Ces jours-là, personne ne peut réserver. Les jours fériés sont déjà fermés.</p>
     {% if absences %}
     <ul class="plain-list stack stack--tight">
       {% for absence in absences %}
@@ -139,4 +78,53 @@
   </section>
 </div>
 <script src="{% static 'appointments/grid.js' %}" defer></script>
+
+<form class="profile" method="post">
+  {% csrf_token %}
+  <section class="card stack" aria-labelledby="slots-title">
+    <div class="row row--between">
+      <h2 id="slots-title" class="card__title">Mes créneaux, chaque semaine</h2>
+      <p class="row text-small" aria-hidden="true"><span class="slot-key slot-key--open"></span>Libre : réservable</p>
+    </div>
+    <a class="skip-inline" href="#settings-title">Passer la grille</a>
+    <div class="table-scroll" role="region" aria-labelledby="grid-caption" tabindex="0">
+      <table class="slot-grid" data-slot-grid>
+        <caption id="grid-caption" class="visually-hidden">Créneaux ouverts chaque semaine, par demi-heure</caption>
+        <thead>
+          <tr>
+            <td></td>
+            {% for day, label in days %}<th scope="col">{{ label|capfirst }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr{% if row.full_hour %} class="slot-grid__hour"{% endif %}>
+            <th scope="row">{{ row.time|time:"H:i" }}</th>
+            {% for cell in row.cells %}
+            <td>
+              <label class="slot">
+                <input class="visually-hidden" type="checkbox" name="cell" value="{{ cell.key }}"{% if cell.key in opened %} checked{% endif %}>
+                <span class="slot__face"><span class="visually-hidden">{{ cell.day|capfirst }} de {{ row.time|time:"H:i" }} à {{ row.end|time:"H:i" }}</span><span class="slot__text" aria-hidden="true">Libre</span></span>
+              </label>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted text-small">Touchez une case pour l'ouvrir. À la souris, glissez pour en ouvrir plusieurs.</p>
+  </section>
+
+  <aside class="stack">
+    <section class="card stack" aria-labelledby="settings-title">
+      <h2 id="settings-title" class="card__title">Réglages</h2>
+      {{ form.slot_minutes.as_field_group }}
+      {{ form.notice.as_field_group }}
+      {{ form.remind_residents.as_field_group }}
+      {{ form.reply_hours.as_field_group }}
+      <button class="button" type="submit">{% icon "check" %}Enregistrer</button>
+    </section>
+  </aside>
+</form>
 {% endblock %}
