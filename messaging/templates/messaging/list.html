@@ -1,11 +1,11 @@
 {% extends "ui/staff.html" %}
 {% load icons %}
-{% block title %}Messages{% endblock %}
+{% block title %}Messages aux résidents{% endblock %}
 {% block content %}
 <header class="page-header">
   <div class="stack stack--tight">
-    <h1>Messages</h1>
-    <p class="text-muted">Prévenir les résidents par notification, ou par SMS pour ceux qui n'ont pas l'application.</p>
+    <h1>Messages aux résidents</h1>
+    <p class="text-muted">Notification, ou SMS pour ceux sans l'application.</p>
   </div>
   <div class="row">
     <a class="button button--quiet" href="{% url 'messaging:templates' %}">Modèles</a>
@@ -17,17 +17,17 @@
 <section class="stack" aria-labelledby="scheduled-title">
   <h2 id="scheduled-title">À venir</h2>
   <ul class="plain-list">
-    {% for campaign in sending %}<li class="card row row--between"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a><span class="badge badge--info">En cours d'envoi</span></li>{% endfor %}
-    {% for campaign in scheduled %}<li class="card row row--between"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a><span class="text-small">Programmé le <time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"l j F à H:i" }}</time></span></li>{% endfor %}
+    {% for campaign in sending %}<li class="card"><div class="row row--between"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a><span class="badge badge--info">En cours d'envoi</span></div></li>{% endfor %}
+    {% for campaign in scheduled %}<li class="card"><div class="row row--between"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a><span class="text-small">Programmé le <time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"l j F à H:i" }}</time></span></div></li>{% endfor %}
   </ul>
 </section>
 {% endif %}
 
+{% if campaigns %}
 <section class="stack" aria-labelledby="drafts-title">
   <h2 id="drafts-title">Brouillons</h2>
-  {% if campaigns %}
   <div class="table-scroll" role="region" aria-labelledby="drafts-title" tabindex="0">
-    <table class="table">
+    <table class="table table--cards">
       <thead>
         <tr>
           <th scope="col">Titre</th>
@@ -39,40 +39,36 @@
       <tbody>
         {% for campaign in campaigns %}
         <tr>
-          <th scope="row" class="table__row-header"><a href="{% url 'messaging:compose' campaign.pk %}">{{ campaign.title }}</a></th>
-          <td>{{ campaign.get_type_display }}</td>
-          <td>{{ campaign.author.get_full_name|default:campaign.author|default:"–" }}</td>
-          <td class="table__number"><time datetime="{{ campaign.updated_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.updated_at|date:"j F à H:i" }}</time></td>
+          <th scope="row" class="table__row-header"><a class="table__link" href="{% url 'messaging:compose' campaign.pk %}">{{ campaign.title }}</a></th>
+          <td data-label="Type">{{ campaign.get_type_display }}</td>
+          <td data-label="Par">{{ campaign.author.get_full_name|default:campaign.author|default:"–" }}</td>
+          <td class="table__number" data-label="Modifié"><time datetime="{{ campaign.updated_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.updated_at|date:"j F à H:i" }}</time></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  {% else %}
-  <p class="text-muted">Aucun brouillon.</p>
-  {% endif %}
 </section>
+{% endif %}
 
 {% if sent %}
 <section class="stack" aria-labelledby="sent-title">
   <h2 id="sent-title">Envoyés</h2>
   <div class="table-scroll" role="region" aria-labelledby="sent-title" tabindex="0">
-    <table class="table">
+    <table class="table table--cards">
       <thead>
         <tr>
           <th scope="col">Titre</th>
           <th scope="col">Type</th>
-          <th scope="col">État</th>
           <th scope="col">Date</th>
         </tr>
       </thead>
       <tbody>
         {% for campaign in sent %}
         <tr>
-          <th scope="row" class="table__row-header"><a href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a></th>
-          <td>{{ campaign.get_type_display }}</td>
-          <td>{{ campaign.get_status_display }}</td>
-          <td class="table__number">{% if campaign.sent_at %}<time datetime="{{ campaign.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.sent_at|date:"j F à H:i" }}</time>{% else %}–{% endif %}</td>
+          <th scope="row" class="table__row-header"><a class="table__link" href="{% url 'messaging:tracking' campaign.pk %}">{{ campaign.title }}</a>{% if campaign.status == "cancelled" %} <span class="badge badge--neutral">Annulé</span>{% endif %}</th>
+          <td data-label="Type">{{ campaign.get_type_display }}</td>
+          <td class="table__number" data-label="Date">{% if campaign.sent_at %}<time datetime="{{ campaign.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.sent_at|date:"j F à H:i" }}</time>{% else %}–{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>

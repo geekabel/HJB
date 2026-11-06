@@ -165,7 +165,21 @@
     });
   }
 
+  // Composer: back to "Maintenant", the hidden send time is emptied, so the
+  // server never refuses a value the person can no longer see (design card D3).
+  function clearHiddenSendTime() {
+    document.querySelectorAll('input[name="when"][value="now"]').forEach(function (now) {
+      now.addEventListener("change", function () {
+        var field = now.form && now.form.querySelector('[name="send_at"]');
+        if (field && now.checked) {
+          field.value = "";
+        }
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    clearHiddenSendTime();
     keepCurrentInView();
     openStepsOfThisPhone();
     showInstallState();

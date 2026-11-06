@@ -4,15 +4,12 @@ Results of a vote for the staff (card T25). Variables: poll, results, reached
 (people who got the message).
 {% endcomment %}
 <section class="stack" aria-labelledby="results-title">
-  <h2 id="results-title">Vote</h2>
-  <div class="grid-auto">
-    <div class="card stat"><span class="text-muted text-small">Votants</span><span class="stat__value">{{ results.voters }}</span><span class="text-muted text-small">sur {{ reached }} destinataire{{ reached|pluralize }}</span></div>
-    <div class="card stat"><span class="text-muted text-small">Clôture</span><span class="stat__value stat__value--text"><time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"j F à H:i" }}</time></span></div>
-  </div>
+  <h2 id="results-title" class="section-title">Vote</h2>
+  <p class="summary-line"><strong>{{ results.voters }}</strong> votant{{ results.voters|pluralize }} sur {{ reached }} · clôture le <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"j F à H:i" }}</time></p>
   {% if results.shown %}
   <div class="card stack">
     <h3>Résultats</h3>
-    <p class="text-muted text-small">Si tous les votants ont fait le même choix, ce choix est connu de tous : c'est inévitable avec un total.</p>
+    <p class="text-muted text-small">Si tout le monde a fait le même choix, chacun le sait.</p>
     <ul class="plain-list stack">
       {% for label, votes, percent in results.options %}
       <li class="poll-result">

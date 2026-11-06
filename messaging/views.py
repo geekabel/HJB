@@ -28,7 +28,7 @@ from . import receipts, replies, sending
 from .audience import audience, rendered
 from .forms import CampaignForm, TemplateForm
 from .models import Campaign, Delivery, MessageTemplate, MessageType, ReplyType
-from .placeholders import FIELDS, fill, missing_values, values_for
+from .placeholders import FIELDS, fill, missing_values, uses_event_fields, values_for
 from .services import find_target, sample_recipient, send_test
 from .sms_text import GSM, REPLACEMENTS, words_with
 
@@ -121,6 +121,7 @@ def _compose_page(request, form, campaign, poll_form=None):
                 "added_people": people,
                 "excluded": excluded,
                 "missing": missing_values(campaign),
+                "uses_event": uses_event_fields(campaign),
             }
         )
     return render(request, "messaging/compose.html", context)

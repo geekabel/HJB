@@ -10,7 +10,8 @@
 </header>
 
 {% if not campaign.pk and templates %}
-<form class="card row" method="get" action="{% url 'messaging:new' %}">
+<form class="card" method="get" action="{% url 'messaging:new' %}">
+  <div class="row row--bottom">
   <div class="field compose__template">
     <label for="template-choice">Partir d'un modèle</label>
     <select id="template-choice" name="modele">
@@ -23,6 +24,7 @@
     </select>
   </div>
   <button class="button button--secondary" type="submit">Utiliser ce modèle</button>
+  </div>
 </form>
 {% endif %}
 
@@ -42,7 +44,7 @@
     {# Shown when "Vote, avis" is chosen (CSS :has), card T25. #}
     <fieldset class="card stack compose__poll">
       <legend class="compose__step">Vote</legend>
-      <p class="text-small">La question est le titre. Chacun vote une fois, de façon anonyme : l'équipe voit qui a voté, jamais pour quoi. Les résultats s'affichent après la clôture, s'il y a au moins 3 votants.</p>
+      <p class="text-small">La question est le titre. Vote anonyme : résultats après la clôture, à partir de 3 votants.</p>
       {{ poll_form.options.as_field_group }}
       {{ poll_form.closes_at.as_field_group }}
       {{ poll_form.allow_comment.as_field_group }}
@@ -85,7 +87,7 @@
       </p>
       {% endif %}
       {% else %}
-      <p class="text-muted text-small">Le décompte s'affiche après l'enregistrement du brouillon.</p>
+      <p class="text-muted text-small">Le nombre de destinataires s'affiche après l'enregistrement.</p>
       {% endif %}
     </fieldset>
 
@@ -93,7 +95,7 @@
       <legend class="compose__step">3. Message</legend>
       {{ form.body.as_field_group }}
       <p class="text-small">Champs possibles : {% for name, label in fields.items %}<code title="{{ label }}">{{ "{" }}{{ name }}{{ "}" }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
-      <div class="grid-auto">
+      <div class="grid-auto compose__event{% if uses_event %} compose__event--used{% endif %}">
         {{ form.event_date.as_field_group }}
         {{ form.start_time.as_field_group }}
         {{ form.end_time.as_field_group }}
@@ -108,7 +110,7 @@
       <div class="row">
         {% for choice in form.when %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
       </div>
-      {{ form.send_at.as_field_group }}
+      <div class="compose__send-at">{{ form.send_at.as_field_group }}</div>
       {{ form.remind.as_field_group }}
     </fieldset>
   </div>
@@ -156,7 +158,7 @@
     </section>
     {% else %}
     <div class="card stack">
-      <p>Enregistrez le brouillon pour voir le décompte des destinataires et les aperçus.</p>
+      <p>Enregistrez pour voir les destinataires et l'aperçu.</p>
       <button class="button" type="submit" name="action" value="save">Enregistrer le brouillon</button>
     </div>
     {% endif %}

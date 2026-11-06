@@ -80,7 +80,18 @@ class AuditEntry(models.Model):
         )
 
     def summary(self):
-        """Details in plain words, for the audit log page."""
+        """Details in plain words, for the audit log page; "–" when there are none.
+
+        Never fails: an old entry with missing details shows "–".
+        """
+        try:
+            text = self._summary()
+        except (KeyError, ValueError, TypeError):
+            text = ""
+        text = text.strip()
+        return text if text and text != "." else "–"
+
+    def _summary(self):
         if self.action == Action.ROLES_CHANGED:
             from accounts.roles import Role
 
@@ -145,4 +156,83 @@ class AuditEntry(models.Model):
                 return "Première clé d'accès."
             s = "s" if previous > 1 else ""
             return f"Remplace {previous} ancienne{s} clé{s}, désormais inutilisable{s}."
-        return " · ".join(f"{key} : {value}" for key, value in self.details.items())
+        if self.action in (Action.MESSAGE_SENT, Action.MESSAGE_SCHEDULED):
+            return _message_summary(self.details)
+        if self.action == Action.MESSAGE_CANCELLED:
+            if self.details.get("reason"):
+                return self.details["reason"]
+            if self.details.get("reminder_too_late"):
+                return "Relance trop tardive : elle n'est pas partie."
+            if self.details.get("reminder"):
+                return "Relance annulée."
+            if self.details.get("too_late"):
+                return "Trop tard pour l'envoyer : rien n'est parti."
+            return "Remis en brouillon." if self.details.get("back_to_draft") else "Envoi annulé."
+        if self.action in (Action.DEPARTURE_PLANNED, Action.DEPARTURE_PLAN_CANCELLED):
+            from datetime import date
+
+            parts = []
+            if self.details.get("room"):
+                parts.append(f"Chambre {self.details['room']}")
+            if self.details.get("planned_departure"):
+                day = date.fromisoformat(self.details["planned_departure"])
+                parts.append(f"départ prévu le {day:%d/%m/%Y}")
+            text = ", ".join(parts)
+            text = (text[:1].upper() + text[1:] + ".") if text else ""
+            if self.details.get("reason"):
+                text += f" {self.details['reason']}"
+            return text.strip()
+        if self.action == Action.APP_CODE_CREATED:
+            previous = self.details.get("previous_removed", 0)
+            if not previous:
+                return "Premier accès."
+            return f"Remplace {previous} ancien{'s' if previous > 1 else ''} accès."
+        if self.action == Action.APP_CODE_FAILURES:
+            failures = self.details.get("failures")
+            return f"{failures} codes faux d'affilée." if failures else ""
+        # Any other detail: never a raw key on the page.
+        return " · ".join(
+            f"{DETAIL_LABELS.get(key, key)} : {value}" for key, value in self.details.items()
+        )
+
+
+DETAIL_LABELS = {
+    "recipients": "destinataires",
+    "push": "notifications",
+    "sms": "SMS",
+    "segments": "SMS facturés",
+    "failed": "échecs",
+    "room": "chambre",
+    "reason": "raison",
+}
+
+
+def _message_summary(details):
+    """ "6 destinataires, 5 notifications, 1 SMS (2 facturés), 1 échec." """
+    from datetime import datetime
+
+    def count(n, word, plural=None):
+        # French: the singular for 0 and 1.
+        return f"{n} {word if n <= 1 else (plural or word + 's')}"
+
+    parts = []
+    if "recipients" in details:
+        parts.append(count(details["recipients"], "destinataire"))
+    if "push" in details:
+        parts.append(count(details["push"], "notification"))
+    if "sms" in details:
+        sms = count(details["sms"], "SMS", "SMS")
+        if details.get("segments"):
+            sms += f" ({count(details['segments'], 'facturé')})"
+        parts.append(sms)
+    if details.get("failed"):
+        parts.append(count(details["failed"], "échec"))
+    text = ", ".join(parts)
+    if details.get("send_at"):
+        when = datetime.fromisoformat(details["send_at"])
+        text = f"Prévu le {when:%d/%m/%Y à %H:%M}. " + (text[:1].upper() + text[1:])
+    elif text:
+        text = text[:1].upper() + text[1:]
+    if details.get("reminder"):
+        text = "Relance. " + text
+    return (text + ".") if text and not text.endswith(".") else text

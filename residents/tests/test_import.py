@@ -228,7 +228,7 @@ class ImportPagesTests(ImportTestCase):
         self.assertContains(response, 'enctype="multipart/form-data"')
         self.assertContains(response, 'accept=".csv,.xlsx"')
         response = self.client.get(reverse("residents:list"))
-        self.assertContains(response, "Importer CSV ou Excel")
+        self.assertContains(response, "Des résidents (CSV ou Excel)")
 
     def test_file_refused(self):
         response = self.upload(SimpleUploadedFile("vieux.xls", b"x"))

@@ -69,7 +69,7 @@ class AccessTests(WifiImportTestCase):
             with self.subTest(name=name):
                 self.assertEqual(self.client.get(reverse(f"residents:{name}")).status_code, 403)
         response = self.client.get(reverse("residents:list"))
-        self.assertNotContains(response, "Importer la liste wifi")
+        self.assertNotContains(response, "La liste wifi</a>")
 
     def test_admin_needs_a_recent_confirmation(self):
         self.log_in(confirmed=False)
@@ -82,7 +82,7 @@ class AccessTests(WifiImportTestCase):
         save_page("residents-wifi-import", response)
         self.assertContains(response, "Colonnes attendues")
         self.assertIn("no-store", response["Cache-Control"])
-        self.assertContains(self.client.get(reverse("residents:list")), "Importer la liste wifi")
+        self.assertContains(self.client.get(reverse("residents:list")), "La liste wifi</a>")
         response = self.client.get(reverse("residents:wifi_import_template"))
         self.assertEqual(
             response.content.decode("utf-8-sig"),

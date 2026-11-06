@@ -1418,6 +1418,181 @@
     font-size: inherit;
   }
 
+  /* Tables that fit any screen (design card D3): the name is the link and
+     covers the row; secondary columns go below 64rem; below 48rem each row
+     becomes a card, each value with its label. */
+  .table--cards {
+    min-width: 0;
+  }
+
+  .table--cards tbody tr {
+    position: relative;
+  }
+
+  .table--cards tbody tr:hover {
+    background: var(--surface-2);
+  }
+
+  .table__link {
+    color: inherit;
+    font-weight: 700;
+  }
+
+  .table__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .table__link:focus-visible {
+    outline: none;
+  }
+
+  .table__link:focus-visible::after {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+    border-radius: var(--r-small);
+  }
+
+  @media (max-width: 63.99rem) {
+    .table--cards .table__secondary {
+      display: none;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .table-scroll:has(> .table--cards) {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+    }
+
+    .table--cards thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .table--cards,
+    .table--cards tbody,
+    .table--cards tr,
+    .table--cards th,
+    .table--cards td {
+      display: block;
+    }
+
+    .table--cards tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
+    }
+
+    .table--cards tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--s-1) var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--line);
+      border-radius: var(--r-large);
+      background: var(--surface);
+    }
+
+    .table--cards tbody tr > * {
+      padding: 0;
+      border: 0;
+      white-space: normal;
+    }
+
+    .table--cards .table__row-header {
+      flex-basis: 100%;
+      font-size: var(--t-body);
+    }
+
+    .table--cards td[data-label]::before {
+      content: attr(data-label) " : " / "";
+      color: var(--text-muted);
+    }
+  }
+
+  /* A conversation in the educator's list: who, the last words, the time */
+  .conversation-line {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+
+  .conversation-line__side {
+    flex: none;
+    align-items: flex-end;
+  }
+
+  /* Figures on one line, instead of a row of big cards (design card D3) */
+  .summary-line {
+    margin: 0;
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A badge that is a link (a count of things to do) */
+  .badge--link {
+    min-height: 2rem;
+    padding-inline: var(--s-3);
+    text-decoration: none;
+  }
+
+  .badge--link svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* A button that opens a short list of choices (details, no script) */
+  .menu-button {
+    position: relative;
+  }
+
+  .menu-button summary {
+    list-style: none;
+  }
+
+  .menu-button summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu-button__list {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 5;
+    min-width: 16rem;
+    margin: var(--s-1) 0 0;
+    padding: var(--s-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgb(6 32 47 / 0.15);
+    list-style: none;
+  }
+
+  .menu-button__list a {
+    display: flex;
+    align-items: center;
+    min-height: var(--target);
+    padding-inline: var(--s-3);
+    border-radius: var(--r-small);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .menu-button__list a:hover {
+    background: var(--surface-2);
+  }
+
   /* Column that holds explanations: wide enough for a sentence */
   .table__state {
     min-width: 16rem;
@@ -1460,7 +1635,17 @@
 
   .details dd {
     margin: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+  }
+
+  /* Each value under its label: for the narrow side column (design card D3) */
+  .details--stacked {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .details--stacked dd + dt {
+    margin-block-start: var(--s-2);
   }
 
   /* Card highlighted by a frame (import preview waiting for confirmation) */
@@ -1735,6 +1920,18 @@
     display: none;
   }
 
+  /* Only what the chosen options need (design card D3), never a field with
+     an error: a vote has no date of event, "Maintenant" has no send time. */
+  .compose:has(input[name="type"][value="vote"]:checked)
+    .compose__event:not(.compose__event--used, :has(.field__errors)) {
+    display: none;
+  }
+
+  .compose:has(input[name="when"][value="now"]:checked)
+    .compose__send-at:not(:has(.field__errors)) {
+    display: none;
+  }
+
   .vote__question {
     font-weight: 700;
   }
@@ -1967,9 +2164,11 @@
     align-items: center;
     min-height: 2rem;
     padding-inline: var(--s-2);
-    border: 1px solid var(--control); /* 3:1 at least: the edge of a control */
+    /* Closed: white with a dashed edge; open: blue and the word "Libre"
+       (design card D3, the two looked alike) */
+    border: 1px dashed var(--control); /* 3:1 at least: the edge of a control */
     border-radius: var(--r-small);
-    background: var(--bg);
+    background: var(--surface);
     color: var(--action);
   }
 
@@ -1979,8 +2178,11 @@
 
   /* Open: a color and the word "Libre" (not color alone) */
   .slot input:checked + .slot__face {
+    border-style: solid;
     border-color: var(--action);
+    box-shadow: inset 0 0 0 1px var(--action);
     background: var(--action-soft);
+    font-weight: 700;
   }
 
   .slot input:checked + .slot__face .slot__text {
@@ -1996,16 +2198,27 @@
     border-color: var(--ink);
   }
 
+  /* The legend is a small open slot, the same as in the grid */
   .slot-key {
-    display: inline-block;
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--s-2);
+    border: 1px solid var(--action);
+    border-radius: var(--r-small);
+    box-shadow: inset 0 0 0 1px var(--action);
+    background: var(--action-soft);
+    color: var(--action);
+    font-weight: 700;
   }
 
-  .slot-key--open {
-    border: 1px solid var(--action);
-    background: var(--action-soft);
+  /* A link that skips a long block: hidden until it gets the focus */
+  .skip-inline:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* Booking a meeting, resident side (card T27, mockup R5) */
@@ -2346,6 +2559,10 @@
     display: inline-flex;
     align-items: center;
     min-height: var(--target);
+    color: var(--error);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
     cursor: pointer;
   }
 

@@ -11,7 +11,7 @@ ENTRIES_PER_PAGE = 50
 @permission_required("accounts.view_audit_log", raise_exception=True)
 def entry_list(request):
     """Audit log, for the Administration role only. Pagination: Django docs "Pagination"."""
-    entries = AuditEntry.objects.all()
+    entries = AuditEntry.objects.select_related("actor")
     action = request.GET.get("action", "")
     if action in Action.values:
         entries = entries.filter(action=action)

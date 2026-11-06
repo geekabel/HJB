@@ -112,7 +112,7 @@ class DeparturePageTests(DepartureTestCase):
         response = self.client.get(self.url())
         save_page("residents-departure", response)
         self.assertContains(response, "Départ de Awa Koné")
-        self.assertContains(response, "Le séjour en chambre 312 se termine")
+        self.assertContains(response, "La chambre 312 sera libérée")
         self.assertContains(response, 'class="button button--danger"')
         # A later date is a planned departure (card T21), up to one year ahead.
         limit = timezone.localdate() + timedelta(days=365)
@@ -173,9 +173,7 @@ class ListAfterDepartureTests(DepartureTestCase):
         response = self.client.get(reverse("residents:list"))
         self.assertEqual([r.username for r in response.context["page_obj"]], ["lina"])
         self.assertContains(response, "1 résident · ")
-        self.assertContains(
-            response, '<a href="?account=disabled">1 ancien résident</a>', html=True
-        )
+        self.assertContains(response, '<a href="?account=disabled">1 ancien</a>', html=True)
         response = self.client.get(reverse("residents:list"), {"account": "disabled"})
         self.assertEqual([r.username for r in response.context["page_obj"]], ["awa.kone"])
         self.assertContains(response, "Désactivé")

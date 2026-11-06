@@ -540,7 +540,7 @@ class ReviewTests(SendingTestCase):
         log_in_verified(self.client, self.nadia)
         self.send_now(self.campaign())
         response = self.client.get(reverse("messaging:list"))
-        self.assertContains(response, "<title>Messages · HJB Résidence</title>")
+        self.assertContains(response, "<title>Messages aux résidents · HJB Résidence</title>")
 
     def test_composer_date_without_programmer_and_late_save(self):
         log_in_verified(self.client, self.nadia)
