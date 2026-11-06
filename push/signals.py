@@ -9,7 +9,12 @@ CHECKED_KEY = "push_checked"  # this session already told the server which devic
 
 
 def forget_devices_after_passkey_delete(sender, instance, **kwargs):
-    """A passkey was deleted (lost phone, departure, new activation): stop all devices."""
+    """A passkey or app code was deleted (lost phone, departure, new activation).
+
+    All the devices of the account stop receiving notifications.
+    """
+    if getattr(instance, "confirmed", True) is False:
+        return  # an app code never finished: nothing to stop
     user_id = instance.user_id
     transaction.on_commit(lambda: PushSubscription.objects.filter(user_id=user_id).delete())
 

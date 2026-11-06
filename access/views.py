@@ -1,5 +1,7 @@
 """Login, confirmation and logout pages (cards T13 and T14c)."""
 
+import hashlib
+
 from django import forms
 from django.conf import settings
 from django.contrib import messages
@@ -76,8 +78,28 @@ class AppCodeConfirmForm(forms.Form):
 
 
 WRONG_APP_CODE = "Identifiant ou code incorrect. Attendez le code suivant et réessayez."
-MAX_APP_CODE_TRIES = 30  # per address, over 10 minutes (each device also slows down)
+TOO_MANY_APP_CODES = "Trop d'essais depuis ce réseau. Réessayez dans 10 minutes."
+# Wrong tries only (a right code never counts), over 10 minutes. Per address
+# and username: a stranger cannot block everyone behind the residence wifi.
+# Per address: a higher ceiling against a bot trying many usernames.
+MAX_APP_CODE_FAILURES = 10
+MAX_APP_CODE_FAILURES_PER_ADDRESS = 100
 APP_CODE_WINDOW = 10 * 60
+
+
+def _waiting_message(waiting):
+    return (
+        f"Code juste, mais il y a eu des essais faux sur ce compte. "
+        f"Réessayez dans {waiting.minutes} minute{'s' if waiting.minutes > 1 else ''}."
+    )
+
+
+def _limit_keys(ip, username):
+    tag = hashlib.sha256(username.casefold().encode()).hexdigest()[:16]
+    return [
+        (f"app_code:{tag}", MAX_APP_CODE_FAILURES),
+        ("app_code", MAX_APP_CODE_FAILURES_PER_ADDRESS),
+    ]
 
 
 @never_cache
@@ -95,18 +117,30 @@ def login_app_code(request):
     form = AppCodeLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         ip = client_ip(request)
-        if rate_limits.limit_reached("app_code", ip, MAX_APP_CODE_TRIES):
-            form.add_error(None, "Trop d'essais depuis ce réseau. Réessayez dans 10 minutes.")
+        username = form.cleaned_data["username"].strip()
+        limits = _limit_keys(ip, username)
+        if any(rate_limits.limit_reached(name, ip, most) for name, most in limits):
+            form.add_error(None, TOO_MANY_APP_CODES)
         else:
-            rate_limits.record_attempt("app_code", ip, APP_CODE_WINDOW)
-            user = User.objects.filter(username=form.cleaned_data["username"].strip()).first()
+            user = User.objects.filter(username=username).first()
             device = app_code.device_of(user) if app_code.allowed(user) else None
-            if device is not None and app_code.verify(device, form.cleaned_data["code"]):
-                login(request, user, backend="accounts.backends.PermissionsOnlyBackend")
-                otp_login(request, device)
-                session_policy.open_session(request, user)
-                return redirect(next_url or settings.LOGIN_REDIRECT_URL)
-            form.add_error(None, WRONG_APP_CODE)
+            try:
+                if device is None:
+                    app_code.same_work_without_device()
+                    right = False
+                else:
+                    right = app_code.verify(device, form.cleaned_data["code"], request)
+            except app_code.Waiting as waiting:
+                form.add_error(None, _waiting_message(waiting))
+            else:
+                if right:
+                    login(request, user, backend="accounts.backends.PermissionsOnlyBackend")
+                    otp_login(request, device)
+                    session_policy.open_session(request, user)
+                    return redirect(next_url or settings.LOGIN_REDIRECT_URL)
+                for name, _most in limits:
+                    rate_limits.record_attempt(name, ip, APP_CODE_WINDOW)
+                form.add_error(None, WRONG_APP_CODE)
     return render(request, "access/login_app_code.html", {"form": form, "next": next_url})
 
 
@@ -121,11 +155,16 @@ def confirm(request):
     device = app_code.device_of(request.user) if app_code.allowed(request.user) else None
     form = AppCodeConfirmForm(request.POST or None) if device else None
     if request.method == "POST" and form is not None and form.is_valid():
-        if app_code.verify(device, form.cleaned_data["code"]):
-            otp_login(request, device)
-            session_policy.open_session(request, request.user)
-            return redirect(next_url)
-        form.add_error("code", "Ce code ne correspond pas. Tapez le code affiché maintenant.")
+        try:
+            right = app_code.verify(device, form.cleaned_data["code"], request)
+        except app_code.Waiting as waiting:
+            form.add_error("code", _waiting_message(waiting))
+        else:
+            if right:
+                otp_login(request, device)
+                session_policy.open_session(request, request.user)
+                return redirect(next_url)
+            form.add_error("code", "Ce code ne correspond pas. Tapez le code affiché maintenant.")
     return render(
         request,
         "access/confirm.html",

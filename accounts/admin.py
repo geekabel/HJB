@@ -184,6 +184,12 @@ class HJBUserAdmin(UserAdmin):
             ActivationCode.objects.valid().filter(user=person, for_staff=resident).update(
                 cancelled_at=timezone.now()
             )
+            if resident:
+                # App codes are for staff only (T14c): a former staff member loses
+                # theirs, and does not get it back with a new role later.
+                from django_otp.plugins.otp_totp.models import TOTPDevice
+
+                TOTPDevice.objects.filter(user=person).delete()
             log_action(
                 Action.ROLES_CHANGED,
                 target=form.instance,

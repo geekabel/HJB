@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.views.decorators.cache import never_cache
+from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_POST
 from django_otp import login as otp_login
 from django_otp_webauthn.exceptions import OTPWebAuthnApiError
@@ -168,6 +169,8 @@ APP_CODE_DEVICE = "app_code_device"
 
 
 @never_cache
+@sensitive_post_parameters("code")
+@sensitive_variables("device")
 def app_code_setup(request):
     """Step 3 for staff: scan a QR code with an authenticator app (card T14c)."""
     person = _ready_person(request)
@@ -192,8 +195,13 @@ def app_code_setup(request):
             if _ready_person(request) is None:
                 messages.info(request, JOURNEY_ENDED)
                 return redirect("activation:enter_code")
-            confirmed = app_code.verify(device, form.cleaned_data["code"])
+            waiting = None
+            try:
+                confirmed = app_code.verify(device, form.cleaned_data["code"], request)
+            except app_code.Waiting as error:
+                confirmed, waiting = False, error
             if confirmed:
+                device.refresh_from_db()
                 device.confirmed = True
                 device.save(update_fields=["confirmed"])
                 # Recovery: the old passkeys and app codes no longer work.
@@ -209,7 +217,10 @@ def app_code_setup(request):
             _log_in(request, person, device)
             return redirect("home")
         # Same QR code: the app is already set up, only the code was wrong.
-        form.add_error("code", "Ce code ne correspond pas. Tapez le code affiché maintenant.")
+        if waiting:
+            form.add_error("code", f"Trop d'essais faux. Réessayez dans {waiting.minutes} min.")
+        else:
+            form.add_error("code", "Ce code ne correspond pas. Tapez le code affiché maintenant.")
     if device is None:
         device = app_code.new_device(person)
         journey.remember(request, APP_CODE_DEVICE, device.pk)
@@ -230,6 +241,8 @@ def app_code_setup(request):
 
 def _log_in(request, person, device):
     """Open the session after a new passkey or app code; close the other sessions."""
+    # An app code started and never finished is useless now (its key goes too).
+    app_code.TOTPDevice.objects.filter(user=person, confirmed=False).delete()
     other_sessions = session_keys_for(person)
     login(request, person, backend=device_backend(device))  # new session key, last_login set
     otp_login(request, device)

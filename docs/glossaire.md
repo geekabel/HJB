@@ -349,7 +349,7 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Toutes les façons de se connecter d'un compte | `access/credentials.py` (`passkeys`, `app_codes`, `remove_all`) |
 | Connexion avec le code de l'application | vue `access.views.login_app_code`, adresse /connexion/code/ |
 | Relier l'application à l'activation | vue `activation.views.app_code_setup`, adresse /activer/application/ |
-| Application de codes reliée (journal) | `Action.APP_CODE_CREATED` |
+| Application de codes reliée, codes faux à répétition (journal) | `Action.APP_CODE_CREATED`, `Action.APP_CODE_FAILURES` |
 
 ## Rendez-vous (cartes T26 à T29)
 

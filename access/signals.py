@@ -24,5 +24,7 @@ def close_sessions_after_delete(sender, instance, **kwargs):
     session: the session does not depend on the passkey. We close after the
     transaction commits, so nothing is closed if the deletion is rolled back.
     """
+    if getattr(instance, "confirmed", True) is False:
+        return  # an app code never finished: it never opened a session
     user_id = instance.user_id  # the account itself may be being deleted
     transaction.on_commit(lambda: close_all(user_id))

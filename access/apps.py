@@ -14,6 +14,7 @@ class AccessConfig(AppConfig):
         from residents.departure import departure_recorded
 
         from . import checks  # noqa: F401 (registers the checks)
+        from .admin import register_app_code_admin
         from .signals import close_sessions_after_delete, remove_passkeys_on_departure
 
         departure_recorded.connect(
@@ -30,3 +31,4 @@ class AccessConfig(AppConfig):
             sender=TOTPDevice,
             dispatch_uid="access.close_sessions_app_code",
         )
+        register_app_code_admin()
