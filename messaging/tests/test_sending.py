@@ -222,7 +222,7 @@ class ScheduleTests(SendingTestCase):
         self.assertIn("L'heure d'envoi est passée.", found)
         campaign = self.campaign(remind=True)
         self.assertIn(
-            "La relance demande une réponse « Présent » ou « Absent ».",
+            "La relance demande une réponse «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0».",
             sending.problems(campaign, timezone.now()),
         )
         campaign = self.campaign(
@@ -555,7 +555,7 @@ class ReviewTests(SendingTestCase):
             "action": "save",
         }
         url = reverse("messaging:compose", args=[campaign.pk])
-        self.assertContains(self.client.post(url, data), "Choisissez « Programmer »")
+        self.assertContains(self.client.post(url, data), "Choisissez «\u00a0Programmer\u00a0»")
         Campaign.objects.filter(pk=campaign.pk).update(status=Campaign.Status.SCHEDULED)
         data["send_at"] = ""
         response = self.client.post(url, data)

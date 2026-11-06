@@ -30,7 +30,7 @@
 <nav class="resident-nav" aria-label="Navigation principale">
   <div class="resident-nav__brand" aria-hidden="true"><span class="logo-tile">{% roofs "" %}</span>Habitat Jeunes Belfort</div>
   <ul>
-    <li><a href="{% url 'home' %}"{% if active_nav == "home" %} aria-current="page"{% endif %}>{% icon "home" %}Accueil</a></li>
+    <li><a href="{% url 'home' %}"{% if active_nav == "home" %} aria-current="page"{% elif active_nav == "home_section" %} aria-current="true"{% endif %}>{% icon "home" %}Accueil</a></li>
     {% with unread=unread_messages|add:unread_direct %}
     <li><a href="{% url 'inbox:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>{% icon "message" %}Messages{% if unread %}<span class="visually-hidden">, </span><span class="counter"><span aria-hidden="true">{% if unread > 99 %}99+{% else %}{{ unread }}{% endif %}</span><span class="visually-hidden">{{ unread }} non lu{{ unread|pluriel }}</span></span>{% endif %}</a></li>
     {% endwith %}

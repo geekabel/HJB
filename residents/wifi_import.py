@@ -97,11 +97,12 @@ def _columns(header):
             continue
         if key in columns:
             raise FileError(
-                f"Deux colonnes peuvent être « {_label(key)} » : « {header[columns[key]]} » "
-                f"et « {title} ». Gardez-en une seule."
+                f"Deux colonnes peuvent être «\u00a0{_label(key)}\u00a0» : "
+                f"«\u00a0{header[columns[key]]}\u00a0» "
+                f"et «\u00a0{title}\u00a0». Gardez-en une seule."
             )
         columns[key] = index
-    missing = [f"« {_label(key)} »" for key in REQUIRED if key not in columns]
+    missing = [f"«\u00a0{_label(key)}\u00a0»" for key in REQUIRED if key not in columns]
     if missing:
         names = missing[0] if len(missing) == 1 else f"{', '.join(missing[:-1])} et {missing[-1]}"
         raise FileError(
@@ -180,7 +181,8 @@ def analyze(rows):
             row.expires_on = day.isoformat() if day else _text(raw_expiry)
             if day is None:
                 row.format_errors.append(
-                    f"« {row.expires_on} » n'est pas une date. Écrivez-la comme 01/09/2027."
+                    f"«\u00a0{row.expires_on}\u00a0» n'est pas une date. "
+                    "Écrivez-la comme 01/09/2027."
                 )
         else:
             row.auto_expiry = True
@@ -266,7 +268,8 @@ def _check(rows):
         row.occupant = stay.resident.get_full_name() or str(stay.resident)
         if row.resident and not _same_person(row.resident, row.occupant):
             row.warnings.append(
-                f"Le fichier indique « {row.resident} ». Vérifiez que c'est bien la bonne chambre."
+                f"Le fichier indique «\u00a0{row.resident}\u00a0». "
+                "Vérifiez que c'est bien la bonne chambre."
             )
         current = active.get(room.pk)
         if current:

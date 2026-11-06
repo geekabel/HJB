@@ -170,7 +170,7 @@ class ImportTests(WifiImportTestCase):
         )
         rows = {row.number: row for row in response.context["rows"]}
         self.assertTrue(rows[2].ready)
-        self.assertIn("Le fichier indique « Lucas Petit »", rows[2].warnings[0])
+        self.assertIn("Le fichier indique «\u00a0Lucas Petit\u00a0»", rows[2].warnings[0])
         self.assertEqual(
             rows[3].errors, ["Même identifiant que la ligne 2.", "La chambre 999 n'existe pas."]
         )
@@ -179,7 +179,7 @@ class ImportTests(WifiImportTestCase):
         self.assertIn("Le mot de passe : il faut de 4 à 64 caractères.", rows[5].errors)
         self.assertIn("La date de fin doit être dans le futur.", rows[5].errors)
         self.assertIn("Même chambre que la ligne 2.", rows[6].errors)
-        self.assertIn("« demain » n'est pas une date", rows[7].errors[0])
+        self.assertIn("«\u00a0demain\u00a0» n'est pas une date", rows[7].errors[0])
         self.assertIn("Remplace l'accès actuel (taken1).", rows[7].warnings)
         self.assertEqual(rows[9].errors, ["Le mot de passe manque.", "La chambre manque."])
         self.assertNotIn(8, rows)
@@ -207,7 +207,7 @@ class ImportTests(WifiImportTestCase):
     def test_missing_columns(self):
         self.log_in()
         response = self.upload(csv_file("Login;Chambre", "vre8th;312"))
-        self.assertContains(response, "Il manque « Mot de passe ».")
+        self.assertContains(response, "Il manque «\u00a0Mot de passe\u00a0».")
         self.assertNotIn("wifi_import", self.client.session)
 
 
@@ -272,14 +272,20 @@ class ImportReviewTests(WifiImportTestCase):
         response = self.upload(
             csv_file("Chambre;Mot de passe;Identifiant;MDP", "312;72ptmk;vre8th;autre1")
         )
-        self.assertContains(response, "Deux colonnes peuvent être « Mot de passe »")
+        self.assertContains(response, "Deux colonnes peuvent être «\u00a0Mot de passe\u00a0»")
 
     def test_door_code_and_person_columns_are_not_taken(self):
         self.log_in()
         response = self.upload(csv_file("Chambre;Utilisateur;Code", "312;Ines;4821"))
-        self.assertContains(response, "Il manque « Identifiant » et « Mot de passe ».")
+        self.assertContains(
+            response, "Il manque «\u00a0Identifiant\u00a0» et «\u00a0Mot de passe\u00a0»."
+        )
         response = self.upload(csv_file("Nom;Prénom", "Martin;Inès"))
-        self.assertContains(response, "Il manque « Identifiant », « Mot de passe » et « Chambre ».")
+        self.assertContains(
+            response,
+            "Il manque «\u00a0Identifiant\u00a0», «\u00a0Mot de passe\u00a0» "
+            "et «\u00a0Chambre\u00a0».",
+        )
 
     def test_scientific_text_from_a_saved_csv(self):
         self.log_in()

@@ -60,7 +60,7 @@ def _page(request, stay, access, password=None):
         request,
         "housing/my_wifi.html",
         {
-            "active_nav": "home",
+            "active_nav": "home_section",  # a page under Accueil: no brand header
             "stay": stay,
             "access": access,
             "network_name": WifiSettings.load().network_name,
@@ -94,7 +94,7 @@ def my_wifi_password(request):
     confirmation, and sends the person to the page, ready for the button.
     """
     if request.method == "GET":
-        messages.info(request, "Clé d'accès confirmée. Appuyez sur « Afficher ».")
+        messages.info(request, "Clé d'accès confirmée. Appuyez sur «\u00a0Afficher\u00a0».")
         return redirect("housing:my_wifi")
     stay, access = _room_access(request.user)
     if access is None:

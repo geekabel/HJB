@@ -1,7 +1,7 @@
 """French typography in templates (design card D4).
 
 ``pluriel``: the French plural mark. Unlike Django's ``pluralize``, 0 takes
-the singular: « 0 notification », « 1 message », « 2 messages ».
+the singular: "0 notification", "1 message", "2 messages".
 Docs: https://docs.djangoproject.com/en/6.1/howto/custom-template-tags/#writing-custom-template-filters
 """
 

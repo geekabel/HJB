@@ -128,7 +128,9 @@ class AnalysisTests(ImportTestCase):
         self.assertEqual(row.arrival_date, timezone.localdate())
 
     def test_required_headers(self):
-        with self.assertRaisesMessage(FileError, "Il manque « Prenom » et « Nom »"):
+        with self.assertRaisesMessage(
+            FileError, "Il manque «\u00a0Prenom\u00a0» et «\u00a0Nom\u00a0»"
+        ):
             analyze([(1, ["Téléphone"]), (2, ["06 12 34 56 78"])])
 
     def test_values_coming_from_excel(self):
@@ -142,7 +144,7 @@ class AnalysisTests(ImportTestCase):
             (("", "", "", "", "", ""), ["Le prénom manque.", "Le nom manque."]),
             (
                 ("A", "B", "06 12 34", "", "", ""),
-                ["Numéro « 06 12 34 » : Ce numéro n'existe pas. Vérifiez les chiffres."],
+                ["Numéro «\u00a006 12 34\u00a0» : Ce numéro n'existe pas. Vérifiez les chiffres."],
             ),
             (("A", "B", "06 12 34 56 47", "", "", ""), ["Ce numéro est déjà celui de Awa Koné."]),
             (("A", "B", "", "999", "", ""), ["La chambre 999 n'existe pas."]),
@@ -150,9 +152,9 @@ class AnalysisTests(ImportTestCase):
             (("A", "B", "", "312", "", ""), ["La chambre 312 est déjà occupée par Awa Koné."]),
             (
                 ("A", "B", "", "304", "31/02/2026", ""),
-                ["« 31/02/2026 » n'est pas une date. Écrivez-la comme 01/09/2026."],
+                ["«\u00a031/02/2026\u00a0» n'est pas une date. Écrivez-la comme 01/09/2026."],
             ),
-            (("A", "B", "", "", "", "a@"), ["« a@ » n'est pas une adresse e-mail."]),
+            (("A", "B", "", "", "", "a@"), ["«\u00a0a@\u00a0» n'est pas une adresse e-mail."]),
         ]
         for row, expected in cases:
             with self.subTest(row=row):

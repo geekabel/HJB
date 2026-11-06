@@ -23,7 +23,7 @@
     {% endfor %}
   </ul>
   {% endif %}
-  <a class="button button--quiet" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
+  <a class="button button--quiet inbox__write" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
 </section>
 
 <h2 class="section-title">Messages de la résidence</h2>
@@ -56,7 +56,7 @@
     <p class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}{% if item.poll_open and item.poll.closes_at %} · clôture le {{ item.poll.closes_at|date:"j F à H:i" }}{% elif item.poll and not item.poll_open %} · vote clos{% endif %}
       {% if item.waiting or item.vote_waiting %}<span class="badge badge--warning">À répondre</span>
       {% elif item.voted %}<span class="badge badge--neutral">Voté</span>
-      {% elif item.answer %}<span class="badge badge--neutral">{{ item.answer_label }}</span>{% endif %}</p>
+      {% elif item.answer %}<span class="badge badge--neutral">Réponse : {{ item.answer_label }}</span>{% endif %}</p>
     <p class="inbox__excerpt">{{ item.delivery.body|truncatechars:140 }}</p>
   </li>
   {% endfor %}

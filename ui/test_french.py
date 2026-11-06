@@ -10,3 +10,26 @@ class PlurielTests(SimpleTestCase):
         self.assertEqual(
             Template("{% load french %}{{ x|pluriel }}").render(Context({"x": [1, 2]})), "s"
         )
+
+
+class QuotesTests(SimpleTestCase):
+    """French quotes keep their words on the same line (design card D4)."""
+
+    def test_no_plain_space_inside_quotes(self):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        root = Path(settings.BASE_DIR)
+        skipped = {".venv", "build", "migrations", "management", "tests", "node_modules"}
+        found = []
+        for path in [*root.rglob("*.html"), *root.rglob("*.py")]:
+            parts = set(path.relative_to(root).parts)
+            if parts & skipped or path.name.startswith("test_") or path.name == "checks.py":
+                continue
+            for number, line in enumerate(path.read_text().splitlines(), 1):
+                if line.strip().startswith(("#", '"""')):
+                    continue  # comments and docstrings are not shown
+                if "« " in line or " »" in line:
+                    found.append(f"{path.relative_to(root)}:{number}")
+        self.assertEqual(found, [], "Use a non-breaking space inside « »")

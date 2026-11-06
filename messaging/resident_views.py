@@ -37,7 +37,7 @@ THANKS = {
 }
 
 
-INVALID = "Choisissez « Présent » ou « Absent »."
+INVALID = "Choisissez «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0»."
 VOTE_THANKS = "Merci, votre vote est enregistré. Il reste anonyme."
 PER_PAGE = 20
 

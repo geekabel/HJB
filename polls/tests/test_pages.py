@@ -146,7 +146,8 @@ class ComposerTests(VoteTestCase):
         self.assertContains(response, "Corrigez les champs signalés ci-dessous.")
         response = self.post(ask_reply="on")
         self.assertContains(
-            response, "Un vote ne demande pas « Présent » ou « Absent » : décochez."
+            response,
+            "Un vote ne demande pas «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0» : décochez.",
         )
         # The reminder is allowed for a vote.
         self.post(remind="on")

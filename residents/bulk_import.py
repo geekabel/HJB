@@ -82,7 +82,7 @@ def _csv_cells(content):
     if text is None:
         raise FileError(
             "Les caractères de ce fichier sont illisibles. Dans Excel, enregistrez-le "
-            "en « CSV UTF-8 »."
+            "en «\u00a0CSV UTF-8\u00a0»."
         )
     try:
         dialect = csv.Sniffer().sniff(text[:4096], delimiters=";,\t")
@@ -149,7 +149,7 @@ def read_file(file):
     if name.endswith(".xls"):
         raise FileError(
             "L'ancien format Excel (.xls) n'est pas pris en charge. "
-            "Dans Excel : Fichier, Enregistrer sous, puis « Classeur Excel (.xlsx) »."
+            "Dans Excel : Fichier, Enregistrer sous, puis «\u00a0Classeur Excel (.xlsx)\u00a0»."
         )
     if not name.endswith(EXTENSIONS):
         raise FileError("Le fichier doit être un .csv ou un .xlsx.")
@@ -255,7 +255,7 @@ def _columns(header):
             columns[key] = index
     missing = [key for key in REQUIRED if key not in columns]
     if missing:
-        names = " et ".join(f"« {HEADERS[c][0].capitalize()} »" for c in missing)
+        names = " et ".join(f"«\u00a0{HEADERS[c][0].capitalize()}\u00a0»" for c in missing)
         raise FileError(
             f"La première ligne doit contenir les titres des colonnes. Il manque {names}."
         )
@@ -286,7 +286,7 @@ def analyze(rows):
             row.arrival = day.isoformat() if day else _text(raw_arrival)
             if day is None:
                 row.format_errors.append(
-                    f"« {row.arrival} » n'est pas une date. Écrivez-la comme 01/09/2026."
+                    f"«\u00a0{row.arrival}\u00a0» n'est pas une date. Écrivez-la comme 01/09/2026."
                 )
         elif row.room:
             row.auto_arrival = True
@@ -309,7 +309,7 @@ def _check(rows):
                 row.phone = normalize_phone(row.phone)
                 row.phone_valid = True
             except ValidationError as error:
-                row.errors.append(f"Numéro « {row.phone} » : {error.messages[0]}")
+                row.errors.append(f"Numéro «\u00a0{row.phone}\u00a0» : {error.messages[0]}")
 
     numbers = {r.phone for r in rows if r.phone_valid}
     already_taken = {u.phone: u for u in User.objects.filter(phone__in=numbers)}
@@ -334,7 +334,7 @@ def _check(rows):
             try:
                 validate_email(row.email)
             except ValidationError:
-                row.errors.append(f"« {row.email} » n'est pas une adresse e-mail.")
+                row.errors.append(f"«\u00a0{row.email}\u00a0» n'est pas une adresse e-mail.")
 
         if row.phone_valid:
             if row.phone in seen_numbers:

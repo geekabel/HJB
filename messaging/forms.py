@@ -24,7 +24,7 @@ class FloorChoices(forms.ModelMultipleChoiceField):
 
 class CampaignForm(forms.ModelForm):
     ask_reply = forms.BooleanField(
-        label="Demander une réponse : « Présent » ou « Absent »", required=False
+        label="Demander une réponse : «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0»", required=False
     )
     floors = FloorChoices(
         label="Étages",
@@ -100,17 +100,21 @@ class CampaignForm(forms.ModelForm):
             if data.get("send_at"):
                 self.add_error(
                     "send_at",
-                    "Choisissez « Programmer » pour envoyer à cette date, ou videz le champ.",
+                    "Choisissez «\u00a0Programmer\u00a0» pour envoyer à cette date, "
+                    "ou videz le champ.",
                 )
             data["send_at"] = None
         is_vote = data.get("type") == MessageType.VOTE
         if is_vote and data.get("ask_reply"):
             self.add_error(
-                "ask_reply", "Un vote ne demande pas « Présent » ou « Absent » : décochez."
+                "ask_reply",
+                "Un vote ne demande pas «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0» : décochez.",
             )
         if data.get("remind") and not data.get("ask_reply") and not is_vote:
             self.add_error(
-                "remind", "La relance demande une réponse « Présent » ou « Absent », ou un vote."
+                "remind",
+                "La relance demande une réponse «\u00a0Présent\u00a0» "
+                "ou «\u00a0Absent\u00a0», ou un vote.",
             )
         return data
 

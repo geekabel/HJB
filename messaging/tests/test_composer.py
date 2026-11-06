@@ -226,7 +226,7 @@ class TemplatePagesTests(ComposerTestCase):
             "sms_body": "",
         }
         response = self.client.post(reverse("messaging:template_new"), data, follow=True)
-        self.assertContains(response, "Modèle « Ascenseur en panne » enregistré.")
+        self.assertContains(response, "Modèle «\u00a0Ascenseur en panne\u00a0» enregistré.")
         template = MessageTemplate.objects.get(name="Ascenseur en panne")
         data["body"] = "Bonjour {prénom} {heure}"
         response = self.client.post(reverse("messaging:template_edit", args=[template.pk]), data)

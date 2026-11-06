@@ -50,9 +50,17 @@ def find_target(query):
     if len(people) == 1:
         return None, people[0], ""
     if not people:
-        return None, None, f"Aucune chambre ni aucun résident ne correspond à « {query} »."
+        return (
+            None,
+            None,
+            f"Aucune chambre ni aucun résident ne correspond à «\u00a0{query}\u00a0».",
+        )
     names = ", ".join(person.get_full_name() or person.get_username() for person in people[:5])
-    return None, None, f"Plusieurs résidents correspondent à « {query} » : {names}. Précisez."
+    return (
+        None,
+        None,
+        f"Plusieurs résidents correspondent à «\u00a0{query}\u00a0» : {names}. Précisez.",
+    )
 
 
 def sample_recipient(campaign, user, audience_=None):
