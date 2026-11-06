@@ -31,7 +31,7 @@
 {% if access.is_expired %}
 <div class="alert alert--warning" role="status">{% icon "alert" %}<p><strong>Votre accès a expiré.</strong> Passez à l'accueil pour le renouveler.</p></div>
 {% elif access.renew_soon %}
-<div class="alert alert--info">{% icon "clock" %}<p>Votre accès se termine bientôt. L'accueil le renouvellera.</p></div>
+<div class="alert alert--info">{% icon "clock" %}<p>Votre accès se termine bientôt. Passez à l'accueil pour le renouveler.</p></div>
 {% endif %}
 
 <div class="card stack">
@@ -77,7 +77,7 @@
   {% if password %}
   <p><a href="{% url 'housing:my_wifi' %}">Masquer le mot de passe</a></p>
   {% else %}
-  <p class="icon-text text-muted text-small">{% icon "lock" %}<span>Vous confirmerez avec votre clé d'accès : Face ID, empreinte ou code du téléphone.</span></p>
+  <p class="icon-text text-muted text-small">{% icon "lock" %}<span>Face ID ou code demandé.</span></p>
   {% endif %}
 
   <div class="stack stack--tight">
@@ -105,9 +105,9 @@
   {% if user.wifi_expiry_reminder and not has_push_device %}
   <p class="icon-text text-small">{% icon "info" %}<span>Pour le recevoir, <a href="{% url 'push:settings' %}">activez les notifications</a> sur votre téléphone.</span></p>
   {% endif %}
-  <p>Votre accès ne marche plus ? Passez à l'accueil : l'équipe vérifiera et le renouvellera si besoin.</p>
+  <p class="text-small">Le wifi ne marche pas ? Passez à l'accueil.</p>
 </div>
 
-<p class="text-muted text-small">Ces identifiants sont personnels. Ne les partagez pas : toute connexion est liée à votre chambre.</p>
+<p class="text-muted text-small">Codes personnels : ne les partagez pas.</p>
 {% endif %}
 {% endblock %}

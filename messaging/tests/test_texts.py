@@ -48,7 +48,9 @@ class PlaceholderTests(SimpleTestCase):
 
 class SmsTextTests(SimpleTestCase):
     def test_french_characters_replaced(self):
-        text = "Si vous êtes absent, c\u2019est « noté » : déjà là, ça marche\u2026 à côté"
+        text = (
+            "Si vous êtes absent, c\u2019est «\u00a0noté\u00a0» : déjà là, ça marche\u2026 à côté"
+        )
         result = to_gsm(text)
         self.assertEqual(
             result, 'Si vous etes absent, c\'est "noté" : déjà là, ca marche... à coté'

@@ -151,7 +151,7 @@
     --t-body: 1rem;
     --t-large: 1.125rem;
     --t-h3: 1.25rem;
-    --t-h2: 1.5rem;
+    --t-h2: 1.375rem;
     --t-h1: clamp(1.75rem, 1.4rem + 1.5vw, 2.25rem);
 
     /* Spacing, radii, sizes */
@@ -427,7 +427,6 @@
   /* Title of a section inside a page: more space above than below */
   .section-title {
     margin-block-start: var(--s-4);
-    font-size: var(--t-large);
   }
 
   /* A list of links, one per row, each a full-width target (Mon compte) */
@@ -482,6 +481,11 @@
   /* The title of a message: smaller than a page title, it is often long */
   .message__title {
     font-size: var(--t-h2);
+  }
+
+  /* The button after the list of discussions: apart from the list */
+  .inbox__write {
+    margin-block-start: var(--s-2);
   }
 
   /* Things to do: a yellow edge, the color of "action expected" */
@@ -694,10 +698,20 @@
     border-color: var(--control);
   }
 
-  .card__title {
+  /* Three levels of titles only (design card D4): the page (h1), a section
+     of the page (h2), and the title of a card, whatever its level. */
+  /* :where keeps this rule weak: a title with its own class keeps its size */
+  .card__title,
+  :where(.card) :where(h2, h3):where(:not(.section-title, .vote__question)) {
     font-family: var(--font-text);
     font-size: var(--t-large);
     font-weight: 700;
+  }
+
+  /* The date of a meeting: the main fact of its page */
+  .meeting-when {
+    font-family: var(--font-title);
+    font-size: var(--t-h2);
   }
 
   .card__text {

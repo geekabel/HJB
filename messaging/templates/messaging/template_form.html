@@ -1,6 +1,6 @@
 {% extends "ui/staff.html" %}
 {% load icons %}
-{% block title %}{% if template.pk %}Modèle « {{ template.name }} »{% else %}Nouveau modèle{% endif %}{% endblock %}
+{% block title %}{% if template.pk %}Modèle «&nbsp;{{ template.name }}&nbsp;»{% else %}Nouveau modèle{% endif %}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:templates' %}">{% icon "back" %}Tous les modèles</a>
 

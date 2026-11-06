@@ -2,7 +2,7 @@
 {% load icons %}
 {% block title %}Message direct{% endblock %}
 {% block content %}
-<a class="back-link" href="{% url 'appointments:conversations' %}">{% icon "back" %}Messages directs</a>
+<a class="back-link" href="{% url 'appointments:conversations' %}">{% icon "back" %}Discussions</a>
 <header class="page-header">
   <div class="stack stack--tight">
     <h1>{{ conversation.resident.get_full_name|default:conversation.resident.get_username }}</h1>
@@ -27,8 +27,8 @@
     {% endif %}
   </section>
   <aside class="card stack">
-    <p class="text-small">Heures de réponse montrées aux résidents : {{ reply_hours }}. Vous pouvez les changer dans <a href="{% url 'appointments:availability' %}#settings-title">vos réglages</a>.</p>
-    <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Personne d'autre dans l'équipe ne lit cette conversation.</span></p>
+    <p class="text-small">Vous répondez {{ reply_hours }} (<a href="{% url 'appointments:availability' %}#settings-title">modifier</a>).</p>
+    <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Conversation privée.</span></p>
   </aside>
 </div>
 {% endblock %}

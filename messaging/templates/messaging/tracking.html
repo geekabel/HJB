@@ -1,5 +1,5 @@
 {% extends "ui/staff.html" %}
-{% load icons messaging_tags %}
+{% load icons messaging_tags french %}
 {% block title %}{{ display_title }}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
@@ -12,7 +12,7 @@
 {% if campaign.status == "scheduled" %}
 <section class="card stack" aria-labelledby="scheduled-title">
   <h2 id="scheduled-title">Envoi programmé le <time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"l j F à H:i" }}</time></h2>
-  <p>{{ audience.total }} résident{{ audience.total|pluralize }} à ce jour : {{ audience.push }} par notification, {{ audience.sms }} par SMS. La liste est arrêtée au moment de l'envoi.</p>
+  <p>{{ audience.total }} résident{{ audience.total|pluriel }} à ce jour : {{ audience.push }} par notification, {{ audience.sms }} par SMS. La liste est arrêtée au moment de l'envoi.</p>
   {% if campaign.remind_at %}<p>Relance de ceux qui n'ont pas répondu : <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.</p>{% endif %}
   <form class="row" method="post" action="{% url 'messaging:cancel' campaign.pk %}">
     {% csrf_token %}
@@ -23,10 +23,10 @@
 {% elif campaign.status == "cancelled" %}
 <p class="alert alert--info">{% icon "info" %}<span>Cet envoi a été annulé. Rien n'est parti.</span></p>
 {% else %}
-<p class="summary-line"><strong>{{ stats.recipients }}</strong> destinataire{{ stats.recipients|pluralize }} · <strong>{{ stats.push }}</strong> notification{{ stats.push|pluralize }} · <strong>{{ stats.sms }}</strong> SMS ({{ stats.segments }} facturé{{ stats.segments|pluralize }}) · {% if stats.failed %}<strong class="text-warning">{{ stats.failed }} échec{{ stats.failed|pluralize }}</strong>{% else %}aucun échec{% endif %}</p>
+<p class="summary-line"><strong>{{ stats.recipients }}</strong> destinataire{{ stats.recipients|pluriel }} · <strong>{{ stats.push }}</strong> notification{{ stats.push|pluriel }} · <strong>{{ stats.sms }}</strong> SMS ({{ stats.segments }} facturé{{ stats.segments|pluriel }}) · {% if stats.failed %}<strong class="text-warning">{{ stats.failed }} échec{{ stats.failed|pluriel }}</strong>{% else %}aucun échec{% endif %}</p>
 {% if to_warn %}
 <section class="card card--framed stack" aria-labelledby="warn-title">
-  <h2 id="warn-title" class="icon-text">{% icon "alert" %}<span>{{ to_warn|length }} personne{{ to_warn|length|pluralize }} à prévenir autrement</span></h2>
+  <h2 id="warn-title" class="icon-text">{% icon "alert" %}<span>{{ to_warn|length }} personne{{ to_warn|length|pluriel }} à prévenir autrement</span></h2>
   <p>Le message n'est peut-être pas arrivé. Prévenez-les par un appel, une affiche ou un passage en chambre.</p>
   <ul class="plain-list stack stack--tight">
     {% for row in to_warn %}
@@ -38,7 +38,7 @@
 {% if receipts.total %}
 <section class="stack" aria-labelledby="receipts-title">
   <h2 id="receipts-title" class="section-title">Accusés de réception des SMS</h2>
-  <p class="summary-line"><strong>{{ receipts.delivered }}</strong> reçu{{ receipts.delivered|pluralize }} · <strong>{{ receipts.pending }}</strong> en route{% if receipts.pending %} (mis à jour seul){% endif %} · {% if receipts.undelivered %}<strong class="text-warning">{{ receipts.undelivered }} non reçu{{ receipts.undelivered|pluralize }}</strong>{% else %}<strong>0</strong> non reçu{% endif %} · <strong>{{ receipts.unknown }}</strong> sans nouvelle</p>
+  <p class="summary-line"><strong>{{ receipts.delivered }}</strong> reçu{{ receipts.delivered|pluriel }} · <strong>{{ receipts.pending }}</strong> en route{% if receipts.pending %} (mis à jour seul){% endif %} · {% if receipts.undelivered %}<strong class="text-warning">{{ receipts.undelivered }} non reçu{{ receipts.undelivered|pluriel }}</strong>{% else %}<strong>0</strong> non reçu{% endif %} · <strong>{{ receipts.unknown }}</strong> sans nouvelle</p>
 </section>
 {% endif %}
 {% if vote %}{% include "polls/_results.html" with poll=vote.poll results=vote.results closed=vote.closed min_voters=vote.min_voters reached=vote.reached %}{% endif %}
@@ -55,7 +55,7 @@
 {% if campaign.status == "sending" %}<p class="alert alert--info" role="status">{% icon "clock" %}<span>Envoi en cours. Rechargez la page pour suivre l'avancée.</span></p>{% endif %}
 {% if campaign.remind_at %}
 <div class="row row--between">
-  <p class="text-muted">Relance de ceux qui n'ont pas répondu : {% if campaign.reminder_started_at %}partie le <time datetime="{{ campaign.reminder_started_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.reminder_started_at|date:"j F à H:i" }}</time>, {{ reminder_stats.recipients }} personne{{ reminder_stats.recipients|pluralize }}.{% else %}prévue le <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
+  <p class="text-muted">Relance de ceux qui n'ont pas répondu : {% if campaign.reminder_started_at %}partie le <time datetime="{{ campaign.reminder_started_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.reminder_started_at|date:"j F à H:i" }}</time>, {{ reminder_stats.recipients }} personne{{ reminder_stats.recipients|pluriel }}.{% else %}prévue le <time datetime="{{ campaign.remind_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.remind_at|date:"l j F à H:i" }}</time>.{% endif %}</p>
   {% if not campaign.reminder_started_at %}
   <form method="post" action="{% url 'messaging:cancel_reminder' campaign.pk %}">
     {% csrf_token %}

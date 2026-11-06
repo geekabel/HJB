@@ -42,7 +42,7 @@ class MessageTemplate(models.Model):
     title = models.CharField(
         "titre",
         max_length=80,
-        help_text="Titre de la notification, par exemple « Visite de logement ».",
+        help_text="Titre de la notification, par exemple «\u00a0Visite de logement\u00a0».",
     )
     body = models.TextField("texte complet", help_text="Affiché dans l'application.")
     sms_body = models.TextField(
@@ -50,7 +50,9 @@ class MessageTemplate(models.Model):
         blank=True,
         help_text="Courte, pour les résidents sans l'application. Vide : tirée du texte complet.",
     )
-    reply_expected = models.BooleanField("demander « Présent » ou « Absent »", default=False)
+    reply_expected = models.BooleanField(
+        "demander «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0»", default=False
+    )
     updated_at = models.DateTimeField("modifié le", auto_now=True)
 
     class Meta:

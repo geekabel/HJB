@@ -60,7 +60,7 @@ class InboxTestCase(TestCase):
     def send(self, title, type=MessageType.ANNOUNCEMENT, people=(), rooms=(), floors=(), **kw):
         data = {
             "title": title,
-            "body": f"Texte de « {title} ».",
+            "body": f"Texte de «\u00a0{title}\u00a0».",
             "everyone": not (people or rooms or floors),
             "author": self.nadia,
             "type": type,
@@ -113,7 +113,7 @@ class InboxPageTests(InboxTestCase):
         self.assertNotContains(response, "Non lu&nbsp;: </span>Soirée jeux")
         self.assertContains(response, "Pour vous · Maintenance")
         self.assertContains(response, "À répondre</span>", count=1)
-        self.assertContains(response, '<span class="badge badge--neutral">Absent</span>')
+        self.assertContains(response, '<span class="badge badge--neutral">Réponse : Absent</span>')
         self.assertContains(response, "3 messages non lus")
         self.assertContains(response, COUNTER.format(3, "3 non lus"))
         self.assertContains(response, f'href="{reverse("inbox:message", args=[visit.pk])}"')

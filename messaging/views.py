@@ -388,7 +388,7 @@ def template_edit(request, pk=None):
     form = TemplateForm(request.POST or None, instance=template)
     if request.method == "POST" and form.is_valid():
         form.save()
-        messages.success(request, f"Modèle « {template.name} » enregistré.")
+        messages.success(request, f"Modèle «\u00a0{template.name}\u00a0» enregistré.")
         return redirect("messaging:templates")
     return render(
         request,
@@ -403,5 +403,5 @@ def template_edit(request, pk=None):
 def template_delete(request, pk):
     template = get_object_or_404(MessageTemplate, pk=pk)
     template.delete()
-    messages.success(request, f"Modèle « {template.name} » supprimé.")
+    messages.success(request, f"Modèle «\u00a0{template.name}\u00a0» supprimé.")
     return redirect("messaging:templates")

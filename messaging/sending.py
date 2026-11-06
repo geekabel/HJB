@@ -98,7 +98,10 @@ def _vote_problems(campaign, send_at):
     elif poll.closes_at <= send_at + MIN_REMINDER_GAP:
         found.append("La clôture du vote doit venir au moins une heure après l'envoi.")
     if campaign.reply_type == ReplyType.ATTENDANCE:
-        found.append("Un vote ne demande pas « Présent » ou « Absent » : retirez cette réponse.")
+        found.append(
+            "Un vote ne demande pas «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0» : "
+            "retirez cette réponse."
+        )
     if campaign.remind and reminder_time(campaign) is not None:
         if reminder_time(campaign) < send_at + MIN_REMINDER_GAP:
             found.append(
@@ -133,7 +136,9 @@ def problems(campaign, send_at):
         found.extend(_vote_problems(campaign, send_at))
     elif campaign.remind:
         if campaign.reply_type != ReplyType.ATTENDANCE:
-            found.append("La relance demande une réponse « Présent » ou « Absent ».")
+            found.append(
+                "La relance demande une réponse «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0»."
+            )
         elif not campaign.event_date:
             found.append("La relance a lieu le jour de la date du message : indiquez cette date.")
         elif reminder_time(campaign) < send_at + MIN_REMINDER_GAP:

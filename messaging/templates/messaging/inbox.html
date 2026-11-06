@@ -1,5 +1,5 @@
 {% extends "ui/resident.html" %}
-{% load icons messaging_tags %}
+{% load icons messaging_tags french %}
 {% block title %}Messages{% endblock %}
 {% block content %}
 <div class="row">
@@ -19,11 +19,11 @@
   {% if conversations %}
   <ul class="link-list">
     {% for conversation in conversations %}
-    <li><a href="{% url 'rdv:write' conversation.educator_id %}"><span class="avatar" aria-hidden="true">{{ conversation.educator.first_name|default:conversation.educator.get_username|slice:":1"|upper }}</span><span>{{ conversation.educator.first_name|default:conversation.educator.get_username }}</span>{% if conversation.unread %}<span class="counter">{{ conversation.unread }}<span class="visually-hidden"> non lu{{ conversation.unread|pluralize }}</span></span>{% endif %}{% icon "chevron" %}</a></li>
+    <li><a href="{% url 'rdv:write' conversation.educator_id %}"><span class="avatar" aria-hidden="true">{{ conversation.educator.first_name|default:conversation.educator.get_username|slice:":1"|upper }}</span><span>{{ conversation.educator.first_name|default:conversation.educator.get_username }}</span>{% if conversation.unread %}<span class="counter">{{ conversation.unread }}<span class="visually-hidden"> non lu{{ conversation.unread|pluriel }}</span></span>{% endif %}{% icon "chevron" %}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
-  <a class="button button--quiet" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
+  <a class="button button--quiet inbox__write" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
 </section>
 
 <h2 class="section-title">Messages de la résidence</h2>
@@ -39,7 +39,7 @@
 <form class="inbox-tools" method="post" action="{% url 'inbox:read_all' %}">
   {% csrf_token %}
   {% if current.key != "all" %}<input type="hidden" name="show" value="{{ current.key }}">{% endif %}
-  <p class="text-muted text-small">{{ unread }} message{{ unread|pluralize }} non lu{{ unread|pluralize }}{% if current.key != "all" %} dans cette liste{% endif %}</p>
+  <p class="text-muted text-small">{{ unread }} message{{ unread|pluriel }} non lu{{ unread|pluriel }}{% if current.key != "all" %} dans cette liste{% endif %}</p>
   <button class="button button--text" type="submit">Tout marquer comme lu</button>
 </form>
 {% endif %}
@@ -56,7 +56,7 @@
     <p class="inbox__kind">{% if item.delivery.personal %}Pour vous · {% endif %}{{ item.short_type }}{% if item.poll_open and item.poll.closes_at %} · clôture le {{ item.poll.closes_at|date:"j F à H:i" }}{% elif item.poll and not item.poll_open %} · vote clos{% endif %}
       {% if item.waiting or item.vote_waiting %}<span class="badge badge--warning">À répondre</span>
       {% elif item.voted %}<span class="badge badge--neutral">Voté</span>
-      {% elif item.answer %}<span class="badge badge--neutral">{{ item.answer_label }}</span>{% endif %}</p>
+      {% elif item.answer %}<span class="badge badge--neutral">Réponse : {{ item.answer_label }}</span>{% endif %}</p>
     <p class="inbox__excerpt">{{ item.delivery.body|truncatechars:140 }}</p>
   </li>
   {% endfor %}

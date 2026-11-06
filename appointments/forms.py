@@ -19,7 +19,7 @@ class SettingsForm(forms.ModelForm):
         model = EducatorSettings
         fields = ["slot_minutes", "notice", "remind_residents", "reply_hours"]
         help_texts = {
-            "notice": "« La veille » : pas de rendez-vous pris le jour même.",
+            "notice": "«\u00a0La veille\u00a0» : pas de rendez-vous pris le jour même.",
         }
 
 

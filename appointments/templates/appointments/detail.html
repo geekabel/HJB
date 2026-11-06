@@ -17,7 +17,7 @@
 
 <article class="card stack">
   <p class="text-muted text-small">{% if meeting.status == "confirmed" %}Confirmé{% elif meeting.cancelled_by_id == user.pk %}Annulé par vous{% elif meeting.cancelled_by_id == meeting.educator_id %}Annulé par {{ meeting.educator.first_name|default:"l'éducateur" }}{% else %}Annulé{% endif %}</p>
-  <h2><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</time></h2>
+  <h2 class="meeting-when"><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</time></h2>
   <dl class="details">
     <dt>Avec</dt><dd>{{ meeting.educator.first_name|default:meeting.educator.get_username }}</dd>
     <dt>Durée</dt><dd>{{ meeting.minutes }} minutes, jusqu'à {{ meeting.end|time:"H:i" }}</dd>

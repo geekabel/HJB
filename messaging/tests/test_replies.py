@@ -226,7 +226,9 @@ class ReplyPageTests(ReplyTestCase):
         campaign = self.sent_campaign()
         url = self.link(campaign, self.yanis)
         response = self.client.post(url, {"answer": "maybe"})
-        self.assertContains(response, "Choisissez « Présent » ou « Absent ».", status_code=400)
+        self.assertContains(
+            response, "Choisissez «\u00a0Présent\u00a0» ou «\u00a0Absent\u00a0».", status_code=400
+        )
         self.assertNotContains(response, "fermées", status_code=400)
         self.assertEqual(self.client.get("/r/1-2-forgedsignatur/").status_code, 404)
         other = replies.reply_path(campaign.pk, self.nadia.pk)  # genuine, but not a recipient

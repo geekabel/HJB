@@ -1,5 +1,5 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
+{% load icons french %}
 {% block title %}{% if campaign.pk %}{{ campaign.title }}{% else %}Nouveau message{% endif %}{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
@@ -67,7 +67,7 @@
       </ul>
       {% endif %}
       {% if audience %}
-      <p class="compose__counts"><strong>{{ audience.total }}</strong> résident{{ audience.total|pluralize }} · <strong>{{ audience.push }}</strong> {% if audience.push > 1 %}recevront{% else %}recevra{% endif %} une notification (gratuit) · <strong>{{ audience.sms }}</strong> sans l'application : SMS{% if audience.unreachable %} · <strong class="text-warning">{{ audience.unreachable }}</strong> sans moyen de contact{% endif %}</p>
+      <p class="compose__counts"><strong>{{ audience.total }}</strong> résident{{ audience.total|pluriel }} · <strong>{{ audience.push }}</strong> {% if audience.push > 1 %}recevront{% else %}recevra{% endif %} une notification (gratuit) · <strong>{{ audience.sms }}</strong> sans l'application : SMS{% if audience.unreachable %} · <strong class="text-warning">{{ audience.unreachable }}</strong> sans moyen de contact{% endif %}</p>
       {% if audience.recipients %}
       <details>
         <summary>{% if audience.total > 1 %}Voir les {{ audience.total }} destinataires{% else %}Voir le destinataire{% endif %}</summary>
@@ -127,7 +127,7 @@
     </section>
 
     <section class="card stack" aria-labelledby="sms-title">
-      <h2 id="sms-title" class="card__title">Aperçu SMS{% if audience.sms %} ({{ audience.sms }} personne{{ audience.sms|pluralize }}){% endif %}</h2>
+      <h2 id="sms-title" class="card__title">Aperçu SMS{% if audience.sms %} ({{ audience.sms }} personne{{ audience.sms|pluriel }}){% endif %}</h2>
       <div class="compose__bubble">
         <p class="text-muted text-small">HJBelfort</p>
         <p class="compose__text">{{ sms.text }}</p>
@@ -144,7 +144,7 @@
       <dl class="details">
         <dt>Envoi</dt><dd>{% if campaign.send_at %}<time datetime="{{ campaign.send_at|date:'Y-m-d\TH:i:sO' }}">{{ campaign.send_at|date:"D j M H:i" }}</time>{% else %}maintenant{% endif %}</dd>
         <dt>Notifications</dt><dd>{% if audience.push %}{{ audience.push }} · gratuit{% else %}aucune{% endif %}</dd>
-        <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
+        <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluriel }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
         {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }}</dd>{% endif %}
       </dl>
       <button class="button" type="submit" name="action" value="review">{% icon "send" %}{% if campaign.send_at %}Programmer l'envoi{% else %}Envoyer{% endif %}…</button>

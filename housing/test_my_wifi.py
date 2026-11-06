@@ -147,7 +147,7 @@ class ShowPasswordTests(MyWifiTestCase):
         self.log_in(confirmed=True)
         response = self.client.get(PASSWORD_URL, headers={"sec-purpose": "prefetch"}, follow=True)
         self.assertRedirects(response, URL)
-        self.assertContains(response, "Appuyez sur « Afficher ».")
+        self.assertContains(response, "Appuyez sur «\u00a0Afficher\u00a0».")
         self.assertNotContains(response, "72ptmk")
         self.assertFalse(AuditEntry.objects.filter(action=Action.WIFI_PASSWORD_SHOWN).exists())
 

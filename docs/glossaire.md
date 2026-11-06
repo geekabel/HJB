@@ -351,6 +351,18 @@ Les chemins ne changent pas. Seuls les noms changent.
 | Relier l'application à l'activation | vue `activation.views.app_code_setup`, adresse /activer/application/ |
 | Application de codes reliée, codes faux à répétition (journal) | `Action.APP_CODE_CREATED`, `Action.APP_CODE_FAILURES` |
 
+## Design (cartes D1 à D4)
+
+| Mot du métier | Nom dans le code |
+|---|---|
+| Mon compte | vue `access.views.account`, adresse /compte/ |
+| À faire (accueil du résident) | `access/home.py` (`todos`, `Todo`) |
+| Réponse attendue ou vote ouvert | `messaging.inbox.to_answer`, filtre `todo` (« À répondre ») |
+| Onglet Rendez-vous, réservation, écrire à un éducateur | noms d'URL `rdv:list`, `rdv:book` (/rendez-vous/reserver/), `rdv:educators` |
+| Tableau qui devient des cartes sur téléphone | classes CSS `table--cards`, `table__link`, `table__secondary`, attribut `data-label` |
+| Pluriel français (0 et 1 au singulier) | filtre de gabarit `pluriel` (`{% load french %}`) |
+| Pages d'erreur | `ui/templates/403.html`, `404.html`, `500.html`, `ui/error.html` |
+
 ## Rendez-vous (cartes T26 à T29)
 
 | Mot du métier | Nom dans le code |

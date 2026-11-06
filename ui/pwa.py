@@ -118,7 +118,9 @@ def offline(request):
 @require_safe
 def install(request):
     """How to add the application to the home screen (needed for notifications on iPhone)."""
-    return render(request, "ui/install.html")
+    # Logged in, it is a page under Mon compte: navigation, no brand header.
+    active_nav = "account_section" if request.user.is_authenticated else ""
+    return render(request, "ui/install.html", {"active_nav": active_nav})
 
 
 @require_safe

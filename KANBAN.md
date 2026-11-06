@@ -65,7 +65,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée |
 |---|---|---|
-| D4 | Système visuel et textes | Design |
+| | *(vide)* | |
 
 ### À faire
 
@@ -127,6 +127,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D1 | Charpente et navigation | 7 nov. 2026 |
 | D2 | Parcours des résidents | 7 nov. 2026 |
 | D3 | Écrans de l'équipe | 7 nov. 2026 |
+| D4 | Système visuel et textes | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -348,9 +349,14 @@ Audit complet demandé par Godwin le 6 nov. 2026 : trop de texte, mise en page �
 - [x] Disponibilités : rendez-vous d'abord, grille plus lisible (case fermée en pointillés, case ouverte « Libre ») ; discussions avec le dernier message, non lues d'abord ; journal en phrases, avec les noms
 - **Revue indépendante (7 nov.)** : corrigé après relecture. L'accueil ne voyait plus le téléphone d'un résident sans ouvrir le formulaire : une carte Contact le montre à tous. Revenir à « Maintenant » vide l'heure d'envoi cachée. Un vote dont le texte utilise {date} garde le champ de date. Le journal ne plante plus sur une ancienne entrée incomplète, et chaque action a sa phrase (relance annulée, accord du pluriel). Erreurs du formulaire : un lien en haut de la page y mène. Les étiquettes des cartes ne sont plus lues deux fois. Dates en toutes lettres dans les discussions. Tableau du suivi en cartes sur téléphone.
 
-#### D4 Système visuel et textes
-- [ ] Trois niveaux de titres, règle carte ou note, un seul bouton principal, espaces, zéro non barré, badges
-- [ ] Relecture de tous les textes selon les règles retenues
+#### D4 Système visuel et textes (fait le 7 nov. 2026)
+- **Docs** : [filtres de gabarit personnalisés](https://docs.djangoproject.com/en/6.1/howto/custom-template-tags/#writing-custom-template-filters), [GOV.UK : écrire pour les interfaces](https://www.gov.uk/service-manual/design/writing-for-user-interfaces).
+- [x] Trois niveaux de titres : la page, une section, une carte ; la date d'un rendez-vous reste grande
+- [x] Pluriel français : 0 et 1 au singulier (filtre `pluriel`)
+- [x] Guillemets français avec espaces insécables, dans les gabarits et les messages ; un test empêche le retour en arrière
+- [x] Badges : vert pour un compte activé, bleu pour un compte à activer, jaune seulement quand il faut agir
+- [x] Textes relus et raccourcis : notifications, wifi, discussions, compte, installation, grille des créneaux (« Enregistrer les créneaux »)
+- **Notes** : le zéro barré de la police Atkinson Hyperlegible est gardé : il évite de confondre 0 et O. Vérification finale indépendante avant et après sur 38 pages en 3 tailles : 18 % de texte en moins, aucune page qui défile de côté, plus de liens morts. Ses remarques sont appliquées (date du rendez-vous, guillemets, « Réponse : Absent », bouton des discussions, étape de l'installation, conseils du compte pour l'équipe).
 
 ### E3 Wifi
 

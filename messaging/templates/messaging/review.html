@@ -1,6 +1,6 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
-{% block title %}Envoyer « {{ campaign.title }} »{% endblock %}
+{% load icons french %}
+{% block title %}Envoyer «&nbsp;{{ campaign.title }}&nbsp;»{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:compose' campaign.pk %}">{% icon "back" %}Revenir au message</a>
 
@@ -21,7 +21,7 @@
     <dl class="details">
       <dt>Type</dt><dd>{{ campaign.get_type_display }}</dd>
       <dt>Envoi</dt><dd>{% if send_at %}<time datetime="{{ send_at|date:'Y-m-d\TH:i:sO' }}">{{ send_at|date:"l j F à H:i" }}</time>{% else %}tout de suite{% endif %}</dd>
-      {% if campaign.reply_type == "attendance" %}<dt>Réponse</dt><dd>« Présent » ou « Absent »</dd>{% endif %}
+      {% if campaign.reply_type == "attendance" %}<dt>Réponse</dt><dd>«&nbsp;Présent&nbsp;» ou «&nbsp;Absent&nbsp;»</dd>{% endif %}
       {% if poll %}<dt>Vote</dt><dd>{% for option in poll.options.all %}{{ option.label }}{% if not forloop.last %} · {% endif %}{% empty %}aucun choix{% endfor %}</dd>
       <dt>Clôture</dt><dd>{% if poll.closes_at %}<time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>{% else %}non indiquée{% endif %}</dd>{% endif %}
       {% if remind_at %}<dt>Relance</dt><dd><time datetime="{{ remind_at|date:'Y-m-d\TH:i:sO' }}">{{ remind_at|date:"l j F à H:i" }}</time>, pour ceux qui n'ont pas répondu</dd>{% endif %}
@@ -33,7 +33,7 @@
     <dl class="details">
       <dt>Résidents</dt><dd>{{ audience.total }}</dd>
       <dt>Notifications</dt><dd>{{ audience.push }} · gratuit</dd>
-      <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluralize }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
+      <dt>SMS</dt><dd>{% if audience.sms %}{{ audience.sms }} personne{{ audience.sms|pluriel }} · {% if sms.varies %}jusqu'à {% endif %}{{ sms.total_segments }} SMS{% else %}aucun{% endif %}</dd>
       {% if audience.unreachable %}<dt>Sans moyen de contact</dt><dd>{{ audience.unreachable }} : prévenez-{% if audience.unreachable > 1 %}les{% else %}la{% endif %} autrement</dd>{% endif %}
     </dl>
     <p class="text-muted text-small">Une notification qui ne passe pas est réessayée. Le SMS ne part que pour les personnes sans aucun appareil.</p>
@@ -44,7 +44,7 @@
 {% if not problems %}
 <form class="row" method="post">
   {% csrf_token %}
-  <button class="button" type="submit">{% icon "send" %}{% if send_at %}Programmer l'envoi{% else %}Envoyer maintenant à {{ audience.total }} résident{{ audience.total|pluralize }}{% endif %}</button>
+  <button class="button" type="submit">{% icon "send" %}{% if send_at %}Programmer l'envoi{% else %}Envoyer maintenant à {{ audience.total }} résident{{ audience.total|pluriel }}{% endif %}</button>
   <a class="button button--quiet" href="{% url 'messaging:compose' campaign.pk %}">Revenir au message</a>
 </form>
 {% endif %}
