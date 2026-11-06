@@ -22,7 +22,7 @@
 </section>
 
 {% if not days %}
-<p class="empty-state">Pas de créneau libre dans les 2 semaines{% if educator %} avec {{ educator.first_name }}. Essayez « Le premier libre »{% endif %}.</p>
+<p class="empty-state">Pas de créneau libre dans les 2 semaines{% if educator %} avec {{ educator.first_name }}. Essayez « Le premier libre »{% else %}. Revenez dans quelques jours{% endif %}.</p>
 {% else %}
 {% if first and not wanted %}
 <div class="card rdv-line">
@@ -32,10 +32,10 @@
 {% endif %}
 
 <section class="stack stack--tight" aria-labelledby="day-title">
-  <h2 id="day-title" class="rdv__step">2. Quel jour ? <span class="text-muted">{{ day|date:"F" }}</span></h2>
-  <ul class="rdv-days">
+  <h2 id="day-title" class="rdv__step">2. Quel jour ?</h2>
+  <ul class="rdv-days" data-keep-current-in-view>
     {% for each, slots in days %}
-    <li><a class="rdv-day" href="?avec={{ key }}&amp;jour={{ each|date:'Y-m-d' }}#time-title"{% if each == day %} aria-current="true"{% endif %}><span class="text-small" aria-hidden="true">{{ each|date:"D" }}</span><strong aria-hidden="true">{{ each|date:"j" }}</strong><span class="visually-hidden">{{ each|date:"l j F" }}</span></a></li>
+    <li><a class="rdv-day" href="?avec={{ key }}&amp;jour={{ each|date:'Y-m-d' }}#time-title"{% if each == day %} aria-current="true"{% endif %}><span class="text-small" aria-hidden="true">{{ each|date:"D" }}</span><strong aria-hidden="true">{{ each|date:"j" }}</strong><span class="rdv-day__month" aria-hidden="true">{{ each|date:"b" }}</span><span class="visually-hidden">{{ each|date:"l j F" }}</span></a></li>
     {% endfor %}
   </ul>
 </section>

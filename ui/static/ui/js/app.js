@@ -155,7 +155,18 @@
     });
   }
 
+  // A strip that scrolls sideways shows its chosen item (the booking days).
+  function keepCurrentInView() {
+    document.querySelectorAll("[data-keep-current-in-view]").forEach(function (strip) {
+      var current = strip.querySelector("[aria-current]");
+      if (current) {
+        strip.scrollLeft = current.offsetLeft - strip.clientWidth / 2 + current.clientWidth / 2;
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    keepCurrentInView();
     openStepsOfThisPhone();
     showInstallState();
     syncPushDevice();

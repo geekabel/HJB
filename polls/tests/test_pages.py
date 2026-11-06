@@ -269,7 +269,7 @@ class VotePageTests(VoteTestCase):
         save_page("polls-vote-app-done", response)
         self.assertContains(response, "Merci, votre vote est enregistré. Il reste anonyme.")
         self.assertContains(response, "Vous avez voté.")
-        self.assertContains(self.client.get(reverse("inbox:list")), "A voté</span>")
+        self.assertContains(self.client.get(reverse("inbox:list")), "Voté</span>")
         response = self.client.post(url, {"option": self.option(campaign, 1)})
         self.assertContains(response, "Vous avez déjà voté.", status_code=400)
         Poll.objects.filter(campaign=campaign).update(closes_at=timezone.now())

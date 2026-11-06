@@ -135,3 +135,41 @@ class ResidentHomeTests(TestCase):
         self.assertContains(response, "1 nouveau message")
         self.assertContains(response, "link-list--todo")
         self.assertNotContains(response, "Rien à faire")
+
+
+class ResidentHomeEdgeTests(TestCase):
+    def test_wifi_words_for_each_case(self):
+        from unittest import mock
+
+        from access.home import todos
+
+        ines = make_user("ines")
+        for days, title in (
+            (-3, "Wifi expiré"),
+            (0, "Wifi : dernier jour"),
+            (1, "Wifi : encore 1 jour"),
+            (16, None),
+        ):
+            access = mock.Mock(days_left=days)
+            with (
+                mock.patch("housing.services.current_stay", return_value=mock.Mock()),
+                mock.patch("housing.wifi.current_access", return_value=access),
+            ):
+                titles = [todo.title for todo in todos(ines)]
+            with self.subTest(days=days):
+                if title:
+                    self.assertIn(title, titles)
+                else:
+                    self.assertEqual(titles, [])
+
+    def test_old_booking_address_still_works(self):
+        ines = make_user("ines")
+        log_in_verified(self.client, ines)
+        response = self.client.get(reverse("rdv:list"), {"avec": "libre", "jour": "2026-11-16"})
+        self.assertRedirects(
+            response,
+            reverse("rdv:book") + "?avec=libre&jour=2026-11-16",
+            fetch_redirect_response=False,
+        )
+        response = self.client.post(reverse("rdv:list"), {"avec": "libre"})
+        self.assertNotEqual(response.status_code, 405)

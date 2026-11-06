@@ -24,7 +24,7 @@
   <a class="button button--secondary button--block" href="{% url 'activation:enter_code' %}">Activer mon compte</a>
 </section>
 
-<p class="text-muted text-small">Téléphone perdu ou changé ? Passez à l'accueil.</p>
+<p class="text-muted text-small">Téléphone perdu ou changé ? Passez à l'accueil avec une pièce d'identité.</p>
 
 <p class="text-small">Équipe : <a href="{% url 'access:login_app_code' %}{% if next %}?next={{ next|urlencode }}{% endif %}">connexion avec un code d'application</a></p>
 {% endblock %}

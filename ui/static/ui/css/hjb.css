@@ -459,7 +459,7 @@
     background: var(--surface-2);
   }
 
-  .link-list a > span {
+  .link-list a > span:not(.counter, .avatar) {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -2037,12 +2037,18 @@
     grid-auto-flow: column;
     grid-auto-columns: 3.75rem;
     overflow-x: auto;
-    padding-block-end: var(--s-1);
+    padding: var(--s-1);
+    margin-inline: calc(-1 * var(--s-1));
     scroll-snap-type: x proximity;
   }
 
   .rdv-days li {
     scroll-snap-align: start;
+  }
+
+  .rdv-day__month {
+    color: var(--text-muted);
+    font-size: 0.6875rem;
   }
 
   .rdv-person,
@@ -2160,6 +2166,20 @@
   .rdv-time input:focus-visible + span {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
+  }
+
+  /* A summary that holds a heading: the triangle on the same line */
+  details[data-platform] > summary {
+    cursor: pointer;
+  }
+
+  details[data-platform] > summary > h2 {
+    display: inline;
+  }
+
+  /* The legend of step 3 lines up with steps 1 and 2 */
+  legend:has(> .rdv__step) {
+    padding-inline: 0;
   }
 
   /* Nothing here yet: one plain line, no frame (design card D2) */

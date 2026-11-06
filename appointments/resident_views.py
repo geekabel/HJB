@@ -64,11 +64,19 @@ def _page(response):
 
 
 @login_required
-@require_safe
+@require_http_methods(["GET", "HEAD", "POST"])
 def overview(request):
-    """The Rendez-vous tab: my meetings to come, and the button to book one."""
+    """The Rendez-vous tab: my meetings to come, and the button to book one.
+
+    Until design card D2 this address was the booking form: a form opened
+    before the change, or a bookmark with a choice, still reaches it.
+    """
     if not is_resident(request.user):
         return redirect("home")
+    if request.method == "POST":
+        return book(request)
+    if request.GET.get("avec") or request.GET.get("jour"):
+        return redirect(f"{reverse('rdv:book')}?{request.GET.urlencode()}")
     return _page(
         render(
             request,

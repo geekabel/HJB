@@ -29,7 +29,7 @@ class Filter:
 FILTERS = (
     Filter("all", "Tous", "Aucun message pour le moment."),
     Filter("todo", "À répondre", "Rien à répondre pour le moment."),
-    Filter("mine", "Pour vous", "Aucun message rien que pour vous."),
+    Filter("mine", "Pour vous", "Aucun message personnel."),
 )
 FILTER_KEYS = {item.key for item in FILTERS}
 
@@ -62,12 +62,15 @@ def received(user):
     )
 
 
-def inbox(user, key="all"):
+def inbox(user, key="all", todo_ids=None):
+    """The list of a filter. ``todo_ids``: the "À répondre" ids, when already known."""
     deliveries = received(user)
     if key == "mine":
         return deliveries.filter(personal=True)
     if key == "todo":
-        return deliveries.filter(pk__in=[item.delivery.pk for item in to_answer(user)])
+        if todo_ids is None:
+            todo_ids = [item.delivery.pk for item in to_answer(user)]
+        return deliveries.filter(pk__in=todo_ids)
     return deliveries
 
 
@@ -85,10 +88,10 @@ def to_answer(user):
     return [item for item in items(user, candidates) if item.waiting or item.vote_waiting]
 
 
-def unread_count(user, key="all"):
+def unread_count(user, key="all", todo_ids=None):
     if not user.is_authenticated:
         return 0
-    return inbox(user, key).filter(read_at__isnull=True).count()
+    return inbox(user, key, todo_ids).filter(read_at__isnull=True).count()
 
 
 def mark_all_read(user, key="all"):

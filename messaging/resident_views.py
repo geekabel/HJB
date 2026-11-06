@@ -217,9 +217,15 @@ def inbox_list(request):
     key = request.GET.get("show", "all")
     if key not in inbox.FILTER_KEYS:
         key = "all"
-    page = Paginator(inbox.inbox(request.user, key), PER_PAGE).get_page(request.GET.get("page"))
+    # "À répondre": worked out once for the list and its count.
+    todo_ids = (
+        [item.delivery.pk for item in inbox.to_answer(request.user)] if key == "todo" else None
+    )
+    page = Paginator(inbox.inbox(request.user, key, todo_ids), PER_PAGE).get_page(
+        request.GET.get("page")
+    )
     current = next(item for item in inbox.FILTERS if item.key == key)
-    unread = inbox.unread_count(request.user, key)
+    unread = inbox.unread_count(request.user, key, todo_ids)
     total = unread if key == "all" else inbox.unread_count(request.user)
     response = render(
         request,

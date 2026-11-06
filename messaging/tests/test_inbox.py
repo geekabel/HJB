@@ -149,7 +149,7 @@ class InboxPageTests(InboxTestCase):
         log_in_verified(self.client, self.yanis)
         response = self.client.get(LIST, {"show": "mine"})
         save_page("messaging-inbox-empty", response)
-        self.assertContains(response, "Aucun message rien que pour vous.")
+        self.assertContains(response, "Aucun message personnel.")
 
     def test_only_own_sent_messages(self):
         self.send("Pour Yanis", people=[self.yanis])
@@ -327,3 +327,58 @@ class InboxEdgeTests(InboxTestCase):
         # "Rendez-vous" entry of the bar (card T28).
         self.assertEqual(len(counts), 3)
         self.assertEqual(self.client.head(LIST).status_code, 200)
+
+
+class ToAnswerTests(InboxTestCase):
+    """The "À répondre" filter and the home list (design card D2)."""
+
+    def test_only_open_and_unanswered(self):
+        soon = timezone.localdate() + timedelta(days=2)
+        open_visit = self.send("Visite ouverte", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        answered = self.send("Déjà répondu", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        replies.record(answered, self.ines, "present")
+        past = self.send("Visite passée", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        Campaign.objects.filter(pk=past.pk).update(
+            event_date=timezone.localdate() - timedelta(days=2)
+        )
+        self.send("Simple annonce")
+        log_in_verified(self.client, self.ines)
+        self.assertEqual([item.campaign.pk for item in inbox.to_answer(self.ines)], [open_visit.pk])
+        response = self.client.get(LIST, {"show": "todo"})
+        save_page("messaging-inbox-todo", response)
+        self.assertEqual(
+            [item.delivery.title for item in response.context["items"]], ["Visite ouverte"]
+        )
+        self.assertContains(response, 'aria-current="page">À répondre</a>')
+        # The home page lists it, with the words of the buttons.
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, "Visite ouverte")
+        self.assertContains(response, "Dites si vous serez là")
+        # Read all, from this filter: only this one.
+        self.client.post(reverse("inbox:read_all"), {"show": "todo"})
+        self.assertEqual(inbox.unread_count(self.ines, "todo"), 0)
+        self.assertEqual(inbox.unread_count(self.ines), 3)
+
+    def test_counted_once_per_page(self):
+        soon = timezone.localdate() + timedelta(days=2)
+        for n in range(3):
+            self.send(f"Visite {n}", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        log_in_verified(self.client, self.ines)
+        self.client.get(LIST, {"show": "todo"})  # warm up the session
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(LIST, {"show": "todo"})
+        for n in range(3, 9):
+            self.send(f"Visite {n}", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        with CaptureQueriesContext(connection) as more:
+            self.client.get(LIST, {"show": "todo"})
+        self.assertEqual(len(few), len(more))
+
+    def test_home_shows_five_then_a_link(self):
+        soon = timezone.localdate() + timedelta(days=2)
+        for n in range(7):
+            self.send(f"Visite {n}", reply_type=ReplyType.ATTENDANCE, event_date=soon)
+        log_in_verified(self.client, self.ines)
+        response = self.client.get(reverse("home"))
+        self.assertEqual(len(response.context["todos"]), 5)
+        self.assertContains(response, "Voir tout (2 de plus)")
+        self.assertContains(response, f"{LIST}?show=todo")

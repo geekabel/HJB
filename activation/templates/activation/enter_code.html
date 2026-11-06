@@ -1,5 +1,5 @@
 {% extends "activation/base.html" %}
-{% load static %}
+{% load icons static %}
 {% block title %}Activer mon compte{% endblock %}
 {% block head %}<script src="{% static 'activation/code-from-link.js' %}" defer></script>{% endblock %}
 {% block step %}
@@ -14,5 +14,6 @@
   <button class="button button--block" type="submit">Continuer</button>
 </form>
 
-<p class="text-muted text-small">Pas de code, ou code expiré ? Passez à l'accueil.</p>
+<p class="text-muted text-small">Pas de code, ou code expiré ? Passez à l'accueil avec une pièce d'identité.</p>
+<p class="text-muted text-small icon-text">{% icon "lock" %}<span>Votre numéro de chambre ne sert jamais à vous connecter.</span></p>
 {% endblock %}

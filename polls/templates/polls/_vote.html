@@ -29,7 +29,7 @@ comment (kept after an error), action (address of the form, "" for the same page
       <span class="field__help" id="vote-comment-help">Sans votre nom. N'écrivez rien qui vous fasse reconnaître.</span>
     </div>
     {% endif %}
-    <p class="text-muted text-small">Vous ne pourrez plus le changer. Clôture : <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>.</p>
+    <p class="text-muted text-small">Votre vote est définitif. Clôture : <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>.</p>
     <button class="button" type="submit">Envoyer mon vote</button>
   </form>
   {% endif %}

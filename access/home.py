@@ -21,7 +21,10 @@ class Todo:
     icon: str
 
 
-def todos(user):
+SHOWN = 5  # more than that: a link to the full list
+
+
+def todos(user, unread_direct=None):
     from appointments import booking, direct
     from housing import wifi
     from housing.models import WIFI_REMINDER_DAYS
@@ -33,12 +36,12 @@ def todos(user):
         found.append(
             Todo(
                 title=item.delivery.title,
-                detail="Votez" if item.vote_waiting else "Répondez : présent ou absent",
+                detail="Votez" if item.vote_waiting else "Dites si vous serez là",
                 url=reverse("inbox:message", args=[item.campaign.pk]),
                 icon="vote" if item.vote_waiting else "door",
             )
         )
-    unread = direct.unread_count(user)
+    unread = direct.unread_count(user) if unread_direct is None else unread_direct
     if unread:
         plural = unread > 1
         found.append(
@@ -65,10 +68,16 @@ def todos(user):
     access = wifi.current_access(stay.room) if stay else None
     if access is not None and access.days_left <= WIFI_REMINDER_DAYS:
         days = access.days_left
+        if days < 0:
+            title = "Wifi expiré"
+        elif days == 0:
+            title = "Wifi : dernier jour"
+        else:
+            title = f"Wifi : encore {days} jour{'s' if days > 1 else ''}"
         found.append(
             Todo(
-                title="Wifi bientôt fini",
-                detail=f"Encore {days} jour{'s' if days > 1 else ''}. Passez à l'accueil.",
+                title=title,
+                detail="Passez à l'accueil pour le renouveler.",
                 url=reverse("housing:my_wifi"),
                 icon="wifi",
             )

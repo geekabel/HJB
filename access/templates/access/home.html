@@ -20,6 +20,7 @@
     <li><a href="{{ todo.url }}">{% icon todo.icon %}<span>{{ todo.title }}<small>{{ todo.detail }}</small></span>{% icon "chevron" %}</a></li>
     {% endfor %}
   </ul>
+  {% if more_todos > 0 %}<a href="{% url 'inbox:list' %}?show=todo">Voir tout ({{ more_todos }} de plus)</a>{% endif %}
   {% else %}
   <p class="empty-state icon-text">{% icon "check" %}<span>Rien à faire pour le moment.</span></p>
   {% endif %}
