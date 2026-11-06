@@ -6,25 +6,25 @@ https://docs.djangoproject.com/en/6.1/topics/db/transactions/#performing-actions
 """
 
 from django.db import transaction
-from django_otp_webauthn.utils import get_credential_model
 
 from accounts.sessions import close_all
+
+from . import credentials
 
 
 def remove_passkeys_on_departure(sender, resident, **kwargs):
     """Called inside the departure transaction. The passkey count goes to the audit log."""
-    passkeys = get_credential_model().objects.filter(user=resident)
-    count = passkeys.count()
-    passkeys.delete()
-    return {"passkeys_removed": count}
+    return {"passkeys_removed": credentials.remove_all(resident)}
 
 
 def close_sessions_after_delete(sender, instance, **kwargs):
-    """A deleted passkey (admin site, lost phone, departure) closes the sessions of the account.
+    """A deleted passkey or app code (admin site, lost phone, departure) closes the sessions.
 
     Otherwise, the lost device would stay logged in until the end of its
     session: the session does not depend on the passkey. We close after the
     transaction commits, so nothing is closed if the deletion is rolled back.
     """
+    if getattr(instance, "confirmed", True) is False:
+        return  # an app code never finished: it never opened a session
     user_id = instance.user_id  # the account itself may be being deleted
     transaction.on_commit(lambda: close_all(user_id))

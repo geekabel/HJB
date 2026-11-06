@@ -50,6 +50,9 @@ INSTALLED_APPS = [
     # https://django-otp-webauthn.readthedocs.io/en/stable/getting_started/quickstart.html
     "django_otp",
     "django_otp_webauthn",
+    # Codes of an authenticator app, for staff only (card T14c).
+    # https://django-otp-official.readthedocs.io/en/stable/overview.html#totp-devices
+    "django_otp.plugins.otp_totp",
 ]
 
 MIDDLEWARE = [
@@ -100,8 +103,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Custom model, defined before the first migration:
 # https://docs.djangoproject.com/en/6.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 
-# Login by passkey only (cards T13 and T14): no password,
-# for residents as well as for staff.
+# No password, for residents as well as for staff: login by passkey
+# (cards T13 and T14), or, for staff only, by the code of an authenticator
+# app (card T14c, access/app_code.py).
 LOGIN_URL = "access:login"
 LOGIN_REDIRECT_URL = "home"
 AUTHENTICATION_BACKENDS = [
@@ -244,6 +248,8 @@ TEST_RUNNER = "tools.test_runner.HJBTestRunner"
 # they are in dev.py and prod.py. Changing the domain makes the passkeys unusable.
 
 OTP_WEBAUTHN_RP_NAME = "Habitat Jeunes Belfort"
+# Name shown in the authenticator app, next to the username (card T14c).
+OTP_TOTP_ISSUER = "Habitat Jeunes Belfort"
 OTP_WEBAUTHN_HELPER_CLASS = "access.webauthn.HJBWebAuthnHelper"
 
 

@@ -2,16 +2,17 @@
 
 from django.db import transaction
 from django.utils import timezone
-from django_otp_webauthn.utils import get_credential_model
 
 from accounts.models import ActivationCode
 from accounts.sessions import close_sessions, session_keys_for
 from audit.models import Action
 from audit.service import log_action
 
+from . import credentials
+
 
 def cut_access(user, *, by=None, request=None):
-    """Delete the passkeys, cancel the pending code and close the sessions.
+    """Delete the passkeys and app codes, cancel the pending code, close the sessions.
 
     The person can come back with a new activation code (and, if their
     SIM card is lost, a phone number fixed on their profile).
@@ -20,9 +21,7 @@ def cut_access(user, *, by=None, request=None):
     sessions = session_keys_for(user)
     with transaction.atomic():
         type(user).objects.select_for_update().get(pk=user.pk)
-        passkeys = get_credential_model().objects.filter(user=user)
-        passkey_count = passkeys.count()
-        passkeys.delete()
+        passkey_count = credentials.remove_all(user)
         ActivationCode.objects.valid().filter(user=user).update(cancelled_at=timezone.now())
         session_count = close_sessions(sessions)
         log_action(

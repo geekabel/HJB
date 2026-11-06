@@ -12,6 +12,8 @@ class Action(models.TextChoices):
     RESIDENT_DEPARTED = "resident_departed", "Départ d'un résident"
     RESIDENT_RETURNED = "resident_returned", "Retour d'un ancien résident"
     PASSKEY_CREATED = "passkey_created", "Clé d'accès créée"
+    APP_CODE_CREATED = "app_code_created", "Application de codes reliée"
+    APP_CODE_FAILURES = "app_code_failures", "Codes d'application faux à répétition"
     ACCESS_CUT = "access_cut", "Accès coupé (téléphone perdu)"
     WIFI_ACCESS_SET = "wifi_access_set", "Accès wifi enregistré"
     MESSAGE_SCHEDULED = "message_scheduled", "Message programmé"

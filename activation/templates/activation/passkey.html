@@ -16,4 +16,12 @@
 </ul>
 
 {% include "access/_passkey_button.html" with label="Créer ma clé d'accès" %}
+
+{% if app_code_allowed %}
+<section class="card stack stack--tight" aria-labelledby="app-code-title">
+  <h2 id="app-code-title" class="card__title">Sur un ordinateur ?</h2>
+  <p class="text-small">Utilisez plutôt une application de codes sur votre téléphone.</p>
+  <a class="button button--quiet" href="{% url 'activation:app_code' %}">Utiliser une application de codes</a>
+</section>
+{% endif %}
 {% endblock %}

@@ -43,7 +43,7 @@ python manage.py runserver
 
 Si le dossier `.venv` a été créé avec un Python trop ancien, le supprimer (`rm -rf .venv`) avant de le recréer.
 
-Il n'y a aucun mot de passe : le premier administrateur active son compte comme tout le monde. Ouvrez http://localhost:8000/activer/, saisissez le code affiché, puis le code SMS (en développement, il s'affiche dans la console du serveur), et créez votre clé d'accès.
+Il n'y a aucun mot de passe : le premier administrateur active son compte comme tout le monde. Ouvrez http://localhost:8000/activer/, saisissez le code affiché, puis le code SMS (en développement, il s'affiche dans la console du serveur). À la dernière étape, choisissez « Utiliser une application de codes » : scannez le code QR avec Google Authenticator, Microsoft Authenticator ou FreeOTP, puis tapez le code à 6 chiffres. Ensuite, connectez-vous sur /connexion/code/ avec votre identifiant et le code de l'application. La clé d'accès reste possible à la place.
 
 En local, pour entrer tout de suite sans créer de clé d'accès :
 
@@ -51,7 +51,7 @@ En local, pour entrer tout de suite sans créer de clé d'accès :
 python manage.py dev_login marie
 ```
 
-La commande affiche un lien valable 10 minutes, une seule fois, qui ouvre la session de ce compte (espace équipe compris). Elle ne marche qu'en développement (`DEBUG`) : en production, la commande refuse et le lien répond « page introuvable ». La connexion des comptes en production reste la clé d'accès.
+La commande affiche un lien valable 10 minutes, une seule fois, qui ouvre la session de ce compte (espace équipe compris). Elle ne marche qu'en développement (`DEBUG`) : en production, la commande refuse et le lien répond « page introuvable ». En production, on se connecte avec une clé d'accès, ou, pour l'équipe, avec le code d'une application.
 
 `manage.py` utilise les réglages de développement (`config.settings.dev`) par défaut. L'administration est sur http://localhost:8000/admin/. En production, son adresse vient de `DJANGO_ADMIN_URL`.
 
@@ -102,7 +102,7 @@ Les serveurs WSGI et ASGI utilisent `config.settings.prod` par défaut.
 
 ## Clés d'accès (connexion)
 
-Tout le monde se connecte avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. Il n'y a pas de mot de passe, ni pour les résidents ni pour le personnel. Un membre du personnel reçoit son premier code d'un administrateur (action « Générer un code d'activation (personnel) » dans l'administration). La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
+Les résidents se connectent avec une clé d'accès (passkey) : Face ID, empreinte ou code du téléphone. L'équipe peut aussi utiliser le code à 6 chiffres d'une application (Google Authenticator, Microsoft Authenticator, FreeOTP), plus simple sur un ordinateur ([django-otp, TOTP](https://django-otp-official.readthedocs.io/en/stable/overview.html#totp-devices)). Il n'y a pas de mot de passe, ni pour les résidents ni pour le personnel. Un membre du personnel reçoit son premier code d'un administrateur (action « Générer un code d'activation (personnel) » dans l'administration). La bibliothèque est [django-otp-webauthn](https://django-otp-webauthn.readthedocs.io/en/stable/).
 
 - En développement, ouvrir **http://localhost:8000**, pas http://127.0.0.1:8000 : les navigateurs refusent les clés d'accès sur une adresse IP.
 - En production, `DJANGO_WEBAUTHN_RP_ID` (le domaine) et `DJANGO_WEBAUTHN_ORIGINS` sont obligatoires (voir [.env.example](.env.example)). Changer de domaine ensuite rend toutes les clés inutilisables.
