@@ -210,7 +210,7 @@ def account(request):
 @login_required
 def home(request):
     """Home page. Staff start on their main task: meetings for an educator,
-    reports for maintenance, residents otherwise.
+    reports for maintenance, the dashboard otherwise.
 
     The resident home is card T34; the staff dashboard comes with T35.
     """
@@ -226,10 +226,9 @@ def home(request):
             "accounts.manage_reports"
         ):
             return redirect("reports_staff:board")
-        if user.has_perm("accounts.view_residents"):
-            return redirect("residents:list")
-        if user.has_perm("accounts.send_messages"):
-            return redirect("messaging:list")
+        # Front desk and administration: the dashboard (card T35).
+        if user.has_perm("accounts.view_residents") or user.has_perm("accounts.send_messages"):
+            return redirect("dashboard:home")
         return redirect("account")
     from appointments import direct
     from housing.services import current_stay

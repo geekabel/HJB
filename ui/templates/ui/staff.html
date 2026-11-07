@@ -2,12 +2,13 @@
 {% load icons french %}
 {% comment %}
   Section template for the staff area.
-  Variables: ``active_nav`` (messages, reports, appointments, conversations,
-  residents, audit, notifications, account).
+  Variables: ``active_nav`` (dashboard, messages, reports, appointments,
+  conversations, residents, audit, notifications, account).
   On a computer (64rem and more) the menu is a column on the left. Below,
   a top bar with a "Menu" button opens it (ui/js/app.js); without
   JavaScript the menu stays open above the page.
-  The dashboard (T35) comes back when it exists.
+  The dashboard (T35) is for every staff member; the front desk and the
+  administration start on it.
 {% endcomment %}
 {% block body_class %}staff-page{% endblock %}
 {% block body %}
@@ -18,6 +19,9 @@
   </div>
   <div class="staff-menu__panel" id="staff-menu-panel">
     <ul>
+      {% if perms.accounts.access_staff_area %}
+      <li><a href="{% url 'dashboard:home' %}"{% if active_nav == "dashboard" %} aria-current="page"{% endif %}>Tableau de bord</a></li>
+      {% endif %}
       {% if perms.accounts.view_residents %}
       <li><a href="{% url 'residents:list' %}"{% if active_nav == "residents" %} aria-current="page"{% endif %}>Résidents</a></li>
       {% endif %}
