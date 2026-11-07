@@ -22,6 +22,7 @@ class Action(models.TextChoices):
     MESSAGE_SENT = "message_sent", "Message envoyé"
     DEPARTURE_PLANNED = "departure_planned", "Départ prévu"
     DEPARTURE_PLAN_CANCELLED = "departure_plan_cancelled", "Départ prévu annulé"
+    DATA_PURGED = "data_purged", "Données anciennes supprimées"
 
 
 class AuditEntryImmutable(Exception):
@@ -77,7 +78,7 @@ class AuditEntry(models.Model):
     def delete(self, *args, **kwargs):
         raise AuditEntryImmutable(
             "An audit entry cannot be deleted one by one. "
-            "Purging by retention period is planned in T36."
+            "Old entries go with the retention purge (privacy/retention.py)."
         )
 
     def summary(self):
@@ -191,6 +192,11 @@ class AuditEntry(models.Model):
             if not previous:
                 return "Premier accès."
             return f"Remplace {previous} ancien{'s' if previous > 1 else ''} accès."
+        if self.action == Action.DATA_PURGED:
+            from privacy.retention import describe
+
+            text = describe(self.details)
+            return (text[:1].upper() + text[1:] + ".") if text else ""
         if self.action == Action.APP_CODE_FAILURES:
             failures = self.details.get("failures")
             return f"{failures} codes faux d'affilée." if failures else ""

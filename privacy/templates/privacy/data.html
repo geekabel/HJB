@@ -1,0 +1,80 @@
+{% extends layout %}
+{% load icons %}
+{% block title %}Vos données{% endblock %}
+{% block content %}
+<header class="stack stack--tight">
+  <h1>Vos données</h1>
+  <p class="text-muted">Ce que la résidence garde sur vous, pourquoi, et combien de temps.</p>
+</header>
+
+<section class="card stack" aria-labelledby="who-title">
+  <h2 id="who-title" class="card__title">Qui s'en occupe</h2>
+  <p>L'association Habitat Jeunes Belfort gère la résidence et cette application. Elle est responsable de vos données.</p>
+  <p>Elle s'en sert pour vous loger et vous informer : messages, accès wifi, rendez-vous, signalements, votes. Rien d'autre. Pas de publicité, pas de revente.</p>
+  <p>Ce qui l'y autorise :</p>
+  <ul class="stack stack--tight">
+    <li>votre contrat de résidence, pour le compte, la chambre, les messages, le wifi, les rendez-vous et les signalements ;</li>
+    <li>votre accord, pour les notifications ;</li>
+    <li>son intérêt légitime, pour les votes et le journal des actions sensibles (la sécurité).</li>
+  </ul>
+</section>
+
+<section class="card stack" aria-labelledby="what-title">
+  <h2 id="what-title" class="card__title">Ce que nous gardons</h2>
+  <ul class="stack stack--tight">
+    <li>Votre nom, votre prénom et votre téléphone portable.</li>
+    <li>Votre chambre, et vos dates d'arrivée et de départ.</li>
+    <li>Les messages reçus, et vos réponses «&nbsp;Présent&nbsp;» ou «&nbsp;Absent&nbsp;».</li>
+    <li>Vos rendez-vous et leur motif. Seul l'éducateur que vous voyez lit le motif.</li>
+    <li>Vos messages avec un éducateur.</li>
+    <li>Vos signalements et leurs photos. Les photos perdent leur position GPS et leurs détails techniques.</li>
+    <li>Votre clé d'accès. Elle reste dans votre téléphone : nous gardons seulement de quoi la reconnaître.</li>
+    <li>L'adresse technique de votre téléphone, si vous activez les notifications.</li>
+    <li>L'identifiant et le mot de passe wifi de votre chambre.</li>
+    <li>L'adresse IP d'une action sensible ou d'un code d'activation faux.</li>
+  </ul>
+  <p>Les votes sont anonymes. Nous savons seulement que vous avez voté, et quel jour. Jamais votre choix.</p>
+</section>
+
+<section class="card stack" aria-labelledby="seen-title">
+  <h2 id="seen-title" class="card__title">Qui les voit</h2>
+  <p>L'équipe de la résidence, chacun selon son rôle : l'accueil, les éducateurs, la maintenance, la direction. Chaque action sensible est notée dans un journal.</p>
+  <p>Pour vous joindre, nous passons par des services techniques. Ils ne reçoivent que le nécessaire.</p>
+  <ul class="stack stack--tight">
+    <li>Les SMS partent par un service d'envoi de SMS.</li>
+    <li>Les notifications passent par le service de votre navigateur : Apple, Google, Microsoft ou Mozilla. Il peut être hors de l'Union européenne. Le contenu est chiffré pour votre téléphone : ce service ne le lit pas.</li>
+  </ul>
+  <p>Le site n'utilise pas de cookie de mesure d'audience. Seuls les cookies utiles à la connexion et à la sécurité sont posés.</p>
+</section>
+
+<section class="card stack" aria-labelledby="time-title">
+  <h2 id="time-title" class="card__title">Combien de temps</h2>
+  <dl class="durations">
+    <div><dt>Votre compte, et tout ce qui s'y rattache</dt><dd>{{ durations.former_residents }} après le départ</dd></div>
+    <div><dt>Photos d'un signalement</dt><dd>{{ durations.report_photos }} après sa clôture</dd></div>
+    <div><dt>Rendez-vous et leur motif</dt><dd>{{ durations.meetings }} après le rendez-vous</dd></div>
+    <div><dt>Messages avec un éducateur</dt><dd>{{ durations.direct_messages }} après l'envoi</dd></div>
+    <div><dt>Qui a reçu un message, et ses réponses</dt><dd>{{ durations.deliveries }} après l'envoi</dd></div>
+    <div><dt>Anciens accès wifi de la chambre</dt><dd>{{ durations.wifi_accesses }} après leur fin</dd></div>
+    <div><dt>Journal des actions sensibles</dt><dd>{{ durations.audit_log }} après l'action</dd></div>
+    <div><dt>Codes d'activation et de vérification</dt><dd>{{ durations.codes }} après leur fin</dd></div>
+  </dl>
+  <p class="text-muted text-small">À votre départ, votre compte est coupé tout de suite. Il est supprimé ensuite. Le journal peut encore garder votre nom, au plus {{ durations.audit_log }} après l'action notée.</p>
+</section>
+
+<section class="card stack" aria-labelledby="rights-title">
+  <h2 id="rights-title" class="card__title">Vos droits</h2>
+  <p>Vous pouvez :</p>
+  <ul class="stack stack--tight">
+    <li>voir vos données et en demander une copie ;</li>
+    <li>les faire corriger ;</li>
+    <li>demander leur suppression, ou qu'elles soient mises de côté un temps ;</li>
+    <li>refuser les usages fondés sur l'intérêt légitime (votes, journal), pour une raison qui vous est propre ;</li>
+    <li>couper les notifications à tout moment, dans Mon compte ;</li>
+    <li>dire ce que deviennent vos données après votre décès.</li>
+  </ul>
+  <p>{% if contact_is_email %}Écrivez à <a href="mailto:{{ contact }}">{{ contact }}</a>.{% elif contact %}Adressez-vous à : {{ contact }}.{% else %}Adressez-vous à l'accueil de la résidence.{% endif %} Nous répondons sous un mois.</p>
+  <p>Vous pouvez aussi, à tout moment, vous plaindre auprès de la <a href="https://www.cnil.fr/fr/plaintes">CNIL</a>.</p>
+</section>
+{% endblock %}
+{% block nav %}{% if user.is_authenticated %}{{ block.super }}{% endif %}{% endblock %}

@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "reports",
     # Staff dashboard (card T35).
     "dashboard",
+    # Personal data: information page, retention and purge (card T36).
+    "privacy",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
@@ -308,3 +310,23 @@ EMERGENCY_PHONE = os.environ.get("DJANGO_EMERGENCY_PHONE", "")
 # client_max_body_size): Django does not count the files in it.
 # https://docs.djangoproject.com/en/6.1/ref/settings/#data-upload-max-number-files
 DATA_UPLOAD_MAX_NUMBER_FILES = 10
+
+
+# Personal data, card T36
+# How many days each kind of data is kept (privacy/retention.py). The
+# association sets them as data controller; the page "Vos données" shows
+# them. Change them here, not in the code.
+RETENTION_DAYS = {
+    "former_residents": 365,
+    "report_photos": 180,
+    "meetings": 365,
+    "direct_messages": 365,
+    "deliveries": 365,
+    "wifi_accesses": 365,
+    "audit_log": 365,
+    "codes": 30,
+}
+
+# Where a resident asks about their data (an e-mail address, or a few words).
+# Empty: the page says "à l'accueil de la résidence".
+PRIVACY_CONTACT = os.environ.get("DJANGO_PRIVACY_CONTACT", "")
