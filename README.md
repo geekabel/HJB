@@ -158,9 +158,9 @@ Les commandes planifiées, avec les réglages de production et les mêmes variab
 - chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours ;
 - chaque jour, `clearsessions` (Django) : efface les sessions expirées ;
 - chaque nuit, `backup_data --to /var/backups/hjb --keep 14` : sauvegarde la base et les photos, puis relit la sauvegarde (voir « Sauvegardes ») ;
-- chaque jour, `purge_personal_data --apply` : supprime les données dont la durée de conservation est passée (voir « Données personnelles »). **À ajouter seulement quand l'association a validé les durées.** Sans `--apply`, la commande compte sans rien supprimer.
+- chaque jour, `purge_personal_data --apply` : supprime les données dont la durée de conservation est passée (voir « Données personnelles »). Les durées sont celles de la page « Réglages » (1 an par défaut, validées le 7 nov. 2026). Sans `--apply`, la commande compte sans rien supprimer.
 
-En production, `deploy/deploy.sh` installe tout cela en services et minuteurs systemd (voir « Déploiement ») : `hjb-worker` pour le *worker*, `hjb-minute.timer` pour `run_scheduled`, `hjb-daily.timer` (10 h, heure de Paris), `hjb-backup.timer` (3 h 15) et `hjb-purge.timer` (installé, mais pas activé). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
+En production, `deploy/deploy.sh` installe tout cela en services et minuteurs systemd (voir « Déploiement ») : `hjb-worker` pour le *worker*, `hjb-minute.timer` pour `run_scheduled`, `hjb-daily.timer` (10 h, heure de Paris), `hjb-backup.timer` (3 h 15) et `hjb-purge.timer` (4 h 30). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
 
 ## Déploiement
 
