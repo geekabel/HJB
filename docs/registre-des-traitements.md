@@ -122,8 +122,9 @@ Repères :
   suivi, présence demandée pour l'intervention.
 - **Destinataires** : accueil et maintenance. Les photos ne sont servies
   qu'aux personnes autorisées, jamais par un lien public.
-- **Durée** : photos 180 jours après la clôture ; le signalement part avec
-  le compte.
+- **Durée** : photos 180 jours après la clôture. À la suppression du
+  compte, le signalement reste sans le nom du résident et sans ses photos :
+  la chambre garde l'histoire de ses réparations.
 
 ## 7. Wifi des chambres
 

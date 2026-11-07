@@ -635,6 +635,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] `purge_personal_data` : compte par défaut, supprime avec `--apply`, note au journal ce qui a vraiment été supprimé
 - [x] Registre des traitements : `docs/registre-des-traitements.md` (parties « à compléter » par l'association)
 - [x] Relecture indépendante : un compte sans aucun séjour n'est jamais choisi (ancien membre de l'équipe) ; chaque ancien résident dans sa propre transaction, un compte encore protégé est gardé et le reste continue ; nouvelle vérification sous verrou (retour pendant la suppression), testée ; le journal note ce qui est supprimé, pas ce qui était compté ; listes de personnes d'un message et conversations vides supprimées ; accès wifi coupés sans date de fin ; page complétée (bases légales, transfert hors UE, droits de limitation, de retrait, après décès, plainte à tout moment)
+- [x] Signalements d'un compte supprimé gardés sans le nom ni les photos : la chambre garde l'histoire de ses réparations (choix de Godwin, 7 nov.)
 - [ ] Durées et contact (`DJANGO_PRIVACY_CONTACT`) à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
 
 #### T37 Sécurité avant la mise en ligne

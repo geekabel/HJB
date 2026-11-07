@@ -11,8 +11,9 @@ What goes, and when (default durations):
 - a former resident (account disabled, at least one stay, none in
   progress): the account and all that is linked to it, 365 days after the
   last departure. That is stays, deliveries and answers, meetings, direct
-  messages, reports and their photos, passkeys, notification
-  subscriptions, codes;
+  messages, the photos of their reports, passkeys, notification
+  subscriptions, codes. Their reports stay without their name: the room
+  keeps its repair history;
 - the photos of a closed report: 180 days after it was closed;
 - meetings (with their reason) and direct messages: 365 days after; a
   conversation left empty goes too;
@@ -226,6 +227,7 @@ def run(apply=False, now=None):
     from audit.models import Action
     from audit.service import log_action
     from housing.models import Stay
+    from reports.models import ReportPhoto
 
     done = Purge()
     kept = 0
@@ -234,6 +236,11 @@ def run(apply=False, now=None):
         for pk in _lock_former(candidates):
             try:
                 with transaction.atomic():
+                    # Their reports stay for the room's repair history,
+                    # without the person (resident set to NULL) and without
+                    # the photos, taken in their private room.
+                    _, by_model = ReportPhoto.objects.filter(report__resident_id=pk).delete()
+                    photos = by_model.get(ReportPhoto._meta.label, 0)
                     # Stays protect their resident (room history): first.
                     Stay.objects.filter(resident_id=pk).delete()
                     User.objects.filter(pk=pk).delete()
@@ -241,6 +248,7 @@ def run(apply=False, now=None):
                 kept += 1
             else:
                 done.former_residents += 1
+                done.report_photos += photos
         # A queryset delete sends post_delete for each photo (its file goes)
         # and never calls AuditEntry.delete, which refuses a single entry.
         for key, found in queries.items():
