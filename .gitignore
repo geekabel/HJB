@@ -30,3 +30,6 @@ db.sqlite3-shm
 
 # Pages captured for the W3C validator
 /build/
+
+# Real first-loading file of a server (deploy/initial-data.example.yaml)
+deploy/initial-data.yaml
