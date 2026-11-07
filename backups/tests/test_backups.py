@@ -47,6 +47,25 @@ class BackupTests(TransactionTestCase):
             archive.extractall(restored, filter="data")
         self.assertEqual((restored / "reports" / "a.jpg").read_bytes(), b"photo")
 
+    def test_no_session_nor_app_code_secret_in_the_copy(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        session = SessionStore()
+        session["x"] = 1
+        session.create()
+        TOTPDevice.objects.create(user=User.objects.get(), name="app", confirmed=True)
+        folder = service.make(self.target)
+        copy = sqlite3.connect(folder / service.DB_NAME)
+        for table in ("django_session", "otp_totp_totpdevice"):
+            self.assertEqual(copy.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], 0)
+        copy.close()
+        manifest = service.verify(folder)
+        self.assertIn("django_session", manifest["left_out"])
+        self.assertTrue(manifest["database"])
+        # Nothing left in the free pages either.
+        self.assertNotIn(session.session_key.encode(), (folder / service.DB_NAME).read_bytes())
+
     def test_a_changed_backup_is_refused(self):
         folder = service.make(self.target)
         with open(folder / service.DB_NAME, "r+b") as database:

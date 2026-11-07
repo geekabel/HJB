@@ -638,15 +638,20 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Signalements d'un compte supprimé gardés pour l'histoire de la chambre, rendus anonymes : ni nom, ni texte, ni note, ni photo ; un signalement encore ouvert est clos (choix de Godwin, 7 nov. ; relecture indépendante faite)
 - [ ] Durées et contact (`DJANGO_PRIVACY_CONTACT`) à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
 
-#### T37 Sécurité avant la mise en ligne
-- **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/).
-- [ ] `check --deploy` sans alerte, dont HSTS sur les sous-domaines et préchargement (W005, W021) une fois le domaine choisi
-- [ ] HTTPS, cookies sécurisés, politique de sécurité du contenu (CSP)
-- [ ] Sauvegardes testées
+#### T37 Sécurité avant la mise en ligne (fait le 7 nov. 2026)
+- **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/), [sqlite3, backup](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup).
+- [x] `check --deploy` : seuls restent HSTS sur les sous-domaines et préchargement (W005, W021), à régler avec le domaine (T38), et le fournisseur SMS
+- [x] HTTPS, cookies `Secure` et préfixe `__Host-`, CSP stricte (aucun script ni style dans la page, aucune autre origine), Permissions-Policy ; aucune violation sur environ 190 pages et l'administration
+- [x] Pages d'une personne connectée jamais mises en cache ; en-têtes de sécurité aussi sur les refus de l'espace équipe
+- [x] Sauvegardes : `backup_data` (copie SQLite cohérente, photos, manifeste, relecture aussitôt, rotation) et `verify_backup` ; ni clés, ni sessions, ni secrets des applications de codes ; restauration testée
+- [x] `pip-audit` dans la CI
+- [x] Audit de sécurité indépendant de toute l'application : accès croisés entre résidents testés en direct (tous refusés) ; corrigés : codes d'application bloqués après 20 codes faux d'affilée et plus d'indice « code juste » sur la page de connexion ; code d'activation, accès coupé et nouveau numéro demandent une confirmation récente ; changement de numéro au journal ; sauvegardes sans sessions ni secrets
 
 #### T38 Déploiement
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
-- [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites
+- [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites (**avant l'ouverture** : sinon tout le monde a l'adresse du proxy, audit T37)
+- [ ] Journaux nginx : masquer le secret de l'adresse des accusés OVH ; SMSGate en HTTPS si le serveur n'est pas sur le même réseau (audit T37)
+- [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
 - [ ] Fichiers statiques et médias ; dossier des photos des signalements (DJANGO_MEDIA_ROOT) hors du site public et sauvegardé
 - [ ] `DJANGO_EMERGENCY_PHONE` : le numéro de l'accueil (choix de Godwin, 7 nov.)

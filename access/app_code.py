@@ -12,7 +12,11 @@ We add three things (independent review of T14c):
   throttling or use one code twice (``for_verify`` in the django-otp docs);
 - the wait stops growing after 10 wrong codes (8.5 minutes): a stranger who
   knows a username cannot lock the person out for days;
-- a person who types the right code while the wait runs is told to wait.
+- a person who types the right code while the wait runs is told to wait,
+  but only on the confirmation page, once logged in: on the login page it
+  would tell a stranger that the code is right (card T37);
+- after HARD_LIMIT wrong codes in a row, the app no longer opens the
+  account (AppCodeGuard, card T37): slow guesses cannot go on for months.
 Docs: https://django-otp-official.readthedocs.io/en/stable/overview.html#totp-devices
 """
 
@@ -33,6 +37,9 @@ from .session_policy import is_resident
 DEVICE_NAME = "Application de codes"
 MAX_FAILURES = 10  # the wait stops growing here: 2 ** 9 seconds, 8.5 minutes
 REPORTED_FAILURES = 5  # the audit log notes the account once, at this count
+# Wrong codes in a row before the app is locked: with 3 codes accepted at a
+# time out of a million, 20 guesses leave less than 1 chance in 10,000.
+HARD_LIMIT = 20
 
 
 def allowed(user):
@@ -83,25 +90,47 @@ def _right_now(device, token):
     return totp.verify(int(token), device.tolerance, device.last_t + 1)
 
 
-def verify(device, value, request=None):
-    """True if the code is right. Raise Waiting if it is right but too early.
+def verify(device, value, request=None, tell_waiting=False):
+    """True if the code is right.
 
-    Runs under a lock on the device row: one check at a time per account.
+    With ``tell_waiting`` (confirmation page, the person is logged in),
+    raise Waiting if the code is right but too early. Without it (login
+    page), a right code during the wait is simply refused, like a wrong
+    one: no hint for a stranger. Runs under a lock on the device row.
     """
+    from django.utils import timezone
+
+    from .models import AppCodeGuard
+
     token = clean_token(value)
     with transaction.atomic():
         device = TOTPDevice.objects.select_for_update().get(pk=device.pk)
+        guard, _ = AppCodeGuard.objects.get_or_create(device=device)
+        if guard.locked_at:
+            return False
         allowed_now, data = device.verify_is_allowed()
         if not allowed_now:
-            if token and _right_now(device, token):
+            if tell_waiting and token and _right_now(device, token):
                 locked_until = data.get("locked_until")
                 seconds = (locked_until.timestamp() - time.time()) if locked_until else 60
                 raise Waiting(seconds)
             return False
         if token and device.verify_token(token):
+            if guard.failures:
+                AppCodeGuard.objects.filter(pk=guard.pk).update(failures=0)
             return True
         if not token:
             device.throttle_increment(commit=True)
+        guard.failures += 1
+        if guard.failures >= HARD_LIMIT:
+            guard.locked_at = timezone.now()
+            log_action(
+                Action.APP_CODE_LOCKED,
+                target=device.user,
+                details={"failures": guard.failures},
+                request=request,
+            )
+        guard.save(update_fields=["failures", "locked_at"])
         if device.throttling_failure_count > MAX_FAILURES:
             TOTPDevice.objects.filter(pk=device.pk).update(throttling_failure_count=MAX_FAILURES)
         elif device.throttling_failure_count == REPORTED_FAILURES:
@@ -112,6 +141,12 @@ def verify(device, value, request=None):
                 request=request,
             )
         return False
+
+
+def is_locked(device):
+    from .models import AppCodeGuard
+
+    return AppCodeGuard.objects.filter(device=device, locked_at__isnull=False).exists()
 
 
 def same_work_without_device():

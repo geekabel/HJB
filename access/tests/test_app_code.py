@@ -8,19 +8,23 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 from django_otp.oath import totp
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp_webauthn.utils import get_credential_model
 
 from access import app_code, credentials
 from access.services import cut_access
-from access.views import MAX_APP_CODE_FAILURES, WRONG_APP_CODE
+from access.views import MAX_APP_CODE_FAILURES
+from access.views import WRONG_APP_CODE as WRONG_TEXT
 from accounts.activation_codes import issue_code
 from accounts.roles import Role
 from accounts.tests.helpers import log_in_verified, make_user
 from audit.models import Action, AuditEntry
 from sms.providers import memory
 from tools.html_capture import save_page
+
+WRONG_APP_CODE = escape(WRONG_TEXT)
 
 
 def code_of(device):
@@ -179,13 +183,15 @@ class LoginTests(TestCase):
         self.client.post(self.url, {"username": "marie", "code": self.wrong()})
         self.device.refresh_from_db()
         self.assertEqual(self.device.throttling_failure_count, 1)
-        # Right after, the right code is told to wait (only the right one).
+        # Right after, even the right code is refused like a wrong one: on
+        # the login page, "right but wait" would help a stranger (card T37).
         response = self.client.post(self.url, {"username": "marie", "code": code_of(self.device)})
-        self.assertContains(response, "Code juste, mais il y a eu des essais faux")
-        response = self.client.post(self.url, {"username": "marie", "code": self.wrong()})
         self.assertContains(response, WRONG_APP_CODE)
+        self.assertNotContains(response, "Code juste")
+        self.device.refresh_from_db()
+        self.assertEqual(self.device.throttling_failure_count, 1)  # not counted either
         # Many wrong codes over time: the wait stops at 8.5 minutes.
-        for _ in range(20):
+        for _ in range(app_code.HARD_LIMIT - 2):
             TOTPDevice.objects.filter(pk=self.device.pk).update(
                 throttling_failure_timestamp=timezone.now() - timedelta(days=1)
             )
@@ -202,6 +208,35 @@ class LoginTests(TestCase):
         self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
         # The audit log noted the account once.
         self.assertEqual(AuditEntry.objects.filter(action=Action.APP_CODE_FAILURES).count(), 1)
+
+    def test_locked_after_too_many_wrong_codes(self):
+        for _ in range(app_code.HARD_LIMIT):
+            TOTPDevice.objects.filter(pk=self.device.pk).update(
+                throttling_failure_timestamp=timezone.now() - timedelta(days=1)
+            )
+            cache.clear()
+            self.client.post(self.url, {"username": "marie", "code": self.wrong()})
+        self.assertTrue(app_code.is_locked(self.device))
+        entry = AuditEntry.objects.get(action=Action.APP_CODE_LOCKED)
+        self.assertEqual(entry.target_id, str(self.marie.pk))
+        # Even the right code, after the wait, no longer opens the account.
+        TOTPDevice.objects.filter(pk=self.device.pk).update(
+            throttling_failure_timestamp=timezone.now() - timedelta(days=1)
+        )
+        cache.clear()
+        response = self.client.post(
+            self.url, {"username": "marie", "code": next_code_keep(self.device)}
+        )
+        self.assertContains(response, WRONG_APP_CODE)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_right_code_resets_the_count(self):
+        self.client.post(self.url, {"username": "marie", "code": self.wrong()})
+        TOTPDevice.objects.filter(pk=self.device.pk).update(
+            throttling_failure_timestamp=timezone.now() - timedelta(days=1)
+        )
+        self.client.post(self.url, {"username": "marie", "code": next_code_keep(self.device)})
+        self.assertEqual(self.device.guard.__class__.objects.get(device=self.device).failures, 0)
 
     def test_malformed_code_counts_as_wrong(self):
         self.client.post(self.url, {"username": "marie", "code": "12 34"})

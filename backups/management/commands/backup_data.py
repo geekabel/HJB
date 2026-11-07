@@ -33,7 +33,8 @@ class Command(BaseCommand):
             raise CommandError(f"Sauvegarde ratée : {error}") from error
         rows = sum(manifest["rows"].values())
         self.stdout.write(
-            f"Sauvegarde vérifiée : {folder} ({rows} lignes, {len(manifest['files'])} photos)."
+            f"Sauvegarde vérifiée : {folder} ({rows} lignes, {len(manifest['files'])} photos). "
+            f"Base copiée : {manifest['database']}."
         )
         for name in service.prune(to, keep):
             self.stdout.write(f"Ancienne sauvegarde supprimée : {name}")

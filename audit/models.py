@@ -15,6 +15,8 @@ class Action(models.TextChoices):
     PASSKEY_CREATED = "passkey_created", "Clé d'accès créée"
     APP_CODE_CREATED = "app_code_created", "Application de codes reliée"
     APP_CODE_FAILURES = "app_code_failures", "Codes d'application faux à répétition"
+    APP_CODE_LOCKED = "app_code_locked", "Application de codes bloquée"
+    PHONE_CHANGED = "phone_changed", "Numéro de téléphone changé"
     ACCESS_CUT = "access_cut", "Accès coupé (téléphone perdu)"
     WIFI_ACCESS_SET = "wifi_access_set", "Accès wifi enregistré"
     MESSAGE_SCHEDULED = "message_scheduled", "Message programmé"
@@ -197,6 +199,13 @@ class AuditEntry(models.Model):
 
             text = describe(self.details)
             return (text[:1].upper() + text[1:] + ".") if text else ""
+        if self.action == Action.PHONE_CHANGED:
+            return (
+                f"{self.details.get('before') or 'aucun'} → {self.details.get('after') or 'aucun'}."
+            )
+        if self.action == Action.APP_CODE_LOCKED:
+            failures = self.details.get("failures")
+            return f"{failures} codes faux d'affilée. Elle ne sert plus." if failures else ""
         if self.action == Action.APP_CODE_FAILURES:
             failures = self.details.get("failures")
             return f"{failures} codes faux d'affilée." if failures else ""

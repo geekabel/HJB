@@ -9,6 +9,7 @@ import logging
 import secrets
 import time
 from datetime import timedelta
+from urllib.parse import urlencode
 
 import segno
 from django.contrib import messages
@@ -29,6 +30,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django_otp_webauthn.utils import get_credential_model
 
 from access.decorators import recent_confirmation_required
+from access.session_policy import confirmed_recently
 from accounts.activation_codes import (
     VALIDITY,
     activation_state,
@@ -36,7 +38,10 @@ from accounts.activation_codes import (
     send_code_by_sms,
 )
 from accounts.models import ACCOUNT_STATE_FILTERS, AccountState, User
+from accounts.phone import mask_phone
 from accounts.roles import Role
+from audit.models import Action
+from audit.service import log_action
 from housing import wifi
 from housing.models import (
     WIFI_REMINDER_DAYS,
@@ -229,12 +234,42 @@ def wifi_renewals(request):
     )
 
 
+def _confirm_first(request, resident):
+    """A redirect to the passkey confirmation, or None if it is recent.
+
+    Card T37: a new activation code, a cut access or a new phone number
+    could hand over a resident's account. They need a passkey (or app code)
+    used less than 10 minutes ago, like the wifi passwords.
+    """
+    if confirmed_recently(request):
+        return None
+    messages.info(request, "Confirmez d'abord votre identité, puis recommencez.")
+    back = reverse("residents:detail", args=[resident.pk])
+    return redirect(f"{reverse('access:confirm')}?{urlencode({'next': back})}")
+
+
 def _resident_form(request, resident):
     form = ResidentForm(request.POST or None, instance=resident)
+    before = resident.phone if resident.pk else ""
     if request.method == "POST" and form.is_valid():
+        # The number as saved (normalized), not as typed: "06 12..." for the
+        # same number is no change.
+        phone_changed = bool(resident.pk) and form.instance.phone != before
+        # Removing a number hands nothing over: only a new number asks.
+        if phone_changed and form.instance.phone and not confirmed_recently(request):
+            form.needs_confirmation = True  # the view sends to the confirmation
+            return form, None
         try:
             with transaction.atomic():
                 resident = form.save_resident()
+                if phone_changed:
+                    log_action(
+                        Action.PHONE_CHANGED,
+                        actor=request.user,
+                        target=resident,
+                        details={"before": mask_phone(before), "after": mask_phone(resident.phone)},
+                        request=request,
+                    )
         except ValidationError as error:
             form.add_stay_errors(error)
         except IntegrityError:
@@ -269,6 +304,13 @@ def detail(request, pk):
     form = None
     if can_manage:
         form, saved = _resident_form(request, resident)
+        if getattr(form, "needs_confirmation", False):
+            messages.info(
+                request,
+                "Le numéro n'est pas changé. Confirmez d'abord votre identité, puis recommencez.",
+            )
+            back = reverse("residents:detail", args=[resident.pk])
+            return redirect(f"{reverse('access:confirm')}?{urlencode({'next': back})}")
         if saved:
             messages.success(request, "Les modifications sont enregistrées.")
             return redirect("residents:detail", pk=resident.pk)
@@ -426,6 +468,8 @@ def cut_access(request, pk):
     from access.services import cut_access as cut_user_access
 
     resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if confirm := _confirm_first(request, resident):
+        return confirm
     passkeys, sessions = cut_user_access(resident, by=request.user, request=request)
     sp, ss = ("s" if passkeys > 1 else ""), ("s" if sessions > 1 else "")
     messages.success(
@@ -442,6 +486,8 @@ def cut_access(request, pk):
 def activation_code(request, pk):
     """Issue a code and show it only once, on a printable page that is never cached."""
     resident = get_object_or_404(User.objects.residents(), pk=pk)
+    if confirm := _confirm_first(request, resident):
+        return confirm
     tokens = request.session.get(CODE_TOKENS_KEY, [])
     expected = [request.POST.get("token", ""), resident.pk]
     if expected not in tokens:

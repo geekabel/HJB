@@ -20,6 +20,7 @@ class SecurityHeadersTests(TestCase):
                 self.assertIn("default-src 'none'", policy)
                 self.assertIn("script-src 'self'", policy)
                 self.assertIn("frame-ancestors 'none'", policy)
+                self.assertNotIn("data:", policy)
                 self.assertNotIn("unsafe-inline", policy)
                 self.assertIn("camera=()", response.headers["Permissions-Policy"])
                 self.assertEqual(response.headers["X-Frame-Options"], "DENY")
@@ -30,3 +31,20 @@ class SecurityHeadersTests(TestCase):
     def test_service_worker_too(self):
         response = self.client.get(reverse("service_worker"))
         self.assertIn("Content-Security-Policy", response.headers)
+
+    def test_headers_also_on_a_refusal_of_the_staff_area(self):
+        log_in_verified(self.client, make_user("demo"))
+        response = self.client.get(reverse("audit:list"))
+        self.assertIn(response.status_code, (302, 403))
+        self.assertIn("Content-Security-Policy", response.headers)
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertIn("Permissions-Policy", response.headers)
+
+    def test_personal_pages_are_never_cached(self):
+        log_in_verified(self.client, make_user("ines"))
+        response = self.client.get(reverse("account"))
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertIn("private", response.headers["Cache-Control"])
+        # Anonymous public page: no such header needed.
+        self.client.logout()
+        self.assertNotIn("no-store", self.client.get(reverse("privacy")).get("Cache-Control", ""))

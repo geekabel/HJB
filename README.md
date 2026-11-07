@@ -95,6 +95,9 @@ Le dépôt est public. Un second workflow lance [gitleaks](https://github.com/gi
 - **Politique de sécurité du contenu (CSP)**, en développement aussi : seuls les fichiers du site peuvent s'exécuter ou se charger. Pas de script ni de style écrit dans la page, pas d'autre origine, pas d'affichage dans un cadre. Une violation apparaît dans la console du navigateur.
 - **Permissions-Policy** : caméra, micro, position, paiement, USB et capture d'écran sont coupés. La photo d'un signalement passe par le choix d'un fichier, pas par la caméra.
 - **En production** : HTTPS obligatoire, cookies `Secure` avec le préfixe `__Host-`, HSTS d'une heure au départ. Quand HTTPS marche sur le vrai domaine (T38), passer `DJANGO_SECURE_HSTS_SECONDS` à 31536000, puis, si tous les sous-domaines sont en HTTPS, `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=1` et `DJANGO_SECURE_HSTS_PRELOAD=1`. D'ici là, `check --deploy` signale seulement ces deux réglages (W005, W021) et l'absence de fournisseur SMS.
+- **Pages personnelles** : jamais gardées par le navigateur pour une personne connectée (`Cache-Control: no-store`). Sur un ordinateur partagé, le bouton Retour ne remontre rien après la déconnexion.
+- **Actions qui pourraient livrer un compte** : un code d'activation, un accès coupé ou un nouveau numéro de téléphone demandent une clé d'accès utilisée depuis moins de 10 minutes. Le changement de numéro est noté dans le journal (numéros masqués).
+- **Codes d'application de l'équipe** : après 20 codes faux d'affilée, l'application ne sert plus. La personne se connecte avec sa clé d'accès et relie l'application à nouveau (ou un administrateur la supprime dans le site d'administration). Le journal le note. Sur la page de connexion, un code juste pendant l'attente est refusé comme un faux : la page ne dit rien à un inconnu.
 - **Dépendances** : la CI lance `pip-audit` sur `requirements.txt` à chaque push.
 
 ## Réglages
@@ -183,16 +186,24 @@ Une sauvegarde est un dossier (accès réservé au propriétaire) avec :
 
 `backup_data` relit chaque sauvegarde juste après l'avoir faite : intégrité de la base, nombre de lignes, empreintes, liste des photos. Une sauvegarde ratée sort en erreur, et les anciennes restent.
 
-**Les clés ne sont pas dans la sauvegarde** (`DJANGO_SECRET_KEY`, `DJANGO_WIFI_KEYS`, `DJANGO_VAPID_PRIVATE_KEY`). Gardez-en une copie ailleurs, à part : sans les clés wifi, les mots de passe wifi sauvegardés sont illisibles ; avec elles dans la même sauvegarde, un vol les ouvrirait.
+**Ce que la sauvegarde ne contient pas, exprès :**
+- les clés (`DJANGO_SECRET_KEY`, `DJANGO_WIFI_KEYS`, `DJANGO_VAPID_PRIVATE_KEY`). Gardez-en une copie ailleurs, à part : sans les clés wifi, les mots de passe wifi sauvegardés sont illisibles ; avec elles dans la même sauvegarde, un vol les ouvrirait ;
+- les sessions : une sauvegarde volée ne connecte personne ;
+- les secrets des applications de codes de l'équipe : avec eux, on pourrait calculer les codes.
+
+La copie est ensuite compactée (`VACUUM`) : les lignes retirées ne restent pas dans les pages libres. Le manifeste note aussi le chemin de la base copiée. Vérifiez-le : une ligne cron sans `DJANGO_SETTINGS_MODULE=config.settings.prod` sauvegarderait la base de développement.
 
 **Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée sont à fixer avec le déploiement (T38).
 
 **Restaurer** :
 1. arrêter le site, le *worker* et les tâches planifiées ;
 2. `python manage.py verify_backup <dossier>` ;
-3. remplacer le fichier de la base par `db.sqlite3` de la sauvegarde ;
-4. vider `DJANGO_MEDIA_ROOT`, puis `tar -xzf <dossier>/media.tar.gz -C "$DJANGO_MEDIA_ROOT"` ;
-5. `python manage.py migrate`, puis `python manage.py check --deploy`, puis relancer les services.
+3. supprimer les fichiers `-wal` et `-shm` à côté de la base, puis remplacer la base par `db.sqlite3` de la sauvegarde ;
+4. vider `DJANGO_MEDIA_ROOT`, puis `tar -xzf <dossier>/media.tar.gz --no-same-owner -C "$DJANGO_MEDIA_ROOT"` ;
+5. `python manage.py migrate`, puis `python manage.py check --deploy`, puis relancer les services ;
+6. refaire ce qui a eu lieu depuis la date de la sauvegarde : départs, accès coupés, codes donnés. Tout le monde se reconnecte, et l'équipe relie à nouveau son application de codes.
+
+La base et les photos ne sont pas copiées au même instant : une photo envoyée entre les deux peut manquer. C'est sans gravité.
 
 Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
 

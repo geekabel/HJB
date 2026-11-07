@@ -66,6 +66,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Right after: their headers go on every response, also the refusals of
+    # the middlewares below (403 of the staff area). Card T37: Content
+    # Security Policy, no framing, browser features the site never uses,
+    # and no copy of a personal page in the browser cache.
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "ui.middleware.PermissionsPolicyMiddleware",
+    "ui.middleware.PrivatePagesMiddleware",
     # Django's SessionMiddleware, except for the public files of the app (T18).
     "ui.middleware.PublicFilesSessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -76,11 +84,6 @@ MIDDLEWARE = [
     # Staff area and admin: staff with a passkey (T14).
     "access.middleware.StaffAreaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # Content Security Policy (card T37), and the browser features the site
-    # never uses (ui/middleware.py).
-    "django.middleware.csp.ContentSecurityPolicyMiddleware",
-    "ui.middleware.PermissionsPolicyMiddleware",
 ]
 
 # Content Security Policy (card T37), in development too: a violation shows
@@ -92,7 +95,7 @@ SECURE_CSP = {
     "default-src": [CSP.NONE],
     "script-src": [CSP.SELF],
     "style-src": [CSP.SELF],
-    "img-src": [CSP.SELF, "data:", "blob:"],
+    "img-src": [CSP.SELF, "blob:"],
     "font-src": [CSP.SELF],
     "connect-src": [CSP.SELF],
     "manifest-src": [CSP.SELF],

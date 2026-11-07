@@ -13,9 +13,14 @@ A backup is a folder named after its time, for example
 only a backup once it has been read back. With PostgreSQL (card T38), the
 database part is pg_dump: the README says how.
 
-What a backup does not hold, on purpose: the keys (SECRET_KEY, wifi keys,
-VAPID). They stay in the server's environment and are kept apart: a
-stolen backup must not open the wifi passwords.
+What a backup does not hold, on purpose (card T37 review):
+- the keys (SECRET_KEY, wifi keys, VAPID): they stay in the server's
+  environment and are kept apart, so a stolen backup cannot open the wifi
+  passwords;
+- the sessions: a stolen backup must not log anyone in;
+- the secrets of the staff app codes (TOTP): with them, anyone could
+  compute the codes. After a restore, the staff link their app again.
+The copy is then vacuumed: deleted rows leave no trace in free pages.
 """
 
 import hashlib
@@ -34,6 +39,9 @@ PREFIX = "hjb-"
 DB_NAME = "db.sqlite3"
 MEDIA_NAME = "media.tar.gz"
 MANIFEST = "manifest.json"
+# Emptied in the copy: live logins, and the secrets of the staff app codes
+# (with the lock that points to each of them).
+LEFT_OUT = ("django_session", "access_appcodeguard", "otp_totp_totpdevice")
 
 
 class BackupError(Exception):
@@ -74,6 +82,12 @@ def make(target_dir, now=None):
     copy = sqlite3.connect(folder / DB_NAME)
     try:
         connection.connection.backup(copy)
+        tables = {name for (name,) in copy.execute("SELECT name FROM sqlite_master")}
+        for table in LEFT_OUT:
+            if table in tables:
+                copy.execute(f'DELETE FROM "{table}"')
+        copy.commit()
+        copy.execute("VACUUM")
         counts = _row_counts(copy)
     finally:
         copy.close()
@@ -89,6 +103,10 @@ def make(target_dir, now=None):
 
     manifest = {
         "made_at": now.isoformat(),
+        # Which database was copied: a cron line without the production
+        # settings would back up the development one (README).
+        "database": str(connection.settings_dict["NAME"]),
+        "left_out": list(LEFT_OUT),
         "rows": counts,
         "files": files,
         "sha256": {name: _sha256(folder / name) for name in (DB_NAME, MEDIA_NAME)},
