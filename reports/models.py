@@ -76,6 +76,8 @@ class Report(models.Model):
     due_at = models.DateTimeField("à traiter avant")
     intervention_start = models.DateTimeField("début de l'intervention", null=True, blank=True)
     intervention_end = models.DateTimeField("fin de l'intervention", null=True, blank=True)
+    # The team was told once that the report is late (card T32).
+    late_alerted_at = models.DateTimeField("retard signalé à l'équipe le", null=True, blank=True)
     created_at = models.DateTimeField("créé le", default=timezone.now)
     updated_at = models.DateTimeField("mis à jour le", auto_now=True)
 
@@ -114,6 +116,16 @@ class Report(models.Model):
 
     def is_late(self, now=None):
         return self.status in self.WAITING and self.due_at < (now or timezone.now())
+
+    def delay_text(self, now=None):
+        """'reste 20 h', 'reste 3 j' or 'retard 5 h', for a report still waiting."""
+        if self.status not in self.WAITING:
+            return ""
+        seconds = (self.due_at - (now or timezone.now())).total_seconds()
+        hours = int(abs(seconds) // 3600)
+        if seconds < 0:
+            return f"retard {hours} h" if hours < 48 else f"retard {hours // 24} j"
+        return f"reste {max(hours, 1)} h" if hours < 48 else f"reste {hours // 24} j"
 
 
 def _photo_path(instance, filename):
@@ -177,3 +189,17 @@ class ReportEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_type_display()} · signalement n° {self.report_id}"
+
+
+class DailySummary(models.Model):
+    """The morning summary of a day was sent (card T32): never twice."""
+
+    day = models.DateField("jour", unique=True)
+    sent_at = models.DateTimeField("envoyé le", default=timezone.now)
+
+    class Meta:
+        verbose_name = "récapitulatif du matin"
+        verbose_name_plural = "récapitulatifs du matin"
+
+    def __str__(self):
+        return f"Récapitulatif du {self.day:%d/%m/%Y}"

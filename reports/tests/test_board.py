@@ -50,7 +50,7 @@ class BoardTests(BoardTestCase):
         page = response.content.decode()
         # Late first in its column, with the yellow badge.
         self.assertLess(page.index("Prise qui chauffe"), page.index("La lampe"))
-        self.assertContains(response, "Urgent · en retard")
+        self.assertContains(response, "Urgent · retard 1 h")
         self.assertContains(response, "1 photo")
         self.assertContains(response, "En retard (1)")
         self.assertContains(response, '<span class="visually-hidden">2 nouveaux</span>')

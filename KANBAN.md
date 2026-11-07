@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
 | T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
 | T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D8 | Écrans de l'équipe, deuxième passe | 7 nov. 2026 |
 | T30 | Signaler un problème | 7 nov. 2026 |
 | T31 | Tableau des signalements (équipe) | 7 nov. 2026 |
+| T32 | Délais, relances et récapitulatif quotidien | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -592,10 +592,11 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Menu de l'équipe : « Signalements » avec le nombre de nouveaux ; la maintenance arrive sur le tableau
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Le mot de l'équipe (visite, travail fait) s'affiche chez le résident. Plus de visite planifiée aujourd'hui à une heure passée. Colonne « Planifié » triée par heure de visite. « Confié à » est écrit dans l'historique, sans prévenir le résident. Un mauvais choix de personne affiche un message. Après une erreur, un bandeau en haut le dit. Chaque bouton « Je m'en occupe » a son propre nom (n° du signalement). Nombre de requêtes du tableau stable.
 
-#### T32 Délais, relances et récapitulatif quotidien
-- [ ] Échéance selon l'urgence : 4 h, 48 h, 7 jours
-- [ ] Rappel à l'équipe en cas de retard
-- [ ] Récapitulatif chaque matin à 9 h
+#### T32 Délais, relances et récapitulatif quotidien (fait le 7 nov. 2026)
+- [x] Échéance selon l'urgence : 4 h, 48 h, 7 jours ; « reste 20 h » ou « retard 5 h » sur chaque carte
+- [x] Rappel à l'équipe en cas de retard, une seule fois : à la personne qui s'en occupe, sinon à toute l'équipe des signalements
+- [x] Récapitulatif chaque matin à 9 h (nouveaux, en retard, interventions du jour, à confirmer), rien s'il n'y a rien ; jamais après midi
+- **Notes** : lancé par `run_scheduled` chaque minute. Le récapitulatif part tous les jours, week-end compris.
 
 #### T33 Suivi et confirmation par le résident
 - **Maquette** : R4.

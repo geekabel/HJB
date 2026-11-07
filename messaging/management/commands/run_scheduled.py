@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from appointments import reminders
 from messaging.receipts import poll
 from messaging.sending import run_due
+from reports import reminders as report_reminders
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,8 @@ class Command(BaseCommand):
     help = (
         "Lance les messages et les relances arrivés à l'heure, reprend les envois "
         "interrompus, enregistre les départs prévus, demande les accusés de réception "
-        "des SMS et envoie les rappels de rendez-vous. À lancer chaque minute (voir le README)."
+        "des SMS, envoie les rappels de rendez-vous, les retards et le récapitulatif "
+        "des signalements. À lancer chaque minute (voir le README)."
     )
 
     def handle(self, *args, **options):
@@ -24,12 +26,16 @@ class Command(BaseCommand):
         counts = dict(self._run("messages", run_due, EMPTY_RUN))
         counts["receipts"] = self._run("accusés de réception", poll, 0)
         counts["appointments"] = self._run("rappels de rendez-vous", reminders.send_due, 0)
+        counts["reports"] = self._run(
+            "retards et récapitulatif des signalements", report_reminders.send_due, 0
+        )
         if any(counts.values()):
             self.stdout.write(
                 f"Messages : {counts['messages']}. Relances : {counts['reminders']}. "
                 f"Reprises : {counts['resumed']}. Départs : {counts['departures']}. "
                 f"Accusés demandés : {counts['receipts']}. "
-                f"Rappels de rendez-vous : {counts['appointments']}."
+                f"Rappels de rendez-vous : {counts['appointments']}. "
+                f"Signalements : {counts['reports']}."
             )
 
     def _run(self, name, duty, empty):

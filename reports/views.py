@@ -59,6 +59,7 @@ def board(request):
         reports = [r for r in reports if r.is_late(now)]
     for report in reports:
         report.late = report.is_late(now)
+<<<<<<< HEAD
 
     # Late first, then the closest due date; planned visits by their time,
     # done work from the oldest.
@@ -70,6 +71,11 @@ def board(request):
         return (not report.late, report.due_at)
 
     reports.sort(key=order)
+=======
+        report.delay = report.delay_text(now)
+    # Late first, then the closest due date (the oldest done ones first).
+    reports.sort(key=lambda r: (not r.late, r.due_at))
+>>>>>>> 0736512 (feat(reports): late alerts and the morning summary)
     columns = [
         (status, label, [r for r in reports if r.status == status]) for status, label in COLUMNS
     ]
@@ -91,6 +97,7 @@ def board(request):
 
 def _detail_context(request, report, **forms):
     report.late = report.is_late()
+    report.delay = report.delay_text()
     return {
         "active_nav": "reports",
         "report": report,
