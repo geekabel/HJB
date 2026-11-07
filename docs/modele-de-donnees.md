@@ -64,7 +64,7 @@ erDiagram
     USER ||--o{ CONVERSATION : "participe"
     CONVERSATION ||--o{ DIRECT_MESSAGE : "contient"
 
-    USER ||--o{ REPORT : "crée ou traite"
+    USER |o--o{ REPORT : "crée ou traite"
     ROOM ||--o{ REPORT : "concerne"
     REPORT ||--o{ REPORT_PHOTO : "illustre"
     REPORT ||--o{ REPORT_EVENT : "historise"

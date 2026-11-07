@@ -20,7 +20,7 @@ from audit.models import Action, AuditEntry
 from housing.models import Floor, Room, Stay
 from messaging.models import AttendanceReply, Campaign, Delivery
 from push.models import PushSubscription
-from reports.models import Report, ReportPhoto
+from reports.models import Report, ReportEvent, ReportPhoto
 from tools.html_capture import save_page
 
 from .. import retention
@@ -111,7 +111,11 @@ class PurgeTests(RetentionTestCase):
 
     def test_former_resident_goes_with_all_their_data(self):
         report, photo = self.report(self.old)
+        ReportEvent.objects.create(
+            report=report, author=self.old, type="reopened", note="Mon nom est Ancien"
+        )
         storage, name = photo.image.storage, photo.image.name
+        self.assertEqual(retention.run(now=self.now).report_photos, 1)  # the dry run
         start = self.now - timedelta(days=30)
         Appointment.objects.create(
             educator=self.samia, resident=self.old, start=start, end=start + timedelta(hours=1)
@@ -128,11 +132,17 @@ class PurgeTests(RetentionTestCase):
         report.refresh_from_db()
         self.assertIsNone(report.resident)
         self.assertFalse(report.photos.exists())
+        self.assertEqual(report.description, "")
+        self.assertEqual(report.status, Report.Status.CLOSED)  # nobody can confirm it
+        self.assertFalse(report.events.exclude(note="").exists())
+        self.assertTrue(report.events.filter(type="closed").exists())
         self.assertEqual(result.report_photos, 1)
         log_in_verified(self.client, self.karim)
         response = self.client.get(reverse("reports_staff:detail", args=[report.pk]))
         save_page("reports-staff-detail-former", response)
         self.assertContains(response, "Ancien résident, compte supprimé")
+        self.assertContains(response, "Texte retiré avec le compte du résident.")
+        self.assertNotContains(response, "Mon nom est Ancien")
         self.assertNotContains(response, "Ancien</a>")
         self.assertFalse(Appointment.objects.filter(resident_id=self.old.pk).exists())
         self.assertFalse(PushSubscription.objects.exists())

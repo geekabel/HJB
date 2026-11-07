@@ -51,3 +51,25 @@ def create(resident, data, now=None):
             ReportPhoto.image.field.storage.delete(name)
         raise
     return report
+
+
+def forget_resident(resident_id, now=None):
+    """Before the account of a former resident is deleted (card T36).
+
+    The reports stay for the room's repair history, but nothing of the
+    person: their text and every note are cleared, the photos (taken in
+    their private room) go, and a report still open is closed (nobody can
+    confirm it any more). The resident field becomes empty with the
+    account (SET_NULL). Return the number of photos deleted.
+    """
+    now = now or timezone.now()
+    reports = Report.objects.filter(resident_id=resident_id)
+    _, by_model = ReportPhoto.objects.filter(report__in=reports).delete()
+    still_open = list(reports.exclude(status=Report.Status.CLOSED).values_list("pk", flat=True))
+    ReportEvent.objects.bulk_create(
+        ReportEvent(report_id=pk, type=ReportEvent.Type.CLOSED, created_at=now) for pk in still_open
+    )
+    Report.objects.filter(pk__in=still_open).update(status=Report.Status.CLOSED, updated_at=now)
+    ReportEvent.objects.filter(report__in=reports).update(note="")
+    reports.update(description="")
+    return by_model.get(ReportPhoto._meta.label, 0)

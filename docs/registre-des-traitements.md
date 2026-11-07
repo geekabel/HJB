@@ -27,7 +27,7 @@ une fois par jour, **une fois les durées validées par l'association**.
 
 | Données | Durée par défaut | Point de départ |
 | --- | --- | --- |
-| Compte d'un ancien résident, et tout ce qui s'y rattache | 365 jours | dernier départ |
+| Compte d'un ancien résident, et ce qui s'y rattache (ses signalements restent, rendus anonymes) | 365 jours | dernier départ |
 | Photos d'un signalement | 180 jours | clôture du signalement |
 | Rendez-vous et leur motif | 365 jours | fin du rendez-vous |
 | Messages directs avec un éducateur | 365 jours | envoi |
@@ -123,8 +123,10 @@ Repères :
 - **Destinataires** : accueil et maintenance. Les photos ne sont servies
   qu'aux personnes autorisées, jamais par un lien public.
 - **Durée** : photos 180 jours après la clôture. À la suppression du
-  compte, le signalement reste sans le nom du résident et sans ses photos :
-  la chambre garde l'histoire de ses réparations.
+  compte, le signalement reste, mais rendu anonyme : plus de nom, de texte,
+  de note ni de photo ; s'il était ouvert, il est clos. Il ne garde que la
+  chambre, le type de problème, les dates et les étapes : l'histoire des
+  réparations de la chambre.
 
 ## 7. Wifi des chambres
 
