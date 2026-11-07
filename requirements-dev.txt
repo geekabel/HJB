@@ -1,5 +1,5 @@
 # Development dependencies, on top of the application ones.
 -r requirements.txt
 ruff==0.17.3
-# Draws the application icons (tools/make_icons.py, card T18).
-Pillow==12.0.0
+# Pillow also draws the application icons (tools/make_icons.py, card T18):
+# it is pinned once, in requirements.txt (card T30).
