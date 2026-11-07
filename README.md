@@ -142,22 +142,37 @@ Pour le service du *worker* :
 
 En production avec SQLite, trois processus écrivent dans la base (le site, le *worker* et `run_scheduled`) : `config/settings/prod.py` active le mode WAL, les transactions `IMMEDIATE` et une attente de 20 secondes sur le verrou.
 
-Trois commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
+Les commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
 
 - chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus, enregistre les départs prévus (le jour venu, à midi), demande à SMSGate les accusés de réception des SMS (voir plus bas) envoie les rappels de rendez-vous (la veille entre 18 h et 21 h, et une heure avant), prévient l'équipe d'un signalement en retard et envoie le récapitulatif des signalements (à 9 h, du lundi au vendredi) ;
 - chaque jour vers 10 h, heure de Paris, `send_wifi_reminders` : rappel aux résidents 15 jours avant la fin de leur accès wifi ;
 - chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés ;
-- chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours.
+- chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours ;
+- chaque jour, `clearsessions` (Django) : efface les sessions expirées ;
+- chaque jour, `purge_personal_data --apply` : supprime les données dont la durée de conservation est passée (voir « Données personnelles »). **À ajouter seulement quand l'association a validé les durées.** Sans `--apply`, la commande compte sans rien supprimer.
 
 Exemple de lignes cron, avec le fichier d'environnement du service et `flock` pour qu'une exécution ne commence pas avant la fin de la précédente :
 
 ```sh
 * * * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-minute.lock .venv/bin/python manage.py run_scheduled
-0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions && .venv/bin/python manage.py prune_db_task_results'
+0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions && .venv/bin/python manage.py prune_db_task_results && .venv/bin/python manage.py clearsessions'
 ```
 
 Le chemin, le fichier d'environnement et le service du *worker* seront fixés avec le déploiement (T38). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
 
+
+## Données personnelles
+
+La page « Vos données » (`/donnees/`) dit aux résidents ce qui est gardé, combien de temps, et leurs droits. Elle est ouverte à tous, et liée depuis la connexion, l'activation et Mon compte.
+
+Les durées de conservation sont dans `RETENTION_DAYS` (`config/settings/base.py`). La page et la suppression utilisent les mêmes. `DJANGO_PRIVACY_CONTACT` donne l'adresse pour exercer ses droits (vide : « l'accueil de la résidence »).
+
+```sh
+python manage.py purge_personal_data            # compte ce qui a passé sa durée
+python manage.py purge_personal_data --apply    # le supprime, et le note au journal
+```
+
+Le registre des traitements est dans `docs/registre-des-traitements.md`. L'association le complète et le valide.
 
 ## Votes anonymes
 

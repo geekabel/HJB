@@ -23,6 +23,7 @@ from access import dev_login
 from access import views as access_views
 from messaging import receipts as messaging_receipts
 from messaging import resident_views as messaging_resident_views
+from privacy import views as privacy_views
 from ui import pwa
 
 urlpatterns = [
@@ -34,6 +35,8 @@ urlpatterns = [
     path("favicon.ico", pwa.favicon),
     path("hors-ligne/", pwa.offline, name="offline"),
     path("installer/", pwa.install, name="install"),
+    # Personal data: what is kept, how long, and the rights (card T36).
+    path("donnees/", privacy_views.data, name="privacy"),
     path(settings.ADMIN_URL, admin.site.urls),
     # Login by passkey (card T13).
     path("connexion/", include("access.urls")),

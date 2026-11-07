@@ -3308,6 +3308,34 @@
     color: var(--on-action);
   }
 
+  /* How long data is kept (page "Vos données"): what, then how long */
+  .durations {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .durations > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding-block: var(--s-2);
+    border-block-end: 1px solid var(--line);
+  }
+
+  .durations > div:last-child {
+    border-block-end: 0;
+  }
+
+  .durations dt {
+    font-weight: 600;
+  }
+
+  .durations dd {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
   /* History of a report: newest first, a line between the steps */
   .timeline {
     display: flex;
