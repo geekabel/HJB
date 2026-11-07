@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
 | T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
 | T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
 | T36 | RGPD | E9 Mise en service | T09, T15 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T30 | Signaler un problème | 7 nov. 2026 |
 | T31 | Tableau des signalements (équipe) | 7 nov. 2026 |
 | T32 | Délais, relances et récapitulatif quotidien | 7 nov. 2026 |
+| T33 | Suivi et confirmation par le résident | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -599,13 +599,13 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Notes** : lancé par `run_scheduled` chaque minute. Le récapitulatif part tous les jours, week-end compris.
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Les tests ne dépendent plus de l'heure à laquelle ils tournent. « retard 25 min » au lieu de « retard 0 h » la première heure. Un récapitulatif sorti en retard de la file (après midi, ou un autre jour) ne part plus. Un nouveau signalement en retard compte une seule fois. Même règle de retard partout (à l'échéance pile).
 
-#### T33 Suivi et confirmation par le résident
+#### T33 Suivi et confirmation par le résident (fait le 7 nov. 2026)
 - **Maquette** : R4.
-- **Note de T32** : à la réouverture (« pas encore »), recalculer `due_at` depuis maintenant et remettre `late_alerted_at` à vide, sinon le retard ne serait plus signalé. Les « Fait » non confirmés comptent dans le récapitulatif jusqu'à leur clôture automatique.
-- [ ] Historique de la demande
-- [ ] « C'est réglé » ou « pas encore » (réouverture)
-- [ ] Bouton « relancer » actif 48 h après la dernière mise à jour
-- [ ] Clôture automatique 3 jours après « fait »
+- [x] Historique du signalement, du plus récent au plus ancien, avec le mot de l'équipe ; « Confié à » reste côté équipe
+- [x] Fait : « Le problème est-il réglé ? » en tête ; « Oui, c'est réglé » clôt, « Pas encore » (avec un mot facultatif) le renvoie à l'équipe avec un nouveau délai et prévient la personne en charge
+- [x] « Relancer l'équipe » 48 h après la dernière étape, une fois par 48 h ; sinon la date à partir de laquelle on pourra
+- [x] Clôture automatique 3 jours après « fait », sans réponse ; la date est sur la carte du tableau
+- **Note de T32 appliquée** : à la réouverture, l'échéance repart de maintenant et l'alerte de retard peut revenir.
 
 ### E8 Accueils
 

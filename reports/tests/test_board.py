@@ -186,7 +186,7 @@ class ReviewTests(BoardTestCase):
         self.client.post(self.url("done", report), {"done-note": "Purgé."})
         log_in_verified(self.client, self.ines)
         response = self.client.get(reverse("reports:detail", args=[report.pk]))
-        self.assertContains(response, "Intervention faite.")
+        self.assertContains(response, "Le problème est-il réglé ?")
         self.assertContains(response, "Purgé.")
 
     def test_today_with_a_past_time(self):

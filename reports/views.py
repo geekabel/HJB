@@ -60,6 +60,7 @@ def board(request):
     for report in reports:
         report.late = report.is_late(now)
         report.delay = report.delay_text(now)
+        report.close_on = report.done_at + Report.CLOSE_AFTER if report.done_at else None
 
     # Late first, then the closest due date; planned visits by their time,
     # done work from the oldest.
