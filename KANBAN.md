@@ -628,10 +628,14 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 
 ### E9 Mise en service
 
-#### T36 RGPD
-- [ ] Information des résidents (règlement intérieur ou page dédiée)
-- [ ] Durées de conservation et suppression des données après le départ
-- [ ] Registre des traitements
+#### T36 RGPD (fait le 7 nov. 2026)
+- **Docs** : [CNIL, registre des traitements](https://www.cnil.fr/fr/le-registre-des-activites-de-traitement), [CNIL, journalisation](https://cnil.fr/la-cnil-publie-une-recommandation-relative-aux-mesures-de-journalisation), [CNIL, logement social, fiche 7](https://www.cnil.fr/sites/default/files/2025-11/logement_social-fiche07.pdf).
+- [x] Page « Vos données » (`/donnees/`), ouverte à tous : responsable, ce qui l'autorise, ce qui est gardé, qui le voit, services techniques (dont un transfert possible hors UE pour les notifications), durées, droits ; liée depuis la connexion, l'activation et Mon compte
+- [x] Durées dans `RETENTION_DAYS` ; la page et la suppression utilisent les mêmes
+- [x] `purge_personal_data` : compte par défaut, supprime avec `--apply`, note au journal ce qui a vraiment été supprimé
+- [x] Registre des traitements : `docs/registre-des-traitements.md` (parties « à compléter » par l'association)
+- [x] Relecture indépendante : un compte sans aucun séjour n'est jamais choisi (ancien membre de l'équipe) ; chaque ancien résident dans sa propre transaction, un compte encore protégé est gardé et le reste continue ; nouvelle vérification sous verrou (retour pendant la suppression), testée ; le journal note ce qui est supprimé, pas ce qui était compté ; listes de personnes d'un message et conversations vides supprimées ; accès wifi coupés sans date de fin ; page complétée (bases légales, transfert hors UE, droits de limitation, de retrait, après décès, plainte à tout moment)
+- [ ] Durées et contact (`DJANGO_PRIVACY_CONTACT`) à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
 
 #### T37 Sécurité avant la mise en ligne
 - **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/).

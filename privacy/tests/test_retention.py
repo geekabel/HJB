@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from datetime import timedelta
 from io import StringIO
+from unittest import mock
 
 from django.core.files.base import ContentFile
 from django.core.management import call_command
@@ -133,12 +134,97 @@ class PurgeTests(RetentionTestCase):
         self.assertTrue(Room.objects.filter(pk=self.room.pk).exists())
 
     def test_someone_back_meanwhile_is_kept(self):
-        people = retention.former_residents(self.now)
-        self.assertIn(self.old, people)
-        # Came back between the count and the deletion: a stay in progress.
-        Stay.objects.create(resident=self.old, room=self.room)
-        retention.run(apply=True, now=self.now)
+        from residents.departure import record_return
+
+        real = retention._lock_former
+
+        def back_first(candidates):
+            # Came back between the count and the deletion.
+            room = Room.objects.create(number="205", floor=self.room.floor)
+            record_return(self.old, room, timezone.localdate())
+            return real(candidates)
+
+        with mock.patch.object(retention, "_lock_former", side_effect=back_first):
+            result = retention.run(apply=True, now=self.now)
+        self.assertEqual(result.former_residents, 0)
         self.assertTrue(User.objects.filter(pk=self.old.pk).exists())
+        self.assertFalse(AuditEntry.objects.filter(action=Action.DATA_PURGED).exists())
+
+    def test_account_without_any_stay_is_never_chosen(self):
+        # An educator whose roles were removed, account switched off long ago.
+        gone = make_user("gone_educator", is_active=False)
+        User.objects.filter(pk=gone.pk).update(date_joined=self.now - timedelta(days=900))
+        talk = Conversation.objects.create(resident=self.housed, educator=gone)
+        DirectMessage.objects.create(conversation=talk, author=gone, text="Bonjour")
+        self.assertNotIn(gone, retention.former_residents(self.now))
+        retention.run(apply=True, now=self.now)
+        self.assertTrue(User.objects.filter(pk=gone.pk).exists())
+        self.assertTrue(DirectMessage.objects.filter(conversation=talk).exists())
+
+    def test_a_protected_account_stays_and_the_rest_goes_on(self):
+        # Still the educator of a recent meeting: PROTECT.
+        start = self.now - timedelta(days=5)
+        Appointment.objects.create(
+            educator=self.old, resident=self.recent, start=start, end=start + timedelta(hours=1)
+        )
+        self.old_audit(400)
+        result = retention.run(apply=True, now=self.now)
+        self.assertEqual(result.former_residents, 0)
+        self.assertEqual(result.audit_entries, 1)
+        self.assertTrue(User.objects.filter(pk=self.old.pk).exists())
+        purge = AuditEntry.objects.get(action=Action.DATA_PURGED)
+        self.assertEqual(purge.details, {"audit_entries": 1, "kept": 1})
+        self.assertIn("1 ancien compte gardé, encore lié", purge.summary())
+
+    def test_names_in_messages_and_empty_conversations(self):
+        old = self.now - timedelta(days=400)
+        campaign = Campaign.objects.create(
+            title="Visite", body="B", author=self.karim, status=Campaign.Status.SENT, started_at=old
+        )
+        campaign.people.add(self.recent)
+        campaign.excluded.add(self.housed)
+        recent = Campaign.objects.create(
+            title="Fête",
+            body="B",
+            author=self.karim,
+            status=Campaign.Status.SENT,
+            started_at=self.now,
+        )
+        recent.people.add(self.recent)
+        empty = Conversation.objects.create(resident=self.recent, educator=self.samia)
+        Conversation.objects.filter(pk=empty.pk).update(updated_at=old)
+        alive = Conversation.objects.create(resident=self.housed, educator=self.samia)
+        Conversation.objects.filter(pk=alive.pk).update(updated_at=old)
+        DirectMessage.objects.create(conversation=alive, author=self.housed, text="Encore là")
+        result = retention.run(apply=True, now=self.now)
+        self.assertEqual(result.conversations, 1)
+        self.assertFalse(Conversation.objects.filter(pk=empty.pk).exists())
+        self.assertTrue(Conversation.objects.filter(pk=alive.pk).exists())
+        self.assertFalse(campaign.people.exists())
+        self.assertFalse(campaign.excluded.exists())
+        self.assertTrue(recent.people.exists())
+
+    def test_wifi_accesses(self):
+        from housing.models import WifiAccess
+
+        today = timezone.localdate()
+
+        def access(name, **fields):
+            return WifiAccess.objects.create(
+                room=self.room,
+                username=name,
+                encrypted_password="x",
+                created_on=today - timedelta(days=800),
+                expires_on=today - timedelta(days=400),
+                **fields,
+            )
+
+        ended = access("a", active=False, ended_at=self.now - timedelta(days=400))
+        no_end = access("b", active=False)
+        recent = access("c", active=False, ended_at=self.now - timedelta(days=10))
+        retention.run(apply=True, now=self.now)
+        self.assertFalse(WifiAccess.objects.filter(pk__in=[ended.pk, no_end.pk]).exists())
+        self.assertTrue(WifiAccess.objects.filter(pk=recent.pk).exists())
 
     def test_photos_of_closed_reports(self):
         _, old_photo = self.report(self.recent, Report.Status.CLOSED, days_ago=200)

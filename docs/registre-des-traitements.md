@@ -58,8 +58,10 @@ Repères :
   publique seulement), applications de codes de l'équipe, codes d'activation
   et codes SMS (leur empreinte seulement, jamais en clair).
 - **Destinataires** : l'équipe selon ses droits (`accounts/roles.py`).
-- **Durée** : le séjour, puis 365 jours après le départ. Le compte est coupé
-  le jour du départ.
+- **Durée** : le séjour, puis 365 jours après le dernier départ. Le compte
+  est coupé le jour du départ. Un compte désactivé sans aucun séjour n'est
+  jamais supprimé tout seul : rien ne dit quand il a servi pour la dernière
+  fois. L'équipe le supprime à la main.
 
 ## 2. Messages aux résidents et SMS
 
@@ -73,8 +75,9 @@ Repères :
   - OVHcloud (France), par son API d'envoi de SMS ;
   - ou SMSGate, pour les essais : un téléphone Android de la résidence, en
     mode local, cloud ou serveur privé (à préciser).
-- **Durée** : 365 jours après l'envoi pour les destinataires et les
-  réponses. Le texte du message reste.
+- **Durée** : 365 jours après l'envoi pour les destinataires, les personnes
+  choisies ou retirées par leur nom, et les réponses. Le texte du message
+  reste.
 
 ## 3. Notifications (Web Push)
 
@@ -83,7 +86,7 @@ Repères :
   couper).
 - **Données** : adresse technique de l'appareil, clés de chiffrement.
 - **Destinataires** : le service de notification du navigateur (Apple,
-  Google, Mozilla). Le contenu est chiffré pour l'appareil : le service ne
+  Google, Microsoft, Mozilla). Le contenu est chiffré pour l'appareil : le service ne
   le lit pas.
 - **Transfert hors UE** : possible selon le service du téléphone (Apple,
   Google). À noter dans l'information des résidents (c'est fait sur
@@ -107,7 +110,8 @@ Repères :
   budget, logement, autre), messages écrits.
 - **Destinataires** : l'éducateur concerné seulement. Le tableau de bord
   compte les rendez-vous, sans le motif.
-- **Durée** : 365 jours après le rendez-vous ou l'envoi.
+- **Durée** : 365 jours après le rendez-vous ou l'envoi. Une conversation
+  restée vide part aussi.
 
 ## 6. Signalements et photos
 
@@ -138,7 +142,8 @@ Repères :
   contenu sensible.
 - **Destinataires** : administration (droit « journal d'audit »).
 - **Durée** : 365 jours. Une entrée ne se modifie pas et ne se supprime pas
-  à la main.
+  à la main. Elle garde le nom de l'auteur et de la cible : ce nom peut donc
+  durer jusqu'à 365 jours après la suppression d'un compte.
 
 ## Mesures de sécurité
 

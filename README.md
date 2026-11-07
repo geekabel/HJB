@@ -172,6 +172,8 @@ python manage.py purge_personal_data            # compte ce qui a passé sa dur�
 python manage.py purge_personal_data --apply    # le supprime, et le note au journal
 ```
 
+La première fois, lancez-la sans `--apply` pour voir les nombres. Tout se fait en une transaction : avec SQLite, les autres écritures attendent pendant ce temps. Un compte encore lié à autre chose (par exemple éducateur d'un rendez-vous) est gardé, et le journal le dit.
+
 Le registre des traitements est dans `docs/registre-des-traitements.md`. L'association le complète et le valide.
 
 ## Votes anonymes
