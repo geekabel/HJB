@@ -59,6 +59,7 @@ def board(request):
         reports = [r for r in reports if r.is_late(now)]
     for report in reports:
         report.late = report.is_late(now)
+        report.delay = report.delay_text(now)
 
     # Late first, then the closest due date; planned visits by their time,
     # done work from the oldest.
@@ -91,6 +92,7 @@ def board(request):
 
 def _detail_context(request, report, **forms):
     report.late = report.is_late()
+    report.delay = report.delay_text()
     return {
         "active_nav": "reports",
         "report": report,

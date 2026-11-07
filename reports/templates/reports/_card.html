@@ -1,13 +1,13 @@
 {% load french %}<article class="report-card{% if report.late %} report-card--late{% endif %}">
   <div class="row row--between">
-    {% if report.late %}<span class="badge badge--warning">{{ report.get_urgency_display }} · en retard</span>
+    {% if report.late %}<span class="badge badge--warning">{{ report.get_urgency_display }} · {{ report.delay }}</span>
     {% elif report.status == "scheduled" %}<span class="badge badge--info">{{ report.intervention_start|date:"D j b" }} · {{ report.intervention_start|time:"H:i" }}</span>
     {% elif report.urgency == "urgent" %}<span class="badge badge--info">Urgent</span>
     {% else %}<span class="badge badge--neutral">{{ report.get_urgency_display }}</span>{% endif %}
     <span class="text-small text-muted">Ch. {{ report.room.number }}</span>
   </div>
   <h3 class="report-card__title"><a class="report-card__link" href="{% url 'reports_staff:detail' report.pk %}">{{ report.description|truncatewords:12 }}</a></h3>
-  <p class="text-small text-muted">{{ report.get_category_display }}{% if report.photo_count %} · {{ report.photo_count }} photo{{ report.photo_count|pluriel }}{% endif %}{% if report.assigned_to %} · {{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% elif report.status == "new" %} · il y a {{ report.created_at|timesince:now }}{% endif %}</p>
+  <p class="text-small text-muted">{{ report.get_category_display }}{% if report.photo_count %} · {{ report.photo_count }} photo{{ report.photo_count|pluriel }}{% endif %}{% if report.assigned_to %} · {{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% elif report.status == "new" %} · il y a {{ report.created_at|timesince:now }}{% endif %}{% if report.delay and not report.late %} · {{ report.delay }}{% endif %}</p>
   {% if report.status == "new" %}
   <form method="post" action="{% url 'reports_staff:take' report.pk %}">
     {% csrf_token %}

@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
 | T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
 | T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D8 | Écrans de l'équipe, deuxième passe | 7 nov. 2026 |
 | T30 | Signaler un problème | 7 nov. 2026 |
 | T31 | Tableau des signalements (équipe) | 7 nov. 2026 |
+| T32 | Délais, relances et récapitulatif quotidien | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -592,13 +592,16 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Menu de l'équipe : « Signalements » avec le nombre de nouveaux ; la maintenance arrive sur le tableau
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Le mot de l'équipe (visite, travail fait) s'affiche chez le résident. Plus de visite planifiée aujourd'hui à une heure passée. Colonne « Planifié » triée par heure de visite. « Confié à » est écrit dans l'historique, sans prévenir le résident. Un mauvais choix de personne affiche un message. Après une erreur, un bandeau en haut le dit. Chaque bouton « Je m'en occupe » a son propre nom (n° du signalement). Nombre de requêtes du tableau stable.
 
-#### T32 Délais, relances et récapitulatif quotidien
-- [ ] Échéance selon l'urgence : 4 h, 48 h, 7 jours
-- [ ] Rappel à l'équipe en cas de retard
-- [ ] Récapitulatif chaque matin à 9 h
+#### T32 Délais, relances et récapitulatif quotidien (fait le 7 nov. 2026)
+- [x] Échéance selon l'urgence : 4 h, 48 h, 7 jours ; « reste 20 h » ou « retard 5 h » sur chaque carte
+- [x] Rappel à l'équipe en cas de retard, une seule fois : à la personne qui s'en occupe, sinon à toute l'équipe des signalements
+- [x] Récapitulatif chaque matin à 9 h (nouveaux, en retard, interventions du jour, à confirmer), rien s'il n'y a rien ; jamais après midi
+- **Notes** : lancé par `run_scheduled` chaque minute. Le récapitulatif part tous les jours, week-end compris.
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Les tests ne dépendent plus de l'heure à laquelle ils tournent. « retard 25 min » au lieu de « retard 0 h » la première heure. Un récapitulatif sorti en retard de la file (après midi, ou un autre jour) ne part plus. Un nouveau signalement en retard compte une seule fois. Même règle de retard partout (à l'échéance pile).
 
 #### T33 Suivi et confirmation par le résident
 - **Maquette** : R4.
+- **Note de T32** : à la réouverture (« pas encore »), recalculer `due_at` depuis maintenant et remettre `late_alerted_at` à vide, sinon le retard ne serait plus signalé. Les « Fait » non confirmés comptent dans le récapitulatif jusqu'à leur clôture automatique.
 - [ ] Historique de la demande
 - [ ] « C'est réglé » ou « pas encore » (réouverture)
 - [ ] Bouton « relancer » actif 48 h après la dernière mise à jour
@@ -633,6 +636,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
 - [ ] Fichiers statiques et médias ; dossier des photos des signalements (DJANGO_MEDIA_ROOT) hors du site public et sauvegardé
+- [ ] `DJANGO_EMERGENCY_PHONE` : le numéro de l'accueil (choix de Godwin, 7 nov.)
 - [ ] Taille maximale d'une requête au proxy (nginx client_max_body_size, environ 35 Mo pour 3 photos de 10 Mo)
 
 #### T39 Essai pilote sur un étage

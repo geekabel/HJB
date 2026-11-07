@@ -28,7 +28,7 @@
       {% endif %}
       <dl class="details">
         <dt>Signalé le</dt><dd><time datetime="{{ report.created_at|date:'Y-m-d\TH:i:sO' }}">{{ report.created_at|date:"j F à H:i" }}</time></dd>
-        <dt>À traiter avant</dt><dd><time datetime="{{ report.due_at|date:'Y-m-d\TH:i:sO' }}">{{ report.due_at|date:"j F à H:i" }}</time></dd>
+        <dt>À traiter avant</dt><dd><time datetime="{{ report.due_at|date:'Y-m-d\TH:i:sO' }}">{{ report.due_at|date:"j F à H:i" }}</time>{% if report.delay %} <span class="badge {% if report.late %}badge--warning{% else %}badge--neutral{% endif %}">{{ report.delay }}</span>{% endif %}</dd>
         <dt>Accès</dt><dd>{% if report.access_allowed %}Entrée permise en son absence{% else %}Le résident veut être présent{% endif %}</dd>
         {% if report.intervention_start %}<dt>Intervention</dt><dd>{{ report.visit_text }}</dd>{% endif %}
       </dl>
