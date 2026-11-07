@@ -1,0 +1,30 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Signalement n° {{ report.pk }}{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'reports:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux signalements</span></a>
+  <h1>{{ report.get_category_display }}</h1>
+</div>
+{% include "appointments/_messages.html" %}
+<p class="row text-muted">{% include "reports/_status.html" %}<span>n° {{ report.pk }} · chambre {{ report.room.number }}</span></p>
+
+<div class="card stack">
+  <p class="report-text" dir="auto">{{ report.description|linebreaksbr }}</p>
+  {% if report.photos.all %}
+  <ul class="report-photos" aria-label="Photos">
+    {% for photo in report.photos.all %}
+    <li><a href="{% url 'reports:photo' photo.pk %}"><img src="{% url 'reports:photo' photo.pk %}" alt="Photo {{ forloop.counter }}" width="{{ photo.width }}" height="{{ photo.height }}" loading="lazy"></a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <dl class="details">
+    <dt>Envoyé le</dt><dd><time datetime="{{ report.created_at|date:'Y-m-d\TH:i:sO' }}">{{ report.created_at|date:"j F à H:i" }}</time></dd>
+    <dt>Urgence</dt><dd>{{ report.get_urgency_display }}</dd>
+    <dt>Accès</dt><dd>{% if report.access_allowed %}L'équipe peut entrer en votre absence{% else %}Vous voulez être présent{% endif %}</dd>
+  </dl>
+</div>
+{% if report.status == "new" %}<p class="text-muted text-small">Pris en charge avant le {{ report.due_at|date:"j F à H:i" }}, en principe.</p>{% endif %}
+
+{% include "reports/_emergency.html" %}
+{% endblock %}

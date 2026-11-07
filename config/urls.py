@@ -50,6 +50,8 @@ urlpatterns = [
     path("sms/ovh/<str:secret>/", messaging_receipts.ovh_callback, name="sms_receipt_ovh"),
     # Appointments with an educator, resident side (card T27).
     path("rendez-vous/", include("appointments.resident_urls")),
+    # Reports of a problem in a room, resident side (card T30).
+    path("signalements/", include("reports.resident_urls")),
     # Notification settings and Web Push subscriptions (card T19).
     path("notifications/", include("push.urls")),
     # Style guide, for staff only.

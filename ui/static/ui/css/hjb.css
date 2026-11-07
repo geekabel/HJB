@@ -449,6 +449,11 @@
     html:has(.task-bar) {
       scroll-padding-block: 4.5rem 6rem;
     }
+
+    /* A field the browser shows (missing answer) keeps its step title in view */
+    .resident-page--task :is(input, textarea, select) {
+      scroll-margin-block-start: 3rem;
+    }
   }
 
   /* Staff area: a top bar with a "Menu" button below 64rem, a side menu above
@@ -1102,6 +1107,14 @@
   .resident-nav svg {
     width: 1.375rem;
     height: 1.375rem;
+  }
+
+  /* Five tabs on a 320 px phone: the labels stay on one line, whole */
+  @media (max-width: 22rem) {
+    .resident-nav a {
+      font-size: 0.6875rem;
+      white-space: nowrap;
+    }
   }
 
   .resident-nav__brand {
@@ -2747,6 +2760,134 @@
   .quick-time:hover {
     border-color: var(--action);
     background: var(--action-soft);
+  }
+
+  /* Report form (card T30): choices as tiles, an icon above the label */
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+  }
+
+  .tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    min-height: 5.25rem;
+    padding: var(--s-2);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    font-size: var(--t-small);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .tile svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  /* The radio stays for the keyboard and screen readers, out of sight */
+  .tile input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tile:has(input:checked) {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .tile:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .tile--text {
+    min-height: 4rem;
+  }
+
+  .tile--text small {
+    color: var(--text-muted);
+    font-size: var(--t-tiny);
+    font-weight: 400;
+  }
+
+  .photo-add {
+    position: relative;
+  }
+
+  .photo-add__face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: 3.5rem;
+    padding: var(--s-2) var(--s-4);
+    border: 1px dashed var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .photo-add__face svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .photo-add input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .photo-add:has(input:focus-visible) .photo-add__face {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .photo-add:hover .photo-add__face {
+    border-color: var(--action);
+    background: var(--action-soft);
+  }
+
+  .photo-previews,
+  .report-photos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 8rem));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .photo-previews img,
+  .report-photos img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--r-small);
+  }
+
+  .report-photos {
+    grid-template-columns: repeat(3, minmax(0, 12rem));
+  }
+
+  .report-text {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   /* A round initial, in lists of people */

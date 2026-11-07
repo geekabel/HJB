@@ -68,6 +68,25 @@ ICONS = {
     "close": '<path d="M18 6 6 18M6 6l12 12"/>',
     "search": '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     "filter": '<path d="M3 5h18M6 12h12M10 19h4"/>',
+    # Report categories (card T30)
+    "bolt": '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+    "drop": '<path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/>',
+    "bug": (
+        '<rect x="7" y="6" width="10" height="15" rx="5"/>'
+        '<path d="M8 2l1.5 2.5M16 2l-1.5 2.5M7 11H3M21 11h-4M7 16H3M21 16h-4"/>'
+    ),
+    "sofa": '<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4M3 11h18v6H3zM5 17v3M19 17v3"/>',
+    "thermometer": '<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>',
+    "more": '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
+    "camera": (
+        '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>'
+        '<circle cx="12" cy="13" r="4"/>'
+    ),
+    "phone": (
+        '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1'
+        " 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0"
+        ' 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>'
+    ),
 }
 
 # The three roofs of the logo, in color (not line style).

@@ -319,8 +319,7 @@ erDiagram
         datetime read_at
     }
     REPORT {
-        int id PK
-        string number UK
+        int id PK "numéro montré au résident"
         int resident_id FK
         int room_id FK
         string category "electricity, plumbing, pests, furniture, heating, other"
@@ -339,7 +338,9 @@ erDiagram
     REPORT_PHOTO {
         int id PK
         int report_id FK
-        string image
+        string image "JPEG réduit, sans métadonnées, nom au hasard"
+        int width
+        int height
     }
     REPORT_EVENT {
         int id PK

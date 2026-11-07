@@ -22,3 +22,5 @@ cryptography==50.0.2
 pywebpush==2.5.0
 # Background tasks in the database, and their worker (card T21).
 django-tasks-db==0.13.0
+# Photos of a report (card T30): made smaller, metadata removed (reports/photos.py).
+pillow==13.0.0

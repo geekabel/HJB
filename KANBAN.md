@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T30 | Signaler un problème | E7 Signalements | D8 |
 | T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D5 | Écrans de tâche des résidents | 7 nov. 2026 |
 | D6 | Pages pleines et ordinateur | 7 nov. 2026 |
 | D8 | Écrans de l'équipe, deuxième passe | 7 nov. 2026 |
+| T30 | Signaler un problème | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -573,11 +573,15 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 
 ### E7 Signalements
 
-#### T30 Signaler un problème
+#### T30 Signaler un problème (fait le 7 nov. 2026)
 - **Maquette** : R3.
-- [ ] Catégorie, description, photos, urgence, accès à la chambre
-- [ ] Rappel du numéro à appeler pour les urgences graves
-- [ ] Photos réduites et sans métadonnées de localisation
+- **Docs** : [Django : envoi de plusieurs fichiers](https://docs.djangoproject.com/en/6.1/topics/http/file-uploads/#uploading-multiple-files), [Django : fichiers](https://docs.djangoproject.com/en/6.1/topics/files/), [Pillow : ImageOps](https://pillow.readthedocs.io/en/stable/reference/ImageOps.html).
+- [x] Catégorie (6 tuiles avec une icône), description, jusqu'à 3 photos, urgence avec son délai, accès à la chambre ; écran de tâche avec « Envoyer » collé en bas
+- [x] Rappel du numéro à appeler pour une urgence grave (`DJANGO_EMERGENCY_PHONE`, sinon « l'accueil ») et du 112
+- [x] Photos réduites (1 600 px), tournées dans le bon sens, réenregistrées en JPEG sous un nom au hasard : ni EXIF ni GPS, ni commentaire ; servies à leur propriétaire seulement, jamais en cache, supprimées avec le signalement
+- [x] Onglet « Signaler » dans la barre du bas, avec la liste de mes signalements ; raccourci sur l'accueil
+- **Notes** : l'équipe ne voit les signalements qu'avec T31 (tableau et notifications). Le numéro d'urgence est à régler sur le serveur.
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Le commentaire d'un JPEG passait dans la photo gardée : retiré. Au plus 10 fichiers par requête, et la taille totale sera limitée au proxy (T38). Mémoire : la photo est réduite avant d'être tournée, limite à 25 mégapixels. Plus de fichier orphelin si l'enregistrement échoue. Message d'erreur neutre. Onglets lisibles sur un écran de 320 px. Le titre d'une étape reste visible quand le navigateur montre un champ manquant.
 
 #### T31 Tableau des signalements (équipe)
 - **Maquette** : P3.
@@ -625,7 +629,8 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
 - [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
-- [ ] Fichiers statiques et médias
+- [ ] Fichiers statiques et médias ; dossier des photos des signalements (DJANGO_MEDIA_ROOT) hors du site public et sauvegardé
+- [ ] Taille maximale d'une requête au proxy (nginx client_max_body_size, environ 35 Mo pour 3 photos de 10 Mo)
 
 #### T39 Essai pilote sur un étage
 - [ ] Un étage pendant deux semaines, retours de l'équipe et des résidents

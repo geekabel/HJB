@@ -241,7 +241,48 @@
     });
   }
 
+  // Report form (card T30): small previews of the chosen photos, and the
+  // limit checked before sending. The photos never leave the phone here.
+  function previewPhotos() {
+    document.querySelectorAll("[data-photo-input]").forEach(function (input) {
+      var field = input.closest(".field") || input.parentElement;
+      var list = field.querySelector("[data-photo-previews]");
+      var count = field.querySelector("[data-photo-count]");
+      var max = parseInt(input.dataset.max, 10) || 3;
+      input.addEventListener("change", function () {
+        var files = Array.prototype.slice.call(input.files || []);
+        input.setCustomValidity(files.length > max ? max + " photos au plus." : "");
+        if (files.length > max) {
+          input.reportValidity();
+        }
+        if (!list) {
+          return;
+        }
+        list.querySelectorAll("img").forEach(function (image) {
+          URL.revokeObjectURL(image.src);
+        });
+        list.replaceChildren();
+        files.slice(0, max).forEach(function (file, index) {
+          var item = document.createElement("li");
+          var image = document.createElement("img");
+          image.src = URL.createObjectURL(file);
+          image.alt = "Photo " + (index + 1);
+          item.appendChild(image);
+          list.appendChild(item);
+        });
+        list.hidden = files.length === 0;
+        if (count) {
+          count.textContent =
+            files.length === 0
+              ? "Ajouter des photos"
+              : files.length + (files.length > 1 ? " photos choisies" : " photo choisie") + " · changer";
+        }
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    previewPhotos();
     openFiltersWhenWide();
     growWithText();
     showLastMessage();
