@@ -309,3 +309,45 @@ class EducatorListTests(DirectTestCase):
         self.assertLess(page.index("Yanis"), page.index("Inès"))  # unread first
         self.assertIn("Vous : Je vous réponds demain.", page)
         self.assertIn("À vous de répondre", page)
+
+
+class HistoryPageTests(DirectTestCase):
+    """A long conversation opens on its last messages (card T38)."""
+
+    def test_last_messages_then_older_ones(self):
+        talk = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        DirectMessage.objects.bulk_create(
+            DirectMessage(conversation=talk, author=self.samia, text=f"Message {n}")
+            for n in range(1, 121)
+        )
+        log_in_verified(self.client, self.ines)
+        url = reverse("rdv:write", args=[self.samia.pk])
+        with self.assertNumQueries(16):  # the same with 120 or 120,000 messages
+            response = self.client.get(url)
+        save_page("rdv-write-long", response)
+        page = response.context["page"]
+        self.assertEqual([m.text for m in page.messages][-1], "Message 120")
+        self.assertEqual(len(page.messages), direct.PAGE)
+        self.assertContains(response, f'href="?avant={page.older}"')
+        self.assertContains(response, 'id="last-message"')
+        # The page before: 50 older messages, no "last message" anchor, and
+        # nothing marked as read there.
+        talk.messages.update(read_at=None)
+        response = self.client.get(url, {"avant": page.older})
+        self.assertFalse(talk.messages.filter(read_at__isnull=False).exists())
+        older = response.context["page"]
+        self.assertEqual(older.messages[-1].text, "Message 70")
+        self.assertNotContains(response, 'id="last-message"')
+        self.assertContains(response, "Revenir aux derniers messages")
+        # The first page: nothing older.
+        response = self.client.get(url, {"avant": older.older})
+        self.assertEqual(response.context["page"].messages[0].text, "Message 1")
+        self.assertIsNone(response.context["page"].older)
+        # A wrong cursor: the last page.
+        for wrong in ("x", "²", "-3", "9" * 20):
+            response = self.client.get(url, {"avant": wrong})
+            self.assertTrue(response.context["page"].latest)
+        # The educator's side too.
+        log_in_verified(self.client, self.samia)
+        response = self.client.get(reverse("appointments:conversation", args=[talk.pk]))
+        self.assertEqual(len(response.context["page"].messages), direct.PAGE)

@@ -670,15 +670,22 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Les variables `DJANGO_EMERGENCY_PHONE` et `DJANGO_PRIVACY_CONTACT` et le réglage `RETENTION_DAYS` disparaissent : une seule source
 - [x] Relecture indépendante : accusés SMS encore demandés à l'ancien service après un changement ; « Aucun » dit clairement ce qu'il arrête (messages, codes d'activation) ; service utilisé maintenant affiché, et alerte si le service choisi n'a plus ses clés ; erreur du choix SMS visible ; deux personnes en même temps ne s'écrasent plus ; une durée plus courte demande une case à cocher ; heure du récapitulatif juste sur le tableau ; bornes dans les champs et dans le registre
 
-#### T38 Déploiement
-- **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
-- [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites (**avant l'ouverture** : sinon tout le monde a l'adresse du proxy, audit T37)
-- [ ] Journaux nginx : masquer le secret de l'adresse des accusés OVH ; SMSGate en HTTPS si le serveur n'est pas sur le même réseau (audit T37)
-- [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
-- [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
-- [ ] Fichiers statiques et médias ; dossier des photos des signalements (DJANGO_MEDIA_ROOT) hors du site public et sauvegardé
+#### T38 Déploiement (code prêt le 7 nov. 2026, à lancer sur le VPS)
+- **Choix de Godwin (7 nov.)** : VPS Hostinger pour les essais, PostgreSQL, Caddy, SMSGate pour commencer.
+- **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/), [Caddy](https://caddyserver.com/docs/) (install, automatic-https, reverse_proxy, request_body, log), [Gunicorn](https://gunicorn.org/deploy/), [PostgreSQL](https://www.postgresql.org/docs/current/auth-peer.html), [systemd.timer](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html), [uv](https://docs.astral.sh/uv/guides/install-python/), [Hostinger : pare-feu VPS](https://www.hostinger.com/support/8172641-how-to-use-a-managed-vps-firewall-at-hostinger/), [Hostinger : enregistrements A](https://www.hostinger.com/support/4468886-how-to-manage-a-records-at-hostinger/).
+- [x] Adresse réelle du client derrière Caddy (X-Forwarded-For lu de droite, seulement depuis le proxy ; un en-tête inventé est ignoré, essayé) et cache partagé en base pour les limites de connexion
+- [x] Journal de Caddy : le secret de l'adresse des accusés OVH est masqué (essayé)
+- [x] PostgreSQL en production (socket, connexion « peer », sans mot de passe) ; les tests passent aussi sur PostgreSQL, dans la CI
+- [x] Sauvegardes PostgreSQL (`pg_dump`), vérifiées, restauration d'essai dans une base jetable (`verify_backup --restore`)
+- [x] `deploy/deploy.sh` (install, update, status, check) : paquets, Caddy, Python 3.13 (uv), utilisateur, base, code, dépendances, clés, migrations, statiques, services et minuteurs systemd (heure de Paris), site Caddy avec HTTPS automatique, pare-feu, vérification ; essayé de bout en bout sur Ubuntu 24.04 (hors systemd et certificat)
+- [x] Taille maximale d'une requête : 35 Mo dans Caddy ; erreurs du site écrites dans le journal du service
+- [x] Premier chargement : `load_initial_data` (fichier YAML : réglages, étages, chambres, premiers comptes), essai à blanc, ne crée que ce qui manque
+- [x] Conversations : les 50 derniers messages, puis les plus anciens page par page (index, nombre de requêtes fixe)
+- [x] Relecture indépendante : lancement depuis un dossier personnel (uv), journal de Caddy illisible après `validate`, certificat attendu deux minutes et DNS vérifié, `update` qui redémarre vraiment, limites de connexion avec le cache en base, secret OVH absent de tous les journaux, contrôles du fichier YAML, pages anciennes d'une conversation qui ne marquent rien comme lu ; essai refait depuis /root
+- [ ] Lancer `deploy.sh install` sur le VPS (DNS du sous-domaine, pare-feu Hostinger), puis SMSGate, premier chargement, premier administrateur
 - [ ] Numéro d'urgence (page « Réglages ») : le numéro de l'accueil (choix de Godwin, 7 nov.)
-- [ ] Taille maximale d'une requête au proxy (nginx client_max_body_size, environ 35 Mo pour 3 photos de 10 Mo)
+- [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
+- [ ] SMSGate en HTTPS (mode cloud) si le téléphone n'est pas sur le réseau du serveur
 
 #### T39 Essai pilote sur un étage
 - [ ] Un étage pendant deux semaines, retours de l'équipe et des résidents

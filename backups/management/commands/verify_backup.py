@@ -13,14 +13,21 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("folder", help="Dossier d'une sauvegarde.")
+        parser.add_argument(
+            "--restore",
+            action="store_true",
+            help="PostgreSQL : restaure aussi dans une base jetable, puis la supprime.",
+        )
 
-    def handle(self, *args, folder, **options):
+    def handle(self, *args, folder, restore=False, **options):
         try:
-            manifest = service.verify(folder)
+            manifest = service.verify(folder, restore=restore)
         except service.BackupError as error:
             raise CommandError(f"Sauvegarde invalide : {error}") from error
-        rows = sum(manifest["rows"].values())
         self.stdout.write(
-            f"Sauvegarde valide, faite le {manifest['made_at']} : "
-            f"{rows} lignes, {len(manifest['files'])} photos."
+            f"Sauvegarde valide, faite le {manifest['made_at']} : {service.describe(manifest)}."
         )
+        if "restored_users" in manifest:
+            self.stdout.write(
+                f"Restauration d'essai réussie : {manifest['restored_users']} comptes."
+            )

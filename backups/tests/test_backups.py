@@ -7,8 +7,10 @@ import tarfile
 import tempfile
 from io import StringIO
 from pathlib import Path
+from unittest import skipUnless
 
 from django.core.management import CommandError, call_command
+from django.db import connection
 from django.test import TransactionTestCase, override_settings
 
 from accounts.models import User
@@ -32,6 +34,7 @@ class BackupTests(TransactionTestCase):
         self.addCleanup(override.disable)
         make_user("ines", first_name="Inès")
 
+    @skipUnless(connection.vendor == "sqlite", "SQLite copy")
     def test_backup_restores_the_data(self):
         folder = service.make(self.target)
         manifest = service.verify(folder)
@@ -47,6 +50,7 @@ class BackupTests(TransactionTestCase):
             archive.extractall(restored, filter="data")
         self.assertEqual((restored / "reports" / "a.jpg").read_bytes(), b"photo")
 
+    @skipUnless(connection.vendor == "sqlite", "SQLite copy")
     def test_no_session_nor_app_code_secret_in_the_copy(self):
         from django.contrib.sessions.backends.db import SessionStore
         from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -68,12 +72,14 @@ class BackupTests(TransactionTestCase):
 
     def test_a_changed_backup_is_refused(self):
         folder = service.make(self.target)
-        with open(folder / service.DB_NAME, "r+b") as database:
+        db_file = json.loads((folder / service.MANIFEST).read_text())["db_file"]
+        with open(folder / db_file, "r+b") as database:
             database.seek(200)
             database.write(b"\x00\xff" * 50)
         with self.assertRaisesMessage(service.BackupError, "fichier absent ou modifié"):
             service.verify(folder)
 
+    @skipUnless(connection.vendor == "sqlite", "SQLite rows")
     def test_a_backup_that_does_not_match_its_manifest(self):
         folder = service.make(self.target)
         manifest = json.loads((folder / service.MANIFEST).read_text())
@@ -102,3 +108,33 @@ class BackupTests(TransactionTestCase):
     def test_verify_command_reports_a_bad_folder(self):
         with self.assertRaisesMessage(CommandError, "Sauvegarde invalide"):
             call_command("verify_backup", str(self.dir))
+
+
+@skipUnless(connection.vendor == "postgresql", "PostgreSQL: pg_dump (CI job and production)")
+class PostgresBackupTests(TransactionTestCase):
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        override = override_settings(MEDIA_ROOT=self.dir / "media")
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def test_dump_verify_and_restore(self):
+        from django.contrib.sessions.backends.db import SessionStore
+
+        make_user("ines", first_name="Inès")
+        session = SessionStore()
+        session["x"] = 1
+        session.create()
+        folder = service.make(self.dir / "backups")
+        self.assertEqual(oct(folder.stat().st_mode & 0o777), "0o700")
+        manifest = service.verify(folder, restore=True)
+        self.assertEqual(manifest["format"], "postgresql")
+        self.assertIn("accounts_user", manifest["tables"])
+        # Left out: their data never goes into the dump.
+        self.assertNotIn("django_session", manifest["tables"])
+        self.assertNotIn(session.session_key.encode(), (folder / service.PG_NAME).read_bytes())
+        self.assertEqual(manifest["restored_users"], User.objects.count())
+        out = StringIO()
+        call_command("verify_backup", str(folder), "--restore", stdout=out)
+        self.assertIn("Restauration d'essai réussie", out.getvalue())

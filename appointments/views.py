@@ -218,7 +218,9 @@ def conversation(request, pk):
             messages.warning(request, str(refused))
         else:
             return redirect(reverse("appointments:conversation", args=[found.pk]) + "#last-message")
-    new_ids = direct.mark_read(found, request.user)
+    # Read only when the last messages are on screen, not an older page.
+    before = direct.cursor(request)
+    new_ids = direct.mark_read(found, request.user) if before is None else []
     stays = Stay.objects.current().filter(resident=found.resident).select_related("room")
     stay = stays.first()
     return _private(
@@ -229,7 +231,7 @@ def conversation(request, pk):
                 "active_nav": "conversations",
                 "conversation": found,
                 "room": stay.room.number if stay else "",
-                "thread": found.messages.select_related("author"),
+                "page": direct.page_of(found, before),
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "reply_hours": availability.settings_of(request.user).reply_hours,

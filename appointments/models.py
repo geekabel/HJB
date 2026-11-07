@@ -252,7 +252,11 @@ class DirectMessage(models.Model):
         verbose_name = "message direct"
         verbose_name_plural = "messages directs"
         ordering = ["sent_at", "pk"]
-        indexes = [models.Index(fields=["conversation", "read_at"])]
+        indexes = [
+            models.Index(fields=["conversation", "read_at"]),
+            # The last page of a conversation, and the pages before (direct.page_of).
+            models.Index(fields=["conversation", "id"]),
+        ]
 
     def __str__(self):
         return f"Message n°{self.pk}"

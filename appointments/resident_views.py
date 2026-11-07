@@ -260,7 +260,11 @@ def write(request, educator_pk):
             messages.warning(request, str(refused))
         else:
             return redirect(reverse("rdv:write", args=[educator.pk]) + "#last-message")
-    new_ids = direct.mark_read(conversation, request.user) if conversation else []
+    # Read only when the last messages are on screen, not an older page.
+    before = direct.cursor(request)
+    new_ids = (
+        direct.mark_read(conversation, request.user) if conversation and before is None else []
+    )
     return _page(
         render(
             request,
@@ -269,7 +273,7 @@ def write(request, educator_pk):
                 "active_nav": "messages",
                 "educator": educator,
                 "reply_hours": settings_of(educator).reply_hours,
-                "thread": conversation.messages.select_related("author") if conversation else [],
+                "page": direct.page_of(conversation, before),
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "new_ids": new_ids,

@@ -65,13 +65,21 @@ class ProductionSettingsTests(SimpleTestCase):
 
     def test_refuses_to_start_without_wifi_keys(self):
         # Card T15: without a key, the wifi passwords could not be read.
-        result = self._import_prod(DJANGO_SECRET_KEY="test-key")
+        result = self._import_prod(DJANGO_SECRET_KEY="test-key", POSTGRES_DB="hjb")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DJANGO_WIFI_KEYS", result.stderr)
 
+    def test_refuses_to_start_without_database(self):
+        # Card T38: production runs on PostgreSQL only.
+        result = self._import_prod(DJANGO_SECRET_KEY="test-key")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("POSTGRES_DB", result.stderr)
+
     def test_refuses_to_start_without_vapid_key(self):
         # Card T19: without the key, no notification could leave.
-        result = self._import_prod(DJANGO_SECRET_KEY="test-key", DJANGO_WIFI_KEYS="test-wifi-key")
+        result = self._import_prod(
+            DJANGO_SECRET_KEY="test-key", DJANGO_WIFI_KEYS="test-wifi-key", POSTGRES_DB="hjb"
+        )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DJANGO_VAPID_PRIVATE_KEY", result.stderr)
 
@@ -79,6 +87,7 @@ class ProductionSettingsTests(SimpleTestCase):
         result = self._import_prod(
             DJANGO_SECRET_KEY="test-key",
             DJANGO_WIFI_KEYS="test-wifi-key",
+            POSTGRES_DB="hjb",
             DJANGO_VAPID_PRIVATE_KEY="test-vapid-key",
             DJANGO_VAPID_CONTACT="mailto:test@example.org",
             DJANGO_ALLOWED_HOSTS="residence.example, www.residence.example",

@@ -150,8 +150,6 @@ Pour le service du *worker* :
 - ajouter `--no-reload` (le rechargement automatique suit `DEBUG` et n'est pas fait pour la production) ;
 - lui laisser le temps de finir un envoi à l'arrêt (systemd : `TimeoutStopSec=300`). Un envoi coupé en plein milieu reprend tout seul avec `run_scheduled`, sans renvoyer ce qui est déjà parti.
 
-En production avec SQLite, trois processus écrivent dans la base (le site, le *worker* et `run_scheduled`) : `config/settings/prod.py` active le mode WAL, les transactions `IMMEDIATE` et une attente de 20 secondes sur le verrou.
-
 Les commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
 
 - chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus, enregistre les départs prévus (le jour venu, à midi), demande à SMSGate les accusés de réception des SMS (voir plus bas) envoie les rappels de rendez-vous (la veille entre 18 h et 21 h, et une heure avant), prévient l'équipe d'un signalement en retard et envoie le récapitulatif des signalements (du lundi au vendredi, à l'heure de la page « Réglages », 9 h par défaut) ;
@@ -162,52 +160,81 @@ Les commandes planifiées, avec les réglages de production et les mêmes variab
 - chaque nuit, `backup_data --to /var/backups/hjb --keep 14` : sauvegarde la base et les photos, puis relit la sauvegarde (voir « Sauvegardes ») ;
 - chaque jour, `purge_personal_data --apply` : supprime les données dont la durée de conservation est passée (voir « Données personnelles »). **À ajouter seulement quand l'association a validé les durées.** Sans `--apply`, la commande compte sans rien supprimer.
 
-Exemple de lignes cron, avec le fichier d'environnement du service et `flock` pour qu'une exécution ne commence pas avant la fin de la précédente :
+En production, `deploy/deploy.sh` installe tout cela en services et minuteurs systemd (voir « Déploiement ») : `hjb-worker` pour le *worker*, `hjb-minute.timer` pour `run_scheduled`, `hjb-daily.timer` (10 h, heure de Paris), `hjb-backup.timer` (3 h 15) et `hjb-purge.timer` (installé, mais pas activé). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
+
+## Déploiement
+
+Sur un serveur Ubuntu (VPS Hostinger pour les essais), avec PostgreSQL, Gunicorn derrière [Caddy](https://caddyserver.com/docs/) et HTTPS automatique (Let's Encrypt). Tout est dans `deploy/` :
+
+- `deploy.sh` : le script, en fonctions simples. Chaque étape peut être relancée sans risque : ce qui est fait reste, les clés ne sont jamais remplacées.
+- `deploy.conf.example` : le domaine, l'e-mail du certificat, la branche. À copier en `deploy/deploy.conf` (ignoré par git).
+- `templates/hjb.caddy` : le site pour Caddy.
+- `initial-data.example.yaml` : le premier chargement (étages, chambres, réglages, premiers comptes).
+
+**Avant** : un enregistrement DNS « A » du sous-domaine (par exemple `hjb`) vers l'adresse IP du VPS, et les ports 22, 80, 443 (TCP) et 443 (UDP) ouverts dans le pare-feu du panneau Hostinger s'il est actif. Le domaine fixe aussi les clés d'accès : le changer plus tard oblige tout le monde à refaire sa clé.
 
 ```sh
-* * * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-minute.lock .venv/bin/python manage.py run_scheduled
-0 10 * * * cd /srv/hjb && set -a && . /etc/hjb/env && set +a && DJANGO_SETTINGS_MODULE=config.settings.prod flock -n /tmp/hjb-daily.lock sh -c '.venv/bin/python manage.py send_wifi_reminders && .venv/bin/python manage.py prune_push_subscriptions && .venv/bin/python manage.py prune_db_task_results && .venv/bin/python manage.py clearsessions'
+git clone https://github.com/geekabel/HJB.git && cd HJB/deploy
+cp deploy.conf.example deploy.conf     # puis le remplir
+sudo ./deploy.sh install               # la première fois
+sudo ./deploy.sh update                # à chaque nouvelle version
+sudo ./deploy.sh status                # services, minuteurs, erreurs du jour
+sudo ./deploy.sh check                 # le site vu de l'extérieur
 ```
 
-Le chemin, le fichier d'environnement et le service du *worker* seront fixés avec le déploiement (T38). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
+`install` fait, dans l'ordre : paquets (PostgreSQL, ufw), Caddy depuis son dépôt officiel, Python 3.13 avec [uv](https://docs.astral.sh/uv/), l'utilisateur système `hjb`, le rôle et la base PostgreSQL (connexion « peer » par le socket : aucun mot de passe), le code, les dépendances, `/etc/hjb/env` avec des clés neuves, les migrations, la table du cache, les fichiers statiques, `check --deploy`, les services systemd, le site Caddy, le pare-feu, puis une vérification en HTTPS. `DRY_RUN=1` montre les commandes sans les lancer.
 
+Ensuite :
+1. **SMS** : remplir `SMSGATE_URL` et `SMSGATE_TOKEN` dans `/etc/hjb/env`, mettre `DJANGO_SMS_PROVIDER=smsgate`, puis `sudo ./deploy.sh update`. Si le téléphone n'est pas sur le même réseau que le serveur, passez par le mode cloud de SMSGate (HTTPS).
+2. **Premier chargement** : `load_initial_data` avec le fichier YAML (essai à blanc d'abord). Les étages et chambres ajoutés ensuite passent par le site d'administration.
+3. **Premier administrateur** : `activation_code <identifiant>`, puis la page `/activer/`.
+4. **Copie des clés** : gardez `DJANGO_WIFI_KEYS` hors du serveur.
+5. **HSTS** : quand tout marche, `DJANGO_SECURE_HSTS_SECONDS=31536000` (un an).
+
+Pour lancer une commande de Django sur le serveur :
+
+```sh
+sudo runuser -u hjb -- bash -c 'set -a; . /etc/hjb/env; set +a; cd /srv/hjb/app; /srv/hjb/venv/bin/python manage.py <commande>'
+```
+
+`/etc/hjb/env` est lu par systemd et par bash : pas d'espace, de guillemet ni de `#` dans les valeurs. `update` redémarre le site et le *worker* : un changement de ce fichier est pris en compte.
+
+Le script a été essayé de bout en bout sur Ubuntu 24.04 (sauf systemd et le certificat, absents de l'essai) : installation, mise à jour sans changement, Caddy devant Gunicorn, redirection HTTP vers HTTPS, en-têtes de sécurité, fichiers statiques compressés, adresse du client lue derrière Caddy (un en-tête inventé est ignoré), secret OVH absent du journal, sauvegarde PostgreSQL restaurée, premier chargement.
 
 ## Sauvegardes
 
+En production, `hjb-backup.timer` lance chaque nuit (3 h 15) :
+
 ```sh
 python manage.py backup_data --to /var/backups/hjb --keep 14   # sauvegarde, relit, garde les 14 dernières
-python manage.py verify_backup /var/backups/hjb/hjb-20261107-030000
+python manage.py verify_backup /var/backups/hjb/hjb-20261107-031500 --restore
 ```
 
-Une sauvegarde est un dossier (accès réservé au propriétaire) avec :
-- `db.sqlite3` : une copie faite par l'API de sauvegarde de SQLite, cohérente même pendant les écritures ;
+Une sauvegarde est un dossier (accès réservé à l'utilisateur `hjb`) avec :
+- `db.dump` : la base, par `pg_dump` en format personnalisé, d'une seule photographie cohérente ;
 - `media.tar.gz` : les photos des signalements ;
-- `manifest.json` : le nombre de lignes par table, la liste des photos et l'empreinte SHA-256 des deux fichiers.
+- `manifest.json` : les tables sauvegardées, la liste des photos, l'empreinte SHA-256 des deux fichiers et le nom de la base copiée.
 
-`backup_data` relit chaque sauvegarde juste après l'avoir faite : intégrité de la base, nombre de lignes, empreintes, liste des photos. Une sauvegarde ratée sort en erreur, et les anciennes restent.
+`backup_data` relit chaque sauvegarde juste après l'avoir faite : empreintes, tables, photos. Une sauvegarde ratée sort en erreur, et les anciennes restent. `verify_backup --restore` va plus loin : il la restaure dans une base jetable, compte les comptes, puis la supprime. Faites-le au moins une fois par mois. En développement (SQLite), la sauvegarde est une copie `db.sqlite3`, compactée, avec le nombre de lignes par table.
 
 **Ce que la sauvegarde ne contient pas, exprès :**
 - les clés (`DJANGO_SECRET_KEY`, `DJANGO_WIFI_KEYS`, `DJANGO_VAPID_PRIVATE_KEY`). Gardez-en une copie ailleurs, à part : sans les clés wifi, les mots de passe wifi sauvegardés sont illisibles ; avec elles dans la même sauvegarde, un vol les ouvrirait ;
 - les sessions : une sauvegarde volée ne connecte personne ;
 - les secrets des applications de codes de l'équipe : avec eux, on pourrait calculer les codes.
 
-La copie est ensuite compactée (`VACUUM`) : les lignes retirées ne restent pas dans les pages libres. Le manifeste note aussi le chemin de la base copiée. Vérifiez-le : une ligne cron sans `DJANGO_SETTINGS_MODULE=config.settings.prod` sauvegarderait la base de développement.
+**Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée restent à fixer.
 
-**Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée sont à fixer avec le déploiement (T38).
-
-**Restaurer** :
-1. arrêter le site, le *worker* et les tâches planifiées ;
-2. `python manage.py verify_backup <dossier>` ;
-3. supprimer les fichiers `-wal` et `-shm` à côté de la base, puis remplacer la base par `db.sqlite3` de la sauvegarde ;
-4. vider `DJANGO_MEDIA_ROOT`, puis `tar -xzf <dossier>/media.tar.gz --no-same-owner -C "$DJANGO_MEDIA_ROOT"` ;
-5. `python manage.py migrate`, puis `python manage.py check --deploy`, puis relancer les services ;
+**Restaurer**, en tant que root sur le serveur :
+1. arrêter ce qui écrit : `systemctl stop hjb-minute.timer hjb-daily.timer hjb-backup.timer hjb-worker hjb-web` ;
+2. vérifier la sauvegarde : `verify_backup <dossier> --restore` (voir « Déploiement » pour lancer une commande) ;
+3. remettre la base : `runuser -u hjb -- pg_restore --clean --if-exists --no-owner --single-transaction -d hjb <dossier>/db.dump` (tout ou rien) ;
+4. remettre les photos : vider `/srv/hjb/media`, puis `runuser -u hjb -- tar -xzf <dossier>/media.tar.gz --no-same-owner -C /srv/hjb/media` ;
+5. `sudo deploy/deploy.sh update` (migrations, vérifications, redémarrage des services et des minuteurs) ;
 6. refaire ce qui a eu lieu depuis la date de la sauvegarde : départs, accès coupés, codes donnés. Tout le monde se reconnecte, et l'équipe relie à nouveau son application de codes.
 
 La base et les photos ne sont pas copiées au même instant : une photo envoyée entre les deux peut manquer. C'est sans gravité.
 
-Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
-
-Avec PostgreSQL (si T38 le choisit), la base se sauvegarde avec `pg_dump` ; `backup_data` le dit et s'arrête.
+Les tests font une sauvegarde, la relisent et la restaurent, sur SQLite et sur PostgreSQL. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
 
 ## Réglages de la résidence
 

@@ -9,6 +9,7 @@ stored in the task queue (its rows show in the admin site).
 
 import re
 import unicodedata
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.db import transaction
@@ -24,6 +25,7 @@ from .models import Conversation, DirectMessage
 MAX_LENGTH = 2000
 MAX_PER_DAY = 30  # messages one person sends in one conversation, in 24 hours
 MAX_PER_DAY_IN_ALL = 60  # the same, across all conversations of that person
+PAGE = 50  # messages shown at once; older ones one page at a time
 MANY_NEWLINES = re.compile(r"\n{3,}")
 
 
@@ -117,6 +119,36 @@ def _notify(message_id):
     from .tasks import notify_message_task
 
     notify_message_task.enqueue(message_id=message_id)
+
+
+@dataclass
+class Page:
+    messages: list
+    older: int | None  # pk to ask for the page before, or None
+    latest: bool  # the page ends with the last message
+
+
+def page_of(conversation, before=None):
+    """The last PAGE messages, or the PAGE before message ``before``.
+
+    One query that stops at PAGE + 1 rows, on the index (conversation, id):
+    as fast with ten years of messages as with ten. ``before`` is a cursor
+    (a message id), not a page number, so a new message never shifts it.
+    """
+    if conversation is None:
+        return Page([], None, True)
+    query = conversation.messages.select_related("author").order_by("-pk")
+    if before is not None:
+        query = query.filter(pk__lt=before)
+    found = list(query[: PAGE + 1])
+    older = found[PAGE - 1].pk if len(found) > PAGE else None
+    return Page(list(reversed(found[:PAGE])), older, before is None)
+
+
+def cursor(request):
+    """The ?avant= of the URL, or None if absent or wrong."""
+    value = request.GET.get("avant", "")
+    return int(value) if value.isascii() and value.isdigit() and len(value) < 12 else None
 
 
 def mark_read(conversation, reader):

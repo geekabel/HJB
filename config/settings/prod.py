@@ -8,7 +8,7 @@ https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 import os
 
 from .base import *  # noqa: F403
-from .base import sms_setting
+from .base import postgres_setting, sms_setting
 
 
 def _list(name):
@@ -32,36 +32,25 @@ if ADMIN_URL == "/":
     ADMIN_URL = "admin/"
 
 
-# Database: PostgreSQL if POSTGRES_DB is set, else SQLite.
-# The final choice is made in T38 (deployment).
-# https://docs.djangoproject.com/en/6.1/ref/databases/
+# Database: PostgreSQL (card T38, choice of Godwin, 7 Nov.). With an empty
+# POSTGRES_HOST, Django goes through the Unix socket: the app runs as the
+# Linux user that owns the database ("peer" login, no password to keep).
+# https://docs.djangoproject.com/en/6.1/ref/databases/#postgresql-notes
+DATABASES = {"default": postgres_setting()}
 
-if os.environ.get("POSTGRES_DB"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["POSTGRES_DB"],
-            "USER": os.environ.get("POSTGRES_USER", ""),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
-            "HOST": os.environ.get("POSTGRES_HOST", ""),
-            "PORT": os.environ.get("POSTGRES_PORT", ""),
-        }
+# A cache shared by all processes (Gunicorn workers, task worker): the
+# login limits of T14 count for the whole site, not per process. Its table
+# is made by `manage.py createcachetable` (deploy/deploy.sh).
+# https://docs.djangoproject.com/en/6.1/topics/cache/#database-caching
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        # Room for one counter per address; the default (300) would cull
+        # counters under a burst.
+        "OPTIONS": {"MAX_ENTRIES": 50000},
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": os.environ.get("DJANGO_SQLITE_PATH", BASE_DIR / "db.sqlite3"),  # noqa: F405
-            # Three processes write (site, task worker, run_scheduled): WAL lets reads
-            # go on during a write, IMMEDIATE takes the write lock at the start of a
-            # transaction, and the timeout waits for it instead of failing at once.
-            "OPTIONS": {
-                "init_command": "PRAGMA journal_mode=WAL;",
-                "transaction_mode": "IMMEDIATE",
-                "timeout": 20,
-            },
-        }
-    }
+}
 
 
 # E-mail: a real SMTP server in production (MAILERS, new in 6.1).
@@ -140,16 +129,38 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_NAME = "__Host-sessionid"
 CSRF_COOKIE_NAME = "__Host-csrftoken"
 
-# HSTS: we start with a short duration, then raise it once
-# HTTPS works on the real domain (card T38: then 31536000, one year).
+# HSTS: we start with a short duration, then raise it once HTTPS works on
+# the real domain (then 31536000, one year: README, "Déploiement").
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
 
-# These two settings affect all subdomains of the chosen domain.
-# They stay off until the domain is known (T38):
-# so `check --deploy` shows security.W005 and security.W021.
-SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS") == "1"
+# The site lives on its own subdomain (for example hjb.godwinlab.cloud):
+# includeSubDomains only covers the names below it, so it is on by default.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", "1") == "1"
+# Preloading is decided for a whole registered domain (godwinlab.cloud and
+# all its sites), not for one app: off, and its warning silenced.
+# https://hstspreload.org/
 SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD") == "1"
+if not SECURE_HSTS_PRELOAD:
+    SILENCED_SYSTEM_CHECKS = ["security.W021"]
 
-# Turn on only behind a proxy that overwrites this header.
-if os.environ.get("DJANGO_BEHIND_PROXY") == "1":
+# Behind Caddy on the same machine (deploy/Caddyfile). Caddy sets
+# X-Forwarded-Proto and X-Forwarded-For itself; only a request from these
+# addresses is believed (audit/service.py, client_ip).
+TRUSTED_PROXIES = _list("DJANGO_TRUSTED_PROXIES") or ["127.0.0.1", "::1"]
+if os.environ.get("DJANGO_BEHIND_PROXY", "1") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# Errors go to the standard error, so to the journal of the service
+# (journalctl -u hjb-web). Without this, with DEBUG off and no ADMINS, a
+# server error (500) would be written nowhere.
+# https://docs.djangoproject.com/en/6.1/topics/logging/#configuring-logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"hide_secrets": {"()": "config.log_filters.HideSecretPaths"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "filters": ["hide_secrets"]},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+}

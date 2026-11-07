@@ -1,0 +1,18 @@
+# Settings of deploy/deploy.sh (card T38). Copy to deploy/deploy.conf on
+# the server (ignored by git) and fill in. No secret here: the keys are
+# made on the server, in /etc/hjb/env.
+
+# Address of the site. Its DNS A record must point to the server first
+# (Hostinger: DNS zone of the domain, record "A", name "hjb").
+# Changing it later makes every passkey unusable: choose it once.
+DOMAIN="hjb.example.org"
+
+# E-mail of the Let's Encrypt account (certificate problems are sent there).
+ACME_EMAIL="admin@example.org"
+
+# Code to deploy.
+REPO_URL="https://github.com/geekabel/HJB.git"
+BRANCH="develop"
+
+# Nightly backups kept on the server.
+BACKUP_KEEP="14"

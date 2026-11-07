@@ -24,3 +24,9 @@ pywebpush==2.5.0
 django-tasks-db==0.13.0
 # Photos of a report (card T30): made smaller, metadata removed (reports/photos.py).
 pillow==13.0.0
+# Production (card T38): PostgreSQL driver (psycopg 3, binary wheels as the
+# Django docs allow) and the WSGI server behind Caddy.
+psycopg[binary]==3.3.8
+gunicorn==26.2.0
+# First loading of a server from a YAML file (card T38), read with safe_load.
+pyyaml==6.0.3

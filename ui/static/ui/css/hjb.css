@@ -3492,6 +3492,12 @@
     list-style: none;
   }
 
+  .thread__more {
+    margin: 0;
+    text-align: center;
+    font-size: var(--t-small);
+  }
+
   .thread__day {
     align-self: center;
     margin-block: var(--s-3) var(--s-1);

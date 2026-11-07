@@ -1,0 +1,37 @@
+# First loading of a new server (card T38):
+#   python manage.py load_initial_data deploy/initial-data.yaml --dry-run
+#   python manage.py load_initial_data deploy/initial-data.yaml
+#
+# Copy this file to deploy/initial-data.yaml (ignored by git: it holds real
+# names and numbers) and fill it in. Only what is missing is created: run
+# again, nothing changes. Later changes go through the admin site and the
+# page "Réglages". Residents come with the Excel import.
+# The values below are made up.
+
+residence:
+  organization_name: Habitat Jeunes Belfort
+  organization_address: |
+    1 rue de l'Exemple
+    90000 Belfort
+  privacy_contact: donnees@example.org
+  emergency_phone: "03 84 00 00 00"
+
+# number: 0 for the ground floor. visit_order: the order of the room
+# visits (the floor number if left out). rooms: numbers, or ranges "101-120".
+floors:
+  - number: 0
+    name: Rez-de-chaussée
+    rooms: ["001", "002"]
+  - number: 1
+    rooms: ["101-120"]
+  - number: 2
+    rooms: ["201-220"]
+
+# The first staff accounts. Roles: admin, front_desk, educator, maintenance.
+# No password: each person gets an activation code (the command says how).
+staff:
+  - username: marie.exemple
+    first_name: Marie
+    last_name: Exemple
+    phone: "06 00 00 00 01"
+    roles: [admin]
