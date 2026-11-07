@@ -8,6 +8,7 @@ e-mail settings):
 
 import dataclasses
 import logging
+import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -24,13 +25,68 @@ logger = logging.getLogger(__name__)
 MAX_SEGMENTS = 6
 
 
-def active_provider():
-    setting = getattr(settings, "SMS", {})
+def _build(setting):
     try:
         provider_class = import_string(setting["BACKEND"])
     except (KeyError, ImportError) as error:
         raise ConfigurationError(f"Réglage SMS invalide : {error}") from error
     return provider_class(**setting.get("OPTIONS", {}))
+
+
+def configured_provider():
+    """The provider of the server's settings (SMS), without the database."""
+    return _build(getattr(settings, "SMS", {}))
+
+
+def provider_named(name):
+    """A provider of SMS_PROVIDERS, its options read from the environment."""
+    if name == "paused":
+        from .providers.disabled import PausedProvider
+
+        return PausedProvider()
+    backend, variables = settings.SMS_PROVIDERS[name]
+    options = {key: os.environ.get(variable, "") for key, variable in variables.items()}
+    return _build({"BACKEND": backend, "OPTIONS": options})
+
+
+def ready_providers():
+    """The real providers whose keys are all on the server (card T37b)."""
+    ready = []
+    for name in ("ovh", "smsgate"):
+        try:
+            if not provider_named(name).missing_options():
+                ready.append(name)
+        except ConfigurationError:
+            continue
+    return ready
+
+
+def _chosen():
+    """The choice of the administration (residence settings), or ""."""
+    from django.db import DatabaseError
+
+    from residence.models import ResidenceSettings
+
+    try:
+        choice = ResidenceSettings.objects.filter(pk=1).values_list("sms_provider", flat=True)
+        return choice.first() or ""
+    except DatabaseError:  # table not created yet (first migrate)
+        return ""
+
+
+def sms_paused():
+    """True if the administration cut the SMS (residence settings)."""
+    return _chosen() == "paused"
+
+
+def active_provider():
+    """The provider chosen in the settings of the residence, else the
+    server's. A chosen provider whose keys went missing falls back to the
+    server's one: the choice never sends with half a configuration."""
+    choice = _chosen()
+    if choice == "paused" or (choice and choice in ready_providers()):
+        return provider_named(choice)
+    return configured_provider()
 
 
 def send_sms(number, text):

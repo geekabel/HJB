@@ -2,10 +2,9 @@
 
 The form is a task screen (design card D5): on a phone it covers the tab bar
 and keeps its "Envoyer" button at the bottom. It reminds the number to call
-at once for a serious problem (settings.EMERGENCY_PHONE).
+at once for a serious problem (residence settings, card T37b).
 """
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404
@@ -34,7 +33,9 @@ def _page(response):
 
 
 def _emergency():
-    return {"emergency_phone": settings.EMERGENCY_PHONE}
+    from residence.models import ResidenceSettings
+
+    return {"emergency_phone": ResidenceSettings.load().emergency_phone}
 
 
 @login_required

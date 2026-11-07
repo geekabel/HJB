@@ -154,7 +154,7 @@ En production avec SQLite, trois processus écrivent dans la base (le site, le *
 
 Les commandes planifiées, avec les réglages de production et les mêmes variables d'environnement que le site (sinon elles prennent les réglages de développement et une mauvaise clé VAPID) :
 
-- chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus, enregistre les départs prévus (le jour venu, à midi), demande à SMSGate les accusés de réception des SMS (voir plus bas) envoie les rappels de rendez-vous (la veille entre 18 h et 21 h, et une heure avant), prévient l'équipe d'un signalement en retard et envoie le récapitulatif des signalements (à 9 h, du lundi au vendredi) ;
+- chaque minute, `run_scheduled` : lance les messages et les relances arrivés à l'heure, reprend les envois interrompus, enregistre les départs prévus (le jour venu, à midi), demande à SMSGate les accusés de réception des SMS (voir plus bas) envoie les rappels de rendez-vous (la veille entre 18 h et 21 h, et une heure avant), prévient l'équipe d'un signalement en retard et envoie le récapitulatif des signalements (du lundi au vendredi, à l'heure de la page « Réglages », 9 h par défaut) ;
 - chaque jour vers 10 h, heure de Paris, `send_wifi_reminders` : rappel aux résidents 15 jours avant la fin de leur accès wifi ;
 - chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés ;
 - chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours ;
@@ -209,11 +209,24 @@ Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient auss
 
 Avec PostgreSQL (si T38 le choisit), la base se sauvegarde avec `pg_dump` ; `backup_data` le dit et s'arrête.
 
+## Réglages de la résidence
+
+La page « Réglages » (`/equipe/reglages/`, rôle Administration) change ce qui n'est pas secret, sans toucher au serveur :
+- le nom et l'adresse de l'association, le contact pour les données personnelles ;
+- le numéro d'urgence montré aux résidents ;
+- l'heure du récapitulatif des signalements (de 7 h à 11 h, du lundi au vendredi) ;
+- le service SMS : celui du serveur, un autre service dont les clés sont sur le serveur, ou aucun (SMS coupés) ;
+- les durées de conservation, entre des bornes sûres.
+
+Elle demande une clé d'accès utilisée depuis moins de 10 minutes. Chaque changement est noté dans le journal, avec l'avant et l'après.
+
+**Les secrets restent dans l'environnement du serveur** (clés SMS, `DJANGO_SECRET_KEY`, clé VAPID, clés wifi) : si la base, une sauvegarde ou un compte d'administration fuit, ils restent protégés, et une faute de frappe dans un formulaire ne peut pas couper tous les envois. Le format des accès wifi reste dans le site d'administration.
+
 ## Données personnelles
 
 La page « Vos données » (`/donnees/`) dit aux résidents ce qui est gardé, combien de temps, et leurs droits. Elle est ouverte à tous, et liée depuis la connexion, l'activation et Mon compte.
 
-Les durées de conservation sont dans `RETENTION_DAYS` (`config/settings/base.py`). La page et la suppression utilisent les mêmes. `DJANGO_PRIVACY_CONTACT` donne l'adresse pour exercer ses droits (vide : « l'accueil de la résidence »).
+Les durées de conservation et le contact pour exercer ses droits se règlent dans la page « Réglages » (voir plus bas). La page « Vos données » et la suppression utilisent les mêmes.
 
 ```sh
 python manage.py purge_personal_data            # compte ce qui a passé sa durée

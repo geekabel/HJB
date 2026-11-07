@@ -160,12 +160,23 @@ def problems(campaign, send_at):
         vapid()
     except ImproperlyConfigured:
         found.append("Les notifications ne sont pas configurées sur le serveur.")
-    if targets.sms and not sms_ready():
+    if targets.sms and sms_paused():
+        found.append(
+            "Les SMS sont coupés dans les réglages de la résidence : "
+            "les résidents sans l'application ne recevraient rien."
+        )
+    elif targets.sms and not sms_ready():
         found.append(
             "L'envoi de SMS n'est pas configuré sur le serveur : "
             "les résidents sans l'application ne recevraient rien."
         )
     return found
+
+
+def sms_paused():
+    from sms.service import sms_paused as paused
+
+    return paused()
 
 
 def sms_ready():

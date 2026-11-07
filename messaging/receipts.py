@@ -26,7 +26,7 @@ from django.views.decorators.http import require_http_methods
 from sms.providers.base import ConfigurationError, DeliveryState, SmsError
 from sms.providers.base import Receipt as ProviderReceipt
 from sms.providers.ovh import callback_receipt
-from sms.service import active_provider
+from sms.service import active_provider, provider_named
 
 from .models import Delivery, EarlyReceipt, Receipt
 
@@ -111,14 +111,41 @@ def poll(now=None):
     """
     now = now or timezone.now()
     checked = 0
-    try:
-        provider = active_provider()
-    except SmsError:
-        provider = None
-    if provider is not None and provider.can_poll and not provider.missing_options():
-        checked = _ask(provider, now)
+    for provider in _pollers(now):
+        checked += _ask(provider, now)
     give_up(now)
     return checked
+
+
+def _pollers(now):
+    """The active provider, and every other provider that still has SMS on
+    their way, as long as its keys are on the server (card T37b: the
+    administration may switch the service while SMS are in flight)."""
+    found = {}
+    try:
+        active = active_provider()
+        found[active.name] = active
+    except SmsError:
+        pass
+    others = (
+        Delivery.objects.filter(
+            channel=Delivery.Channel.SMS,
+            status=Delivery.Status.SENT,
+            sent_at__gte=now - LAST_POLL_AFTER,
+        )
+        .exclude(sms_provider__in=[*found, ""])
+        .order_by()
+        .values_list("sms_provider", flat=True)
+        .distinct()
+    )
+    for name in others:
+        if name not in settings.SMS_PROVIDERS:
+            continue
+        try:
+            found[name] = provider_named(name)
+        except SmsError:
+            continue
+    return [p for p in found.values() if p.can_poll and not p.missing_options()]
 
 
 def _ask(provider, now):

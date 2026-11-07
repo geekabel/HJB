@@ -42,6 +42,9 @@
       {% if perms.accounts.view_audit_log %}
       <li><a href="{% url 'audit:list' %}"{% if active_nav == "audit" %} aria-current="page"{% endif %}>Journal</a></li>
       {% endif %}
+      {% if perms.accounts.manage_settings %}
+      <li><a href="{% url 'residence:edit' %}"{% if active_nav == "settings" %} aria-current="page"{% endif %}>Réglages</a></li>
+      {% endif %}
     </ul>
     {% if user.is_authenticated %}
     <div class="staff-menu__person">

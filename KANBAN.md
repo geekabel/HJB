@@ -577,7 +577,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Maquette** : R3.
 - **Docs** : [Django : envoi de plusieurs fichiers](https://docs.djangoproject.com/en/6.1/topics/http/file-uploads/#uploading-multiple-files), [Django : fichiers](https://docs.djangoproject.com/en/6.1/topics/files/), [Pillow : ImageOps](https://pillow.readthedocs.io/en/stable/reference/ImageOps.html).
 - [x] Catégorie (6 tuiles avec une icône), description, jusqu'à 3 photos, urgence avec son délai, accès à la chambre ; écran de tâche avec « Envoyer » collé en bas
-- [x] Rappel du numéro à appeler pour une urgence grave (`DJANGO_EMERGENCY_PHONE`, sinon « l'accueil ») et du 112
+- [x] Rappel du numéro à appeler pour une urgence grave (réglage « Numéro d'urgence », sinon « l'accueil ») et du 112
 - [x] Photos réduites (1 600 px), tournées dans le bon sens, réenregistrées en JPEG sous un nom au hasard : ni EXIF ni GPS, ni commentaire ; servies à leur propriétaire seulement, jamais en cache, supprimées avec le signalement
 - [x] Onglet « Signaler » dans la barre du bas, avec la liste de mes signalements ; raccourci sur l'accueil
 - **Notes** : l'équipe ne voit les signalements qu'avec T31 (tableau et notifications). Le numéro d'urgence est à régler sur le serveur.
@@ -631,12 +631,12 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 #### T36 RGPD (fait le 7 nov. 2026)
 - **Docs** : [CNIL, registre des traitements](https://www.cnil.fr/fr/le-registre-des-activites-de-traitement), [CNIL, journalisation](https://cnil.fr/la-cnil-publie-une-recommandation-relative-aux-mesures-de-journalisation), [CNIL, logement social, fiche 7](https://www.cnil.fr/sites/default/files/2025-11/logement_social-fiche07.pdf).
 - [x] Page « Vos données » (`/donnees/`), ouverte à tous : responsable, ce qui l'autorise, ce qui est gardé, qui le voit, services techniques (dont un transfert possible hors UE pour les notifications), durées, droits ; liée depuis la connexion, l'activation et Mon compte
-- [x] Durées dans `RETENTION_DAYS` ; la page et la suppression utilisent les mêmes
+- [x] Durées réglables (page « Réglages » depuis T37b) ; la page et la suppression utilisent les mêmes
 - [x] `purge_personal_data` : compte par défaut, supprime avec `--apply`, note au journal ce qui a vraiment été supprimé
 - [x] Registre des traitements : `docs/registre-des-traitements.md` (parties « à compléter » par l'association)
 - [x] Relecture indépendante : un compte sans aucun séjour n'est jamais choisi (ancien membre de l'équipe) ; chaque ancien résident dans sa propre transaction, un compte encore protégé est gardé et le reste continue ; nouvelle vérification sous verrou (retour pendant la suppression), testée ; le journal note ce qui est supprimé, pas ce qui était compté ; listes de personnes d'un message et conversations vides supprimées ; accès wifi coupés sans date de fin ; page complétée (bases légales, transfert hors UE, droits de limitation, de retrait, après décès, plainte à tout moment)
 - [x] Signalements d'un compte supprimé gardés pour l'histoire de la chambre, rendus anonymes : ni nom, ni texte, ni note, ni photo ; un signalement encore ouvert est clos (choix de Godwin, 7 nov. ; relecture indépendante faite)
-- [ ] Durées et contact (`DJANGO_PRIVACY_CONTACT`) à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
+- [ ] Durées et contact (page « Réglages ») à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
 
 #### T37 Sécurité avant la mise en ligne (fait le 7 nov. 2026)
 - **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/), [sqlite3, backup](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup).
@@ -647,6 +647,14 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] `pip-audit` dans la CI
 - [x] Audit de sécurité indépendant de toute l'application : accès croisés entre résidents testés en direct (tous refusés) ; corrigés : codes d'application bloqués après 20 codes faux d'affilée et plus d'indice « code juste » sur la page de connexion ; code d'activation, accès coupé et nouveau numéro demandent une confirmation récente ; changement de numéro au journal ; sauvegardes sans sessions ni secrets
 
+#### T37b Réglages de la résidence (fait le 7 nov. 2026)
+- **Demande** : Godwin, 7 nov. : régler depuis l'interface ce qui n'est pas secret ; les secrets restent sur le serveur.
+- [x] Page « Réglages » (`/equipe/reglages/`), rôle Administration (nouveau droit `manage_settings`), confirmation récente demandée
+- [x] Association (nom, adresse, contact « Vos données »), numéro d'urgence, heure du récapitulatif (7 h à 11 h), service SMS (serveur, un autre service prêt, ou coupé), durées de conservation entre des bornes sûres
+- [x] Chaque changement au journal, avec l'avant et l'après
+- [x] Les variables `DJANGO_EMERGENCY_PHONE` et `DJANGO_PRIVACY_CONTACT` et le réglage `RETENTION_DAYS` disparaissent : une seule source
+- [x] Relecture indépendante : accusés SMS encore demandés à l'ancien service après un changement ; « Aucun » dit clairement ce qu'il arrête (messages, codes d'activation) ; service utilisé maintenant affiché, et alerte si le service choisi n'a plus ses clés ; erreur du choix SMS visible ; deux personnes en même temps ne s'écrasent plus ; une durée plus courte demande une case à cocher ; heure du récapitulatif juste sur le tableau ; bornes dans les champs et dans le registre
+
 #### T38 Déploiement
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
 - [ ] Adresse réelle du client derrière le proxy (journal d'audit, limites de connexion de T14) et cache partagé pour ces limites (**avant l'ouverture** : sinon tout le monde a l'adresse du proxy, audit T37)
@@ -654,7 +662,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
 - [ ] Serveur, PostgreSQL, serveur d'application, worker de tâches, tâche périodique
 - [ ] Fichiers statiques et médias ; dossier des photos des signalements (DJANGO_MEDIA_ROOT) hors du site public et sauvegardé
-- [ ] `DJANGO_EMERGENCY_PHONE` : le numéro de l'accueil (choix de Godwin, 7 nov.)
+- [ ] Numéro d'urgence (page « Réglages ») : le numéro de l'accueil (choix de Godwin, 7 nov.)
 - [ ] Taille maximale d'une requête au proxy (nginx client_max_body_size, environ 35 Mo pour 3 photos de 10 Mo)
 
 #### T39 Essai pilote sur un étage

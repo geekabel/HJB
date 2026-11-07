@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_POST, require_safe
 
-from . import handling
+from . import handling, reminders
 from .models import Report, ReportPhoto
 from .staff_forms import AssignForm, DoneForm, PlanForm, initial_plan
 
@@ -86,6 +86,7 @@ def board(request):
                 "current": key,
                 "late_count": late_count,
                 "now": now,
+                "summary_hour": reminders.summary_window()[0].hour,
             },
         )
     )

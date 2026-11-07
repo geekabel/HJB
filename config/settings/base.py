@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     "privacy",
     # Backups of the database and the photos, read back (card T37).
     "backups",
+    # Settings of the residence, changed by the administration (card T37b).
+    "residence",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.
@@ -330,10 +332,8 @@ SITE_URL = ""
 
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT") or BASE_DIR / "media")
 
-# Number to call at once for a serious problem (water leak, smell of gas...),
-# shown on the report form: the front desk, or the on-call number at night.
-# Empty: the form says "appelez l'accueil".
-EMERGENCY_PHONE = os.environ.get("DJANGO_EMERGENCY_PHONE", "")
+# The number to call at once for a serious problem is a residence setting
+# (residence app, card T37b), changed by the administration.
 
 # At most 10 files in one request (3 photos per report). The total size of a
 # request is limited by the web server in front of Django (card T38, nginx
@@ -342,21 +342,6 @@ EMERGENCY_PHONE = os.environ.get("DJANGO_EMERGENCY_PHONE", "")
 DATA_UPLOAD_MAX_NUMBER_FILES = 10
 
 
-# Personal data, card T36
-# How many days each kind of data is kept (privacy/retention.py). The
-# association sets them as data controller; the page "Vos données" shows
-# them. Change them here, not in the code.
-RETENTION_DAYS = {
-    "former_residents": 365,
-    "report_photos": 180,
-    "meetings": 365,
-    "direct_messages": 365,
-    "deliveries": 365,
-    "wifi_accesses": 365,
-    "audit_log": 365,
-    "codes": 30,
-}
-
-# Where a resident asks about their data (an e-mail address, or a few words).
-# Empty: the page says "à l'accueil de la résidence".
-PRIVACY_CONTACT = os.environ.get("DJANGO_PRIVACY_CONTACT", "")
+# Personal data, card T36: the retention durations and the contact are
+# residence settings (residence app, card T37b), changed by the
+# administration on the page "Réglages".

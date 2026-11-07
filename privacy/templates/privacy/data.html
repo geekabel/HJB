@@ -9,7 +9,8 @@
 
 <section class="card stack" aria-labelledby="who-title">
   <h2 id="who-title" class="card__title">Qui s'en occupe</h2>
-  <p>L'association Habitat Jeunes Belfort gère la résidence et cette application. Elle est responsable de vos données.</p>
+  <p>L'association {{ organization.organization_name }} gère la résidence et cette application. Elle est responsable de vos données.</p>
+  {% if organization.organization_address %}<p class="text-muted">{{ organization.organization_address|linebreaksbr }}</p>{% endif %}
   <p>Elle s'en sert pour vous loger et vous informer : messages, accès wifi, rendez-vous, signalements, votes. Rien d'autre. Pas de publicité, pas de revente.</p>
   <p>Ce qui l'y autorise :</p>
   <ul class="stack stack--tight">

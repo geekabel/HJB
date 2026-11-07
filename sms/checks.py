@@ -17,10 +17,10 @@ SECRET_PATTERN = re.compile(rf"[A-Za-z0-9_-]{{{MIN_SECRET_LENGTH},}}")
 @register("sms")
 def check_sms_setting(app_configs, **kwargs):
     from .providers.base import ConfigurationError
-    from .service import active_provider
+    from .service import configured_provider
 
     try:
-        provider = active_provider()
+        provider = configured_provider()
     except ConfigurationError as error:
         return [Error(str(error), hint="Voir le réglage SMS.", id="sms.E001")]
     missing = provider.missing_options()

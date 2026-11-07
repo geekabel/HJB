@@ -1,0 +1,78 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Réglages{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Réglages de la résidence</h1>
+    <p class="text-muted">Chaque changement est noté dans le journal. Les clés secrètes restent sur le serveur.</p>
+  </div>
+</header>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form class="stack stack--loose" method="post" novalidate>
+  {% csrf_token %}
+  {{ form.version }}
+  {% if form.errors %}
+  <div class="alert alert--warning" role="alert">
+    {% icon "alert" %}
+    <div class="stack stack--tight">
+      <p><strong>Les réglages ne sont pas enregistrés.</strong> Corrigez les champs signalés.</p>
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <section class="card stack" aria-labelledby="association-title">
+    <h2 id="association-title" class="card__title">Association</h2>
+    {{ form.organization_name.as_field_group }}
+    {{ form.organization_address.as_field_group }}
+    {{ form.privacy_contact.as_field_group }}
+    <p class="text-muted text-small">Ces informations sont sur la page <a href="{% url 'privacy' %}">Vos données</a>.</p>
+  </section>
+
+  <section class="card stack" aria-labelledby="residents-title">
+    <h2 id="residents-title" class="card__title">Résidents</h2>
+    {{ form.emergency_phone.as_field_group }}
+    {{ form.summary_hour.as_field_group }}
+  </section>
+
+  <section class="card stack" aria-labelledby="sms-title">
+    <h2 id="sms-title" class="card__title">SMS</h2>
+    {% if fallback %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le service choisi n'a plus ses clés sur le serveur : c'est le service du serveur qui envoie.</p></div>{% endif %}
+    {% if paused %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Les SMS sont coupés.</p></div>{% endif %}
+    <fieldset class="field" aria-describedby="sms-help{% if form.sms_provider.errors %} {{ form.sms_provider.auto_id }}_error{% endif %}">
+      <legend>{{ form.sms_provider.label|capfirst }}</legend>
+      <div class="stack stack--tight">
+        {% for choice in form.sms_provider %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
+      </div>
+      <span class="field__help" id="sms-help">{{ form.sms_provider.help_text }} Service du serveur : {% include "residence/_sms_name.html" with name=server_sms %}. Utilisé maintenant : {% include "residence/_sms_name.html" with name=active_sms %}. «&nbsp;Aucun&nbsp;» arrête tout : messages, codes de vérification à l'activation. Les SMS d'un envoi en cours sont alors notés en échec.</span>
+      {% if form.sms_provider.errors %}<span class="field__errors" id="{{ form.sms_provider.auto_id }}_error">{% for error in form.sms_provider.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}</span>{% endif %}
+    </fieldset>
+  </section>
+
+  <section class="card stack" aria-labelledby="retention-title">
+    <h2 id="retention-title" class="card__title">Durées de conservation</h2>
+    <p class="text-muted">En jours. Une durée plus courte supprime plus tôt, à la prochaine suppression quotidienne. C'est sans retour.</p>
+    <div class="grid-auto">
+      {% for field in form.retention_fields %}{{ field.as_field_group }}{% endfor %}
+    </div>
+    {{ form.confirm_shorter.as_field_group }}
+  </section>
+
+  {% if perms.accounts.manage_wifi_settings %}
+  <p><a href="{% url 'admin:housing_wifisettings_changelist' %}">Format des accès wifi</a> (site d'administration)</p>
+  {% endif %}
+
+  <div class="action-bar">
+    <button class="button" type="submit">Enregistrer</button>
+  </div>
+</form>
+{% endblock %}

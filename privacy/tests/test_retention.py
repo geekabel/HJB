@@ -21,6 +21,7 @@ from housing.models import Floor, Room, Stay
 from messaging.models import AttendanceReply, Campaign, Delivery
 from push.models import PushSubscription
 from reports.models import Report, ReportEvent, ReportPhoto
+from residence.models import ResidenceSettings
 from tools.html_capture import save_page
 
 from .. import retention
@@ -320,9 +321,9 @@ class PurgeTests(RetentionTestCase):
         self.assertEqual(result.total(), 0)
         self.assertFalse(AuditEntry.objects.exists())
 
-    @override_settings(RETENTION_DAYS={"former_residents": 30})
     def test_durations_come_from_the_settings(self):
-        self.assertEqual(retention.days("former_residents"), 30)
+        ResidenceSettings.objects.update_or_create(pk=1, defaults={"former_residents_days": 90})
+        self.assertEqual(retention.days("former_residents"), 90)
         self.assertEqual(retention.days("codes"), 30)  # the default
         self.assertEqual(set(retention.former_residents(self.now)), {self.old, self.recent})
 
@@ -350,15 +351,21 @@ class PageTests(RetentionTestCase):
         self.assertContains(response, "Adressez-vous à l'accueil de la résidence.")
         self.assertContains(self.client.get(reverse("access:login")), PAGE)
 
-    @override_settings(
-        RETENTION_DAYS={"former_residents": 730, "codes": 7},
-        PRIVACY_CONTACT="donnees@example.org",
-    )
     def test_durations_and_contact_from_the_settings(self):
+        ResidenceSettings.objects.update_or_create(
+            pk=1,
+            defaults={
+                "former_residents_days": 730,
+                "codes_days": 7,
+                "privacy_contact": "donnees@example.org",
+                "organization_address": "1 rue de l'Exemple\n90000 Belfort",
+            },
+        )
         response = self.client.get(PAGE)
         self.assertContains(response, "2 ans après le départ")
         self.assertContains(response, "<dd>7 jours après leur fin</dd>", html=True)
         self.assertContains(response, 'href="mailto:donnees@example.org"')
+        self.assertContains(response, "1 rue de l&#x27;Exemple<br>90000 Belfort")
 
     def test_from_the_account_pages(self):
         resident = make_user("lea", first_name="Léa")

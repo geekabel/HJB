@@ -1,8 +1,9 @@
 """How long personal data is kept, and its deletion (card T36, GDPR).
 
-The association, as data controller, sets the durations. They are settings
-(RETENTION_DAYS in config/settings/base.py) so that the page "Vos données"
-and the purge use the same ones; docs/registre-des-traitements.md lists
+The association, as data controller, sets the durations. The
+administration changes them on the page "Réglages" (residence app, card
+T37b, within safe bounds), so that the page "Vos données" and the purge
+use the same ones; docs/registre-des-traitements.md lists
 them too. `manage.py purge_personal_data` counts what is past its time;
 with --apply it deletes it. Run it once a day, after the durations are
 validated.
@@ -31,21 +32,21 @@ second goes with the account.
 from dataclasses import dataclass, fields
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, Max, OuterRef, ProtectedError, Q
 from django.utils import timezone
 
-DEFAULTS = {
-    "former_residents": 365,
-    "report_photos": 180,
-    "meetings": 365,
-    "direct_messages": 365,
-    "deliveries": 365,
-    "wifi_accesses": 365,
-    "audit_log": 365,
-    "codes": 30,
-}
+# The kinds of data with a retention duration (ResidenceSettings.<kind>_days).
+KINDS = (
+    "former_residents",
+    "report_photos",
+    "meetings",
+    "direct_messages",
+    "deliveries",
+    "wifi_accesses",
+    "audit_log",
+    "codes",
+)
 
 # For the audit log: "3 anciens résidents, 12 photos..."
 LABELS = {
@@ -64,8 +65,10 @@ LABELS = {
 
 
 def days(key):
-    """Days a kind of data is kept: the setting, or the default."""
-    return int(getattr(settings, "RETENTION_DAYS", {}).get(key, DEFAULTS[key]))
+    """Days a kind of data is kept (residence settings, card T37b)."""
+    from residence.models import ResidenceSettings
+
+    return ResidenceSettings.load().retention_days(key)
 
 
 @dataclass
