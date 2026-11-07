@@ -681,6 +681,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Taille maximale d'une requête : 35 Mo dans Caddy ; erreurs du site écrites dans le journal du service
 - [x] Premier chargement : `load_initial_data` (fichier YAML : réglages, étages, chambres, premiers comptes), essai à blanc, ne crée que ce qui manque
 - [x] Conversations : les 50 derniers messages, puis les plus anciens page par page (index, nombre de requêtes fixe)
+- [x] Relecture indépendante : lancement depuis un dossier personnel (uv), journal de Caddy illisible après `validate`, certificat attendu deux minutes et DNS vérifié, `update` qui redémarre vraiment, limites de connexion avec le cache en base, secret OVH absent de tous les journaux, contrôles du fichier YAML, pages anciennes d'une conversation qui ne marquent rien comme lu ; essai refait depuis /root
 - [ ] Lancer `deploy.sh install` sur le VPS (DNS du sous-domaine, pare-feu Hostinger), puis SMSGate, premier chargement, premier administrateur
 - [ ] Numéro d'urgence (page « Réglages ») : le numéro de l'accueil (choix de Godwin, 7 nov.)
 - [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
