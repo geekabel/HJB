@@ -12,6 +12,9 @@ import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db import DatabaseError
+from django.db.models import F
+from django.utils import timezone
 from django.utils.module_loading import import_string
 
 from accounts.phone import mask_phone, normalize_phone, validate_e164
@@ -23,6 +26,15 @@ logger = logging.getLogger(__name__)
 
 # Beyond this, the message costs a lot and is hard to read on a phone.
 MAX_SEGMENTS = 6
+# Used until the residence settings exist (first migrate).
+DEFAULT_DAILY_LIMIT = 100
+# The last SMS of the day are kept for the codes (activation, verification):
+# a big sending never locks people out of their account until midnight.
+KEPT_FOR_CODES = 10
+
+
+class DailyLimitReached(SendError):
+    """The daily limit of the residence settings is reached: not sent."""
 
 
 def _build(setting):
@@ -63,8 +75,6 @@ def ready_providers():
 
 def _chosen():
     """The choice of the administration (residence settings), or ""."""
-    from django.db import DatabaseError
-
     from residence.models import ResidenceSettings
 
     try:
@@ -89,11 +99,74 @@ def active_provider():
     return configured_provider()
 
 
-def send_sms(number, text):
+def daily_limit():
+    """The most SMS (segments) that may leave in one day."""
+    from residence.models import ResidenceSettings
+
+    try:
+        limit = (
+            ResidenceSettings.objects.filter(pk=1).values_list("sms_daily_limit", flat=True).first()
+        )
+    except DatabaseError:  # table not created yet (first migrate)
+        limit = None
+    return limit or DEFAULT_DAILY_LIMIT
+
+
+def sent_today():
+    """SMS (segments) sent today, local time."""
+    from .models import SmsDailyUsage
+
+    usage = SmsDailyUsage.objects.filter(day=timezone.localdate())
+    return usage.values_list("segments", flat=True).first() or 0
+
+
+def left_today():
+    """SMS that a message may still use today (the codes' share aside)."""
+    return max(0, daily_limit() - KEPT_FOR_CODES - sent_today())
+
+
+def _reserve(segments, *, code):
+    """Count ``segments`` for today, or raise DailyLimitReached.
+
+    One UPDATE checks and counts at once: two workers sending at the same
+    time never go over the limit together. Return the day counted.
+    """
+    from .models import SmsDailyUsage
+
+    day = timezone.localdate()
+    limit = daily_limit() - (0 if code else KEPT_FOR_CODES)
+    SmsDailyUsage.objects.get_or_create(day=day)
+    counted = SmsDailyUsage.objects.filter(day=day, segments__lte=limit - segments).update(
+        segments=F("segments") + segments
+    )
+    if not counted:
+        logger.warning("SMS daily limit reached (%d)", limit)
+        raise DailyLimitReached(
+            f"Limite de {limit} SMS par jour atteinte : plus aucun SMS avant minuit."
+        )
+    return day
+
+
+def _release(day, segments):
+    """The SMS did not leave: it no longer counts."""
+    from .models import SmsDailyUsage
+
+    SmsDailyUsage.objects.filter(day=day, segments__gte=segments).update(
+        segments=F("segments") - segments
+    )
+
+
+def send_sms(number, text, *, code=False):
     """Send an SMS to the E.164 number ``number``. Return a SendResult.
 
+    ``code``: an activation or verification code, which may use the last
+    SMS of the day (KEPT_FOR_CODES). Never call inside transaction.atomic():
+    the count of the day would stay locked during the sending, and a
+    rollback would forget an SMS that left.
+
     Raise SmsError (or a subclass) on failure. Check its ``temporary`` and
-    ``uncertain`` attributes before any new attempt.
+    ``uncertain`` attributes before any new attempt. DailyLimitReached: the
+    daily limit of the residence settings is reached.
     """
     try:
         validate_e164(number)
@@ -116,10 +189,14 @@ def send_sms(number, text):
         raise ConfigurationError(
             f"Fournisseur {provider.name} : options manquantes ({', '.join(missing)})."
         )
+    # A cut service refuses anyway: it says why, and counts nothing.
+    day = None if provider.name == "disabled" else _reserve(info.segments, code=code)
     # Logs never contain the full number or the text.
     try:
         result = provider.send(number, text)
     except SmsError as error:
+        if day and not error.uncertain:  # an SMS that may have left still counts
+            _release(day, info.segments)
         logger.warning(
             "SMS sending failed via %s to %s: %s",
             provider.name,

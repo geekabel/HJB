@@ -77,6 +77,16 @@ class ResidenceSettings(models.Model):
         default=SmsChoice.SERVER,
         help_text="Ses clés restent sur le serveur : seuls les services prêts sont proposés.",
     )
+    sms_daily_limit = models.PositiveSmallIntegerField(
+        "SMS par jour, au plus",
+        default=100,
+        validators=[MinValueValidator(20), MaxValueValidator(1000)],
+        help_text=(
+            "Au-delà, plus aucun SMS ne part jusqu'à minuit. Les 10 derniers "
+            "sont gardés pour les codes d'activation et de vérification. "
+            "Un message long compte pour plusieurs SMS. De 20 à 1000."
+        ),
+    )
     summary_hour = models.PositiveSmallIntegerField(
         "heure du récapitulatif des signalements",
         default=9,

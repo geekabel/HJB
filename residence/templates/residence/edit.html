@@ -1,5 +1,5 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
+{% load icons french %}
 {% block title %}Réglages{% endblock %}
 {% block content %}
 <header class="page-header">
@@ -56,6 +56,8 @@
       <span class="field__help" id="sms-help">{{ form.sms_provider.help_text }} Service du serveur : {% include "residence/_sms_name.html" with name=server_sms %}. Utilisé maintenant : {% include "residence/_sms_name.html" with name=active_sms %}. «&nbsp;Aucun&nbsp;» arrête tout : messages, codes de vérification à l'activation. Les SMS d'un envoi en cours sont alors notés en échec.</span>
       {% if form.sms_provider.errors %}<span class="field__errors" id="{{ form.sms_provider.auto_id }}_error">{% for error in form.sms_provider.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}</span>{% endif %}
     </fieldset>
+    {{ form.sms_daily_limit.as_field_group }}
+    <p class="text-small">Aujourd'hui : {{ sms_today }} SMS envoyé{{ sms_today|pluriel }} sur {{ sms_limit }}.</p>
   </section>
 
   <section class="card stack" aria-labelledby="retention-title">

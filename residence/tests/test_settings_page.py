@@ -4,6 +4,7 @@ from unittest import mock
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import escape
 
 from accounts.roles import Role
@@ -12,6 +13,7 @@ from audit.models import Action, AuditEntry
 from privacy import retention
 from residence.models import ResidenceSettings
 from sms import service
+from sms.models import SmsDailyUsage
 from tools.html_capture import save_page
 
 URL = reverse("residence:edit")
@@ -25,6 +27,7 @@ def data(**changes):
         "privacy_contact": row.privacy_contact,
         "emergency_phone": row.emergency_phone,
         "sms_provider": row.sms_provider,
+        "sms_daily_limit": row.sms_daily_limit,
         "summary_hour": row.summary_hour,
         "version": row.updated_at.isoformat(),
     }
@@ -118,6 +121,16 @@ class SettingsPageTests(TestCase):
     def test_a_chosen_service_without_keys_falls_back_to_the_server(self):
         ResidenceSettings.objects.update_or_create(pk=1, defaults={"sms_provider": "ovh"})
         self.assertEqual(service.active_provider().name, service.configured_provider().name)
+
+    def test_sms_daily_limit(self):
+        SmsDailyUsage.objects.create(day=timezone.localdate(), segments=12)
+        response = self.client.get(URL)
+        self.assertContains(response, "Aujourd'hui : 12 SMS envoyés sur 100.")
+        response = self.client.post(URL, data(sms_daily_limit=10))
+        self.assertIn("sms_daily_limit", response.context["form"].errors)
+        self.assertRedirects(self.client.post(URL, data(sms_daily_limit=50)), URL)
+        self.assertEqual(service.daily_limit(), 50)
+        self.assertEqual(service.left_today(), 28)  # 10 kept for the codes
 
     def test_summary_hour(self):
         from reports import reminders

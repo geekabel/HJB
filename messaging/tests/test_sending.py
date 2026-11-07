@@ -16,8 +16,10 @@ from audit.models import Action, AuditEntry
 from housing.models import Floor, Room, Stay
 from push.models import PushSubscription
 from push.services import SendResult
+from sms.models import SmsDailyUsage
 from sms.providers.base import SendError
 from sms.providers.base import SendResult as SmsResult
+from sms.service import DailyLimitReached
 from tools.html_capture import save_page
 
 from .. import sending
@@ -366,6 +368,35 @@ class PagesTests(SendingTestCase):
         response = self.client.get(reverse("messaging:list"))
         save_page("messaging-list-sent", response)
         self.assertContains(response, "Envoyés")
+
+    def test_review_warns_beyond_the_daily_sms_limit(self):
+        log_in_verified(self.client, self.nadia)
+        campaign = self.campaign()  # one SMS: Yanis has no device
+        url = reverse("messaging:review", args=[campaign.pk])
+        self.assertNotContains(self.client.get(url), "SMS en trop")
+        SmsDailyUsage.objects.create(day=timezone.localdate(), segments=100)
+        response = self.client.get(url)
+        self.assertContains(response, "Cet envoi peut demander 1 SMS, mais il en reste 0")
+        # Another day: the whole limit.
+        Campaign.objects.filter(pk=campaign.pk).update(send_at=timezone.now() + timedelta(days=2))
+        self.assertNotContains(self.client.get(url), "SMS en trop")
+
+    def test_a_reminder_on_the_same_day_counts(self):
+        from ..views import _sms_needed
+
+        now = timezone.now()
+        sms = {"total_segments": 60}
+        self.assertEqual(_sms_needed(sms, now, None, 0), 60)
+        self.assertEqual(_sms_needed(sms, now, now, 60), 120)
+        self.assertEqual(_sms_needed(sms, now, now + timedelta(days=1), 60), 60)
+
+    def test_over_the_daily_limit_the_sms_fails(self):
+        self.sms.side_effect = DailyLimitReached("Limite de 100 SMS par jour atteinte.")
+        campaign = self.send_now(self.campaign())
+        delivery = campaign.deliveries.get(recipient=self.yanis)
+        self.assertEqual(delivery.status, "failed")
+        self.assertIn("Limite de 100 SMS", delivery.error)
+        self.assertEqual(self.sms.call_count, 1)  # never tried again
 
     def test_review_shows_problems(self):
         log_in_verified(self.client, self.nadia)

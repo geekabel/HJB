@@ -328,8 +328,7 @@ ExecStart=-${VENV}/bin/python manage.py clearsessions" "${common}" && changed=1 
 	timer_unit backup "sauvegarde" "*-*-* 03:15:00 Europe/Paris" \
 		"${VENV}/bin/python manage.py backup_data --to ${BACKUP_DIR} --keep ${BACKUP_KEEP}" \
 		"${common}" && changed=1 || true
-	# Installed but NOT enabled: the association validates the durations
-	# first (page "Réglages"). Then: systemctl enable --now hjb-purge.timer
+	# Durations of the page "Réglages", validated by the association.
 	timer_unit purge "suppression des données anciennes" "*-*-* 04:30:00 Europe/Paris" \
 		"${VENV}/bin/python manage.py purge_personal_data --apply" "${common}" && changed=1 || true
 
@@ -337,10 +336,7 @@ ExecStart=-${VENV}/bin/python manage.py clearsessions" "${common}" && changed=1 
 		run systemctl daemon-reload
 	fi
 	run systemctl enable --now hjb-web.service hjb-worker.service
-	run systemctl enable --now hjb-minute.timer hjb-daily.timer hjb-backup.timer
-	if ! systemctl is-enabled --quiet hjb-purge.timer 2>/dev/null; then
-		warn "La suppression quotidienne (hjb-purge.timer) attend la validation des durées."
-	fi
+	run systemctl enable --now hjb-minute.timer hjb-daily.timer hjb-backup.timer hjb-purge.timer
 }
 
 timer_unit() { # name description calendar exec common

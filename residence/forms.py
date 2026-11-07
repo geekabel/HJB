@@ -35,6 +35,7 @@ class ResidenceSettingsForm(forms.ModelForm):
             "privacy_contact",
             "emergency_phone",
             "sms_provider",
+            "sms_daily_limit",
             "summary_hour",
             *RETENTION_FIELDS,
         ]
@@ -55,7 +56,7 @@ class ResidenceSettingsForm(forms.ModelForm):
         self.fields["sms_provider"].widget = forms.RadioSelect(
             choices=self.fields["sms_provider"].choices
         )
-        for name in RETENTION_FIELDS:
+        for name in [*RETENTION_FIELDS, "sms_daily_limit"]:
             field = self.fields[name]
             field.widget.attrs["inputmode"] = "numeric"
             for validator in ResidenceSettings._meta.get_field(name).validators:

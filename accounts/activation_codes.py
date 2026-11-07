@@ -175,7 +175,7 @@ def send_code_by_sms(user, url, *, by=None, request=None):
         f"(code {code}, valable 72 h, une seule fois)."
     )
     try:
-        send_sms(user.phone, text)
+        send_sms(user.phone, text, code=True)
     except SmsError as error:
         if not error.uncertain:
             ActivationCode.objects.valid().filter(user=user).update(cancelled_at=timezone.now())

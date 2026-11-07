@@ -808,7 +808,8 @@ def _send_codes(request, residents):
     if sent < len(with_number):
         messages.warning(
             request,
-            f"{len(with_number) - sent} SMS n'ont pas pu partir : remettez ces codes à l'accueil.",
+            f"{len(with_number) - sent} SMS n'ont pas pu partir. "
+            "Donnez un nouveau code depuis la fiche de chaque résident.",
         )
     if len(with_number) < len(residents):
         messages.info(

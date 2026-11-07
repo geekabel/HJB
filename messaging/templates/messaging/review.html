@@ -38,6 +38,7 @@
     </dl>
     <p class="text-muted text-small">Une notification qui ne passe pas est réessayée. Le SMS ne part que pour les personnes sans aucun appareil.</p>
     {% if remind_at %}<p class="text-small">La relance ira à ceux qui n'auront pas répondu{% if reminder_sms %} : jusqu'à {{ reminder_sms }} SMS de plus{% endif %}.</p>{% endif %}
+    {% if sms_needed > sms_left %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Cet envoi peut demander {{ sms_needed }} SMS{% if sms_needed > sms.total_segments %} avec la relance{% endif %}, mais il en reste {{ sms_left }} pour ce jour-là (limite des réglages). Les SMS en trop ne partiront pas : ils seront notés en échec.</p></div>{% endif %}
   </section>
 </div>
 

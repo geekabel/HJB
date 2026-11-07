@@ -651,7 +651,8 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Registre des traitements : `docs/registre-des-traitements.md` (parties « à compléter » par l'association)
 - [x] Relecture indépendante : un compte sans aucun séjour n'est jamais choisi (ancien membre de l'équipe) ; chaque ancien résident dans sa propre transaction, un compte encore protégé est gardé et le reste continue ; nouvelle vérification sous verrou (retour pendant la suppression), testée ; le journal note ce qui est supprimé, pas ce qui était compté ; listes de personnes d'un message et conversations vides supprimées ; accès wifi coupés sans date de fin ; page complétée (bases légales, transfert hors UE, droits de limitation, de retrait, après décès, plainte à tout moment)
 - [x] Signalements d'un compte supprimé gardés pour l'histoire de la chambre, rendus anonymes : ni nom, ni texte, ni note, ni photo ; un signalement encore ouvert est clos (choix de Godwin, 7 nov. ; relecture indépendante faite)
-- [ ] Durées et contact (page « Réglages ») à valider par l'association, puis tâche quotidienne `purge_personal_data --apply` (T38)
+- [x] Durées validées par Godwin le 7 nov. (1 an) ; la tâche quotidienne `purge_personal_data --apply` est activée par `deploy.sh` (4 h 30)
+- [ ] Contact pour les données personnelles (page « Réglages ») : plus tard ; d'ici là, la page dit « l'accueil de la résidence »
 
 #### T37 Sécurité avant la mise en ligne (fait le 7 nov. 2026)
 - **Docs** : [sécurité dans Django](https://docs.djangoproject.com/en/6.1/topics/security/), [CSP dans Django](https://docs.djangoproject.com/en/6.1/howto/csp/), [sqlite3, backup](https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup).
@@ -682,7 +683,8 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Premier chargement : `load_initial_data` (fichier YAML : réglages, étages, chambres, premiers comptes), essai à blanc, ne crée que ce qui manque
 - [x] Conversations : les 50 derniers messages, puis les plus anciens page par page (index, nombre de requêtes fixe)
 - [x] Relecture indépendante : lancement depuis un dossier personnel (uv), journal de Caddy illisible après `validate`, certificat attendu deux minutes et DNS vérifié, `update` qui redémarre vraiment, limites de connexion avec le cache en base, secret OVH absent de tous les journaux, contrôles du fichier YAML, pages anciennes d'une conversation qui ne marquent rien comme lu ; essai refait depuis /root
-- [ ] Lancer `deploy.sh install` sur le VPS (DNS du sous-domaine, pare-feu Hostinger), puis SMSGate, premier chargement, premier administrateur
+- [ ] Lancer `deploy.sh install` sur le VPS avec `DOMAIN=hjb.godwinlab.cloud` (enregistrement A, pare-feu Hostinger), puis SMSGate, premier chargement, premier administrateur
+- [x] Au plus 100 SMS par jour (choix de Godwin, 7 nov.), réglable de 10 à 1000 dans « Réglages ». Un message long compte pour plusieurs SMS. Au-delà, plus rien ne part avant minuit, codes compris : le SMS est noté en échec, sans nouvel essai. Le compte se fait en une seule requête, sûre avec deux *workers*. Un SMS qui n'est pas parti ne compte pas ; un SMS « incertain » compte. La page d'envoi prévient quand il ne reste pas assez de SMS
 - [ ] Numéro d'urgence (page « Réglages ») : le numéro de l'accueil (choix de Godwin, 7 nov.)
 - [ ] Copie chiffrée des sauvegardes hors du serveur (`age` ou `gpg`), lieu et durée
 - [ ] SMSGate en HTTPS (mode cloud) si le téléphone n'est pas sur le réseau du serveur
@@ -697,6 +699,8 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 ### E10 Phase 2
 
 #### T41 Discussion entre résidents et modération
+- **Choix de Godwin (7 nov.)** : temps réel avec WebSocket, et écriture différée (*write-behind*) avec Redis comme tampon entre la réception d'un message et la base. D'ici là, la messagerie actuelle reste (formulaire, sans temps réel) pour les tests. À prévoir : ne jamais perdre un message accepté (persistance de Redis, reprise au redémarrage) et un historique toujours lu en base.
+- [ ] Temps réel (WebSocket) et *write-behind* avec Redis
 - [ ] Salons, messages, signalement d'un message
 - [ ] Rôle modérateur donné par l'équipe (personnel ou résidents désignés)
 - [ ] Masquer un message, mettre un résident en pause
