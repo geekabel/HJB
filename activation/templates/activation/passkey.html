@@ -1,0 +1,23 @@
+{% extends "activation/base.html" %}
+{% load icons static %}
+{% block title %}Créer ma clé d'accès{% endblock %}
+{% block head %}<script src="{% static 'ui/js/passkey.js' %}" defer></script>{% endblock %}
+{% block step %}
+<div class="alert alert--success" role="status">{% icon "check" %}<p>Votre téléphone est vérifié. Merci {{ person.first_name }}.</p></div>
+<header class="stack stack--tight">
+  <h1>Dernière étape : votre clé d'accès</h1>
+  <p class="text-muted">Face ID, empreinte ou code du téléphone. Pas de mot de passe.</p>
+</header>
+
+<p>Créez-la sur le téléphone de tous les jours. La clé reste dessus.</p>
+
+{% include "access/_passkey_button.html" with label="Créer ma clé d'accès" %}
+
+{% if app_code_allowed %}
+<section class="card stack stack--tight" aria-labelledby="app-code-title">
+  <h2 id="app-code-title" class="card__title">Sur un ordinateur ?</h2>
+  <p class="text-small">Utilisez plutôt une application de codes sur votre téléphone.</p>
+  <a class="button button--quiet" href="{% url 'activation:app_code' %}">Utiliser une application de codes</a>
+</section>
+{% endif %}
+{% endblock %}

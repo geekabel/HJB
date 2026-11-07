@@ -1,0 +1,31 @@
+{% extends "activation/base.html" %}
+{% load icons %}
+{% block title %}Relier mon application de codes{% endblock %}
+{% block step %}
+<header class="stack stack--tight">
+  <h1>Reliez votre application de codes</h1>
+  <p class="text-muted">Votre identifiant : <strong>{{ person.get_username }}</strong></p>
+</header>
+
+<ol class="numbered-list">
+  <li>Sur votre téléphone, ouvrez une application de codes : Google Authenticator, Microsoft Authenticator ou FreeOTP.</li>
+  <li>Ajoutez un compte, puis scannez ce code QR.</li>
+</ol>
+
+<figure class="card qr-card">
+  {{ qr }}
+  <figcaption>
+    <details>
+      <summary>Impossible de scanner ?</summary>
+      <p class="text-small">Choisissez «&nbsp;Saisir une clé&nbsp;» et tapez :</p>
+      <p class="secret-value" translate="no">{{ secret }}</p>
+    </details>
+  </figcaption>
+</figure>
+
+<form class="stack" method="post" novalidate>
+  {% csrf_token %}
+  {{ form.code.as_field_group }}
+  <button class="button button--block" type="submit">Valider</button>
+</form>
+{% endblock %}

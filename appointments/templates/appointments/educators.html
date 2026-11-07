@@ -1,0 +1,19 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Écrire à un éducateur{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'inbox:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux messages</span></a>
+  <h1>Écrire à un éducateur</h1>
+</div>
+
+{% if educators %}
+<ul class="link-list">
+  {% for person in educators %}
+  <li><a href="{% url 'rdv:write' person.pk %}"><span class="avatar" aria-hidden="true">{{ person.first_name|default:person.get_username|slice:":1"|upper }}</span><span>{{ person.first_name|default:person.get_username }}</span>{% icon "chevron" %}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty-state">Aucun éducateur pour le moment. Passez à l'accueil.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "ui/base.html" %}
+{% load icons %}
+{% comment %}
+  Error pages (design card D1): 403.html, 404.html and 500.html extend it.
+  The 500 page is rendered without any context: no user, no request.
+{% endcomment %}
+{% block body_class %}error-page{% endblock %}
+{% block body %}
+<main id="content" class="error-page__content">
+  <span class="logo-tile">{% roofs %}</span>
+  <h1>{% block heading %}{% endblock %}</h1>
+  <p class="text-muted">{% block text %}{% endblock %}</p>
+  <a class="button" href="{% url 'home' %}">{% icon "home" %}Retour à l'accueil</a>
+</main>
+{% endblock %}

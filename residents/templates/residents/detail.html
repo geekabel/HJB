@@ -1,0 +1,170 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}{% if resident %}{{ resident.get_full_name|default:resident.get_username }}{% else %}Nouveau résident{% endif %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:list' %}">{% icon "back" %}Tous les résidents</a>
+
+<header class="stack stack--tight">
+  {% if resident %}
+  <h1>{{ resident.get_full_name|default:resident.get_username }}</h1>
+  {% with state=resident.account_state %}
+  <p class="row"><span class="badge {% if state == 'active' %}badge--success{% elif state == 'pending' %}badge--info{% else %}badge--neutral{% endif %}">{{ state.label }}</span>{% if stay %}<span class="text-muted">{{ stay.room }} · {{ stay.room.floor }}</span>{% else %}<span class="text-muted">Sans chambre</span>{% endif %}</p>
+  {% endwith %}
+  {% else %}
+  <h1>Nouveau résident</h1>
+  <p class="text-muted">La personne activera son compte avec un code donné à l'accueil.</p>
+  {% endif %}
+</header>
+
+{% if resident and form.errors %}
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>La fiche n'est pas enregistrée.</strong> <a href="#edit">Voir les champs à corriger</a></p></div>
+{% endif %}
+
+{% if resident %}
+<div class="profile">
+  <div class="stack">
+    {% if perms.accounts.issue_activation_codes %}
+    {% with code=activation.0 state=activation.1 %}
+    <section class="card stack" aria-labelledby="activation-title">
+      <h2 id="activation-title" class="card__title">Activation du compte</h2>
+      {% if not resident.is_active %}
+      <p class="text-muted">Compte désactivé. Si la personne revient, il faut d'abord enregistrer son retour.</p>
+      {% else %}
+      {% if state == "active" %}
+      <p><span class="badge badge--warning">Code en attente</span></p>
+      <p class="text-muted">Valable jusqu'au <time datetime="{{ code.expires_at|date:'Y-m-d\TH:i:sO' }}">{{ code.expires_at|date:"j F Y à H:i" }}</time>{% if code.created_by %}, remis par {{ code.created_by.get_full_name|default:code.created_by.get_username }}{% endif %}. Un nouveau code annule celui-ci.</p>
+      {% elif state == "used" %}
+      <p class="text-muted">Dernier code utilisé le <time datetime="{{ code.used_at|date:'Y-m-d\TH:i:sO' }}">{{ code.used_at|date:"j F Y à H:i" }}</time>.{% if not passkey or passkey.created_at < code.used_at %} L'activation n'est pas allée jusqu'au bout : si la personne le demande, générez un nouveau code.{% endif %}</p>
+      {% elif state == "expired" %}
+      <p class="text-muted">Le dernier code a expiré sans être utilisé.</p>
+      {% else %}
+      <p class="text-muted">Aucun code remis pour l'instant.</p>
+      {% endif %}
+      <p class="text-muted text-small">Devant la personne, après contrôle de son identité.</p>
+      <form method="post" action="{% url 'residents:activation_code' resident.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="token" value="{{ code_token }}">
+        <button class="button" type="submit">{% if code %}Générer un nouveau code{% else %}Générer un code d'activation{% endif %}</button>
+      </form>
+      {% if passkey %}
+      <p class="text-muted">Clé d'accès créée le <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>.</p>
+      <details class="cancel">
+        <summary>Téléphone perdu ? Couper l'accès</summary>
+        <form method="post" action="{% url 'residents:cut_access' resident.pk %}">
+          {% csrf_token %}
+          <p class="text-small">Le téléphone sera déconnecté et ses codes annulés. Donnez ensuite un nouveau code.</p>
+          <button class="button button--danger" type="submit">Oui, couper l'accès</button>
+        </form>
+      </details>
+      {% endif %}
+      {% endif %}
+    </section>
+    {% endwith %}
+    {% endif %}
+
+    {% if stay %}
+    <section class="card stack" aria-labelledby="wifi-title">
+      <h2 id="wifi-title" class="card__title">Wifi de la chambre {{ stay.room.number }}</h2>
+      {% if wifi_access %}
+      <dl class="details">
+        <dt>Identifiant</dt>
+        <dd class="credential">{{ wifi_access.username }}</dd>
+        <dt>Valable jusqu'au</dt>
+        <dd><time datetime="{{ wifi_access.expires_on|date:'Y-m-d' }}">{{ wifi_access.expires_on|date:"j F Y" }}</time>{% if wifi_access.is_expired %} <span class="badge badge--error">Expiré</span>{% elif wifi_access.renew_soon %} <span class="badge badge--warning">À renouveler</span>{% endif %}</dd>
+      </dl>
+      <p class="text-muted text-small">Mot de passe visible par l'administration seulement.</p>
+      {% else %}
+      <p class="text-muted">Aucun accès wifi actif pour cette chambre.</p>
+      {% endif %}
+      {% if perms.accounts.manage_residents or perms.accounts.view_wifi_password %}
+      <div class="row">
+        {% if perms.accounts.manage_residents %}<a class="button button--quiet" href="{% url 'residents:wifi_access' resident.pk %}">{% if wifi_access %}Renouveler l'accès{% else %}Enregistrer un accès{% endif %}</a>{% endif %}
+        {% if wifi_access and perms.accounts.view_wifi_password %}<a class="button button--quiet" href="{% url 'residents:wifi_password' resident.pk %}">Afficher le mot de passe</a>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if form and not resident.is_active and perms.accounts.manage_residents %}
+    <section class="card stack" aria-labelledby="return-title">
+      <h2 id="return-title" class="card__title">Retour dans la résidence</h2>
+      <p class="text-muted">Si la personne revient : nouvelle chambre et compte réactivé.</p>
+      <a class="button button--quiet" href="{% url 'residents:return' resident.pk %}">Enregistrer un retour</a>
+    </section>
+    {% endif %}
+
+    {% if form and resident.is_active %}
+    <section class="card stack" aria-labelledby="departure-title">
+      <h2 id="departure-title" class="card__title">Départ</h2>
+      {% if stay.planned_departure %}
+      <p class="icon-text">{% icon "clock" %}<span><strong>Départ prévu le <time datetime="{{ stay.planned_departure|date:'Y-m-d' }}">{{ stay.planned_departure|date:"l j F Y" }}</time></strong>. Il sera enregistré automatiquement ce jour-là à midi.</span></p>
+      <div class="row">
+        <a class="button button--quiet" href="{% url 'residents:departure' resident.pk %}">Changer la date</a>
+        <form method="post" action="{% url 'residents:cancel_planned_departure' resident.pk %}">
+          {% csrf_token %}
+          <button class="button button--quiet" type="submit">Annuler le départ prévu</button>
+        </form>
+      </div>
+      {% else %}
+      <p class="text-muted">Fin du séjour et compte désactivé. Peut se prévoir à l'avance.</p>
+      <a class="button button--quiet" href="{% url 'residents:departure' resident.pk %}">Enregistrer le départ</a>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if form %}
+    <details class="card stack" id="edit"{% if form.errors %} open{% endif %}>
+      <summary class="card__title">Modifier la fiche</summary>
+      {% include "residents/_form.html" %}
+    </details>
+    {% endif %}
+  </div>
+  <div class="stack">
+    <section class="card stack" aria-labelledby="contact-title">
+      <h2 id="contact-title" class="card__title">Contact</h2>
+      <dl class="details details--stacked">
+        <dt>Téléphone</dt>
+        <dd>{% if resident.phone %}<a href="tel:{{ resident.phone }}">{{ resident.phone_display }}</a>{% else %}Aucun{% endif %}</dd>
+        <dt>Adresse e-mail</dt>
+        <dd>{% if resident.email %}<a href="mailto:{{ resident.email }}">{{ resident.email }}</a>{% else %}Aucune{% endif %}</dd>
+      </dl>
+      {% if not form %}<p class="text-muted text-small">Pour modifier la fiche, voyez l'accueil.</p>{% endif %}
+    </section>
+
+    <section class="card stack" aria-labelledby="account-title">
+      <h2 id="account-title" class="card__title">Compte</h2>
+      <dl class="details details--stacked">
+        <dt>Fiche créée le</dt>
+        <dd><time datetime="{{ resident.date_joined|date:'Y-m-d' }}">{{ resident.date_joined|date:"j F Y" }}</time></dd>
+        <dt>Téléphone vérifié</dt>
+        <dd>{% if resident.phone_is_verified %}Le <time datetime="{{ resident.phone_verified_at|date:'Y-m-d\TH:i:sO' }}">{{ resident.phone_verified_at|date:"j F Y" }}</time>{% else %}Non{% endif %}</dd>
+        <dt>Dernière connexion</dt>
+        <dd>{% if resident.last_login %}<time datetime="{{ resident.last_login|date:'Y-m-d\TH:i:sO' }}">{{ resident.last_login|date:"j F Y à H:i" }}</time>{% else %}Jamais{% endif %}</dd>
+        {% if perms.accounts.manage_roles %}<dt>Identifiant interne</dt>
+        <dd>{{ resident.get_username }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    <section class="card stack" aria-labelledby="stays-title">
+      <h2 id="stays-title" class="card__title">Séjours</h2>
+      {% if stays %}
+      <ul class="plain-list">
+        {% for s in stays %}
+        <li class="stack stack--tight">
+          <strong>{{ s.room }} · {{ s.room.floor }}</strong>
+          <span class="text-muted">{% if s.departure %}Du <time datetime="{{ s.arrival|date:'Y-m-d' }}">{{ s.arrival|date:"j F Y" }}</time> au <time datetime="{{ s.departure|date:'Y-m-d' }}">{{ s.departure|date:"j F Y" }}</time>{% else %}Depuis le <time datetime="{{ s.arrival|date:'Y-m-d' }}">{{ s.arrival|date:"j F Y" }}</time>{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">Aucun séjour pour l'instant.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% else %}
+<div class="profile">
+  {% include "residents/_form.html" %}
+</div>
+{% endif %}
+{% endblock %}

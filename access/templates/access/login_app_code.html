@@ -1,0 +1,24 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Connexion avec un code{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<header class="stack stack--tight">
+  <h1>Connexion de l'équipe</h1>
+  <p class="text-muted">Avec le code de votre application.</p>
+</header>
+
+{% if form.non_field_errors %}
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p>{{ form.non_field_errors|join:" " }}</p></div>
+{% endif %}
+
+<form class="stack" method="post" novalidate>
+  {% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  {{ form.username.as_field_group }}
+  {{ form.code.as_field_group }}
+  <button class="button button--block" type="submit">Me connecter</button>
+</form>
+
+<p><a href="{% url 'access:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Utiliser ma clé d'accès</a></p>
+{% endblock %}

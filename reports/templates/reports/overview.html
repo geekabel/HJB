@@ -1,0 +1,33 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Signalements{% endblock %}
+{% block content %}
+<h1>Signalements</h1>
+{% include "appointments/_messages.html" %}
+<a class="button button--block" href="{% url 'reports:new' %}">{% icon "plus" %}Signaler un problème</a>
+
+<section class="stack stack--tight" aria-labelledby="open-title">
+  <h2 id="open-title" class="section-title">En cours</h2>
+  {% if open_reports %}
+  <ul class="link-list">
+    {% for report in open_reports %}{% include "reports/_line.html" %}{% endfor %}
+  </ul>
+  {% else %}
+  <div class="empty-card empty-card--done">
+    <span class="empty-card__icon" aria-hidden="true">{% icon "check" %}</span>
+    <p>Aucun signalement en cours.</p>
+  </div>
+  {% endif %}
+</section>
+
+{% if closed_reports %}
+<section class="stack stack--tight" aria-labelledby="closed-title">
+  <h2 id="closed-title" class="section-title">Terminés</h2>
+  <ul class="link-list">
+    {% for report in closed_reports %}{% include "reports/_line.html" %}{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% include "reports/_emergency.html" %}
+{% endblock %}

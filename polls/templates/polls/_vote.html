@@ -1,0 +1,36 @@
+{% load icons %}
+{% comment %}
+Vote of a resident (card T25). Variables: poll, voted, open, thanks, error,
+comment (kept after an error), action (address of the form, "" for the same page).
+{% endcomment %}
+<section class="card stack" aria-labelledby="vote-title">
+  <h2 id="vote-title">Votre vote</h2>
+  {% if error %}<p class="alert alert--error" role="alert">{% icon "alert" %}<span>{{ error }}</span></p>{% endif %}
+  {% if thanks %}<p class="alert alert--success" role="status">{% icon "check" %}<span>{{ thanks }}</span></p>
+  {% elif voted %}<p class="icon-text">{% icon "check" %}<span>Vous avez voté.</span></p>{% endif %}
+  {% if voted %}
+  <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Vote anonyme.{% if poll.closes_at %} Clôture : <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>.{% endif %}</span></p>
+  {% elif not open %}
+  <p class="text-muted">Le vote est clos.</p>
+  {% else %}
+  <form class="stack" method="post" autocomplete="off"{% if action %} action="{{ action }}"{% endif %}>
+    {% csrf_token %}
+    <fieldset class="stack stack--tight" aria-describedby="vote-rule">
+      <legend class="vote__question">{{ delivery.title|default:poll.campaign.title }}</legend>
+      <p class="text-muted text-small" id="vote-rule">Un seul choix. Vote anonyme.</p>
+      {% for option in poll.options.all %}
+      <label class="choices"><input type="radio" name="option" value="{{ option.pk }}" required>{{ option.label }}</label>
+      {% endfor %}
+    </fieldset>
+    {% if poll.allow_comment %}
+    <div class="field">
+      <label for="vote-comment">Un commentaire pour l'équipe (facultatif)</label>
+      <textarea id="vote-comment" name="comment" rows="3" maxlength="500" aria-describedby="vote-comment-help">{{ comment }}</textarea>
+      <span class="field__help" id="vote-comment-help">Sans votre nom. N'écrivez rien qui vous fasse reconnaître.</span>
+    </div>
+    {% endif %}
+    <p class="text-muted text-small">Votre vote est définitif. Clôture : <time datetime="{{ poll.closes_at|date:'Y-m-d\TH:i:sO' }}">{{ poll.closes_at|date:"l j F à H:i" }}</time>.</p>
+    <button class="button" type="submit">Envoyer mon vote</button>
+  </form>
+  {% endif %}
+</section>

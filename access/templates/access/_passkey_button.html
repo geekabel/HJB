@@ -1,0 +1,16 @@
+{% load icons %}
+{% comment %}
+  Passkey button, driven by ui/js/passkey.js.
+  Variables: ``config`` (dict for the script), ``label`` (button text).
+  Without JavaScript, or if the browser does not support passkeys, a message says so.
+{% endcomment %}
+{{ config|json_script:"passkey-config" }}
+<div class="stack">
+  {% csrf_token %}
+  <button class="button button--block" type="button" data-passkey-button hidden>{{ label }}</button>
+  <div data-passkey-status role="status"></div>
+  <template data-passkey-icon="success">{% icon "check" %}</template>
+  <template data-passkey-icon="warning">{% icon "alert" %}</template>
+  <div class="alert alert--warning" data-passkey-unavailable hidden>{% icon "alert" %}<p>Ce navigateur ne gère pas les clés d'accès. Mettez-le à jour, ou essayez avec Chrome, Safari, Firefox ou Edge. Si ça ne marche toujours pas, passez à l'accueil.</p></div>
+  <noscript><div class="alert alert--warning"><p>JavaScript est désactivé. Il est nécessaire pour utiliser une clé d'accès.</p></div></noscript>
+</div>

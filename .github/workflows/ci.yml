@@ -1,0 +1,132 @@
+# Quality, tests and W3C validation on each push and each pull request.
+# setup-python : https://github.com/actions/setup-python
+# setup-java : https://github.com/actions/setup-java
+# Nu Html Checker : https://validator.github.io/validator/docs/vnu.1.html
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # Version of the W3C validator (npm package vnu-jar), pinned.
+  VNU_VERSION: "26.10.12"
+
+jobs:
+  quality:
+    name: Quality, tests and W3C
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format)
+        run: ruff format --check .
+
+      # Known vulnerabilities in the application dependencies (card T37).
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt --progress-spinner off
+
+      - name: Django checks
+        run: python manage.py check
+
+      - name: Migrations up to date
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Deployment checks
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          DJANGO_ALLOWED_HOSTS: ci.example
+          DJANGO_WEBAUTHN_RP_ID: ci.example
+          DJANGO_WEBAUTHN_ORIGINS: https://ci.example
+          DJANGO_ADMIN_URL: gestion-ci
+          # Production runs on PostgreSQL; the checks do not connect to it.
+          POSTGRES_DB: hjb
+        run: |
+          # Throwaway keys generated on each run: no secret in the repository.
+          export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
+          export DJANGO_WIFI_KEYS="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          export DJANGO_VAPID_PRIVATE_KEY="$(python -c 'from push.vapid import new_private_key; print(new_private_key())')"
+          export DJANGO_VAPID_CONTACT="mailto:ci@example.org"
+          python manage.py check --deploy
+
+      - name: Tests (with page capture)
+        env:
+          HTML_CAPTURE_DIR: build/html
+        run: python manage.py test
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install the W3C validator
+        run: npm install --no-save --prefix "$RUNNER_TEMP/vnu" "vnu-jar@$VNU_VERSION"
+
+      - name: W3C validation (HTML and CSS)
+        run: python -m tools.validate_w3c --jar "$RUNNER_TEMP/vnu/node_modules/vnu-jar/build/dist/vnu.jar" --html build/html
+
+  postgres:
+    # The tests again on PostgreSQL, the production database (card T38).
+    # Service containers: https://docs.github.com/en/actions/use-cases-and-examples/using-containerized-services/creating-postgresql-service-containers
+    name: Tests on PostgreSQL
+    # Same Ubuntu as the server: its archive has the PostgreSQL 16 client
+    # that pg_dump needs. ubuntu-latest (26.04) does not.
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hjb
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: hjb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_DB: hjb
+      POSTGRES_USER: hjb
+      POSTGRES_PASSWORD: ci-only
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      # pg_dump and pg_restore for the backup tests, at the server's version
+      # (Ubuntu 24.04 ships PostgreSQL 16, like the production server).
+      - name: PostgreSQL client 16
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+
+      - name: Tests
+        run: python manage.py test

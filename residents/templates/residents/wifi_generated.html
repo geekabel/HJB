@@ -1,0 +1,21 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}Nouvel accès wifi{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:detail' resident.pk %}">{% icon "back" %}Retour à la fiche</a>
+
+<div class="alert alert--warning" role="status">{% icon "alert" %}<p><strong>{% if password_generated %}Ce mot de passe ne s'affichera qu'une fois ici.{% else %}Accès enregistré.{% endif %}</strong> Recopiez maintenant {% if username_generated and password_generated %}l'identifiant et le mot de passe{% elif username_generated %}l'identifiant{% else %}le mot de passe{% endif %} sur le portail wifi, pour la chambre {{ access.room.number }}.</p></div>
+
+<section class="card stack" aria-labelledby="wifi-title">
+  <h1 id="wifi-title">Wifi de la chambre {{ access.room.number }}</h1>
+  <p>Identifiant :</p>
+  <p class="secret-value">{{ access.username }}</p>
+  {% if password_generated %}
+  <p>Mot de passe :</p>
+  <p class="secret-value">{{ password }}</p>
+  {% endif %}
+  <p class="text-muted">Valable jusqu'au <time datetime="{{ access.expires_on|date:'Y-m-d' }}">{{ access.expires_on|date:"j F Y" }}</time>.</p>
+</section>
+
+<a class="button button--quiet" href="{% url 'residents:detail' resident.pk %}">C'est fait, retour à la fiche</a>
+{% endblock %}

@@ -1,0 +1,224 @@
+"""The page "Réglages" of the residence (card T37b)."""
+
+from unittest import mock
+
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import escape
+
+from accounts.roles import Role
+from accounts.tests.helpers import confirm_now, log_in_verified, make_user
+from audit.models import Action, AuditEntry
+from privacy import retention
+from residence.models import ResidenceSettings
+from sms import service
+from sms.models import SmsDailyUsage
+from tools.html_capture import save_page
+
+URL = reverse("residence:edit")
+
+
+def data(**changes):
+    row = ResidenceSettings.load()
+    values = {
+        "organization_name": row.organization_name,
+        "organization_address": row.organization_address,
+        "privacy_contact": row.privacy_contact,
+        "emergency_phone": row.emergency_phone,
+        "sms_provider": row.sms_provider,
+        "sms_daily_limit": row.sms_daily_limit,
+        "summary_hour": row.summary_hour,
+        "version": row.updated_at.isoformat(),
+    }
+    for kind in retention.KINDS:
+        values[f"{kind}_days"] = row.retention_days(kind)
+    return values | changes
+
+
+class SettingsPageTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.marie = make_user("marie", Role.ADMIN, first_name="Marie")
+        cls.karim = make_user("karim", Role.FRONT_DESK)
+
+    def setUp(self):
+        log_in_verified(self.client, self.marie)
+        confirm_now(self.client)
+
+    def test_only_the_administration(self):
+        for role in (Role.FRONT_DESK, Role.EDUCATOR, Role.MAINTENANCE, Role.MODERATOR):
+            with self.subTest(role=role):
+                self.client.logout()
+                log_in_verified(self.client, make_user(f"u-{role}", role))
+                self.assertEqual(self.client.get(URL).status_code, 403)
+                self.assertEqual(self.client.post(URL, data()).status_code, 403)
+
+    def test_asks_for_a_recent_confirmation(self):
+        self.client.logout()
+        log_in_verified(self.client, self.marie)  # a new session, not confirmed
+        response = self.client.get(URL)
+        self.assertTrue(response["Location"].startswith(reverse("access:confirm")))
+
+    def test_change_and_audit(self):
+        response = self.client.get(URL)
+        save_page("residence-settings", response)
+        self.assertContains(response, 'aria-current="page">Réglages')
+        self.assertIn("no-store", response["Cache-Control"])
+        response = self.client.post(
+            URL,
+            data(
+                emergency_phone="03 84 00 00 00",
+                privacy_contact="donnees@example.org",
+                former_residents_days=400,
+            ),
+        )
+        self.assertRedirects(response, URL)
+        row = ResidenceSettings.load()
+        self.assertEqual(row.emergency_phone, "03 84 00 00 00")
+        self.assertEqual(retention.days("former_residents"), 400)
+        entry = AuditEntry.objects.get(action=Action.SETTINGS_CHANGED)
+        self.assertEqual(entry.actor, self.marie)
+        self.assertIn("Numéro d'urgence : vide → 03 84 00 00 00.", entry.summary())
+        self.assertIn("400", entry.summary())
+        # The pages that use them.
+        self.assertContains(self.client.get(reverse("privacy")), "mailto:donnees@example.org")
+        # Nothing changed: no entry.
+        self.client.post(URL, data())
+        self.assertEqual(AuditEntry.objects.filter(action=Action.SETTINGS_CHANGED).count(), 1)
+
+    def test_safe_bounds(self):
+        response = self.client.post(
+            URL, data(audit_log_days=30, codes_days=0, summary_hour=14, emergency_phone="abc")
+        )
+        self.assertEqual(response.status_code, 200)
+        for name in ("audit_log_days", "codes_days", "summary_hour", "emergency_phone"):
+            self.assertIn(name, response.context["form"].errors)
+        self.assertEqual(retention.days("audit_log"), 365)
+        response = self.client.post(URL, data(privacy_contact="nobody@"))
+        self.assertIn("privacy_contact", response.context["form"].errors)
+
+    def test_sms_choice_only_among_ready_services(self):
+        form = self.client.get(URL).context["form"]
+        values = [value for value, _ in form.fields["sms_provider"].choices]
+        self.assertEqual(values, ["", "paused"])  # no keys in the tests
+        response = self.client.post(URL, data(sms_provider="ovh"))
+        self.assertIn("sms_provider", response.context["form"].errors)
+        with mock.patch("residence.forms.ready_providers", return_value=["ovh"]):
+            form = self.client.get(URL).context["form"]
+            self.assertIn("ovh", [v for v, _ in form.fields["sms_provider"].choices])
+
+    def test_sms_paused(self):
+        self.client.post(URL, data(sms_provider="paused"))
+        provider = service.active_provider()
+        self.assertEqual(provider.name, "disabled")
+        with self.assertRaisesMessage(service.ConfigurationError, "coupés dans les réglages"):
+            service.send_sms("+33612345678", "Bonjour")
+        from messaging.sending import sms_ready
+
+        self.assertFalse(sms_ready())
+
+    def test_a_chosen_service_without_keys_falls_back_to_the_server(self):
+        ResidenceSettings.objects.update_or_create(pk=1, defaults={"sms_provider": "ovh"})
+        self.assertEqual(service.active_provider().name, service.configured_provider().name)
+
+    def test_sms_daily_limit(self):
+        SmsDailyUsage.objects.create(day=timezone.localdate(), segments=12)
+        response = self.client.get(URL)
+        self.assertContains(response, "Aujourd'hui : 12 SMS envoyés sur 100.")
+        response = self.client.post(URL, data(sms_daily_limit=10))
+        self.assertIn("sms_daily_limit", response.context["form"].errors)
+        self.assertRedirects(self.client.post(URL, data(sms_daily_limit=50)), URL)
+        self.assertEqual(service.daily_limit(), 50)
+        self.assertEqual(service.left_today(), 28)  # 10 kept for the codes
+
+    def test_summary_hour(self):
+        from reports import reminders
+
+        ResidenceSettings.objects.update_or_create(pk=1, defaults={"summary_hour": 7})
+        start, until = reminders.summary_window()
+        self.assertEqual((start.hour, until.hour), (7, 10))
+
+    def test_audit_summary_escapes(self):
+        self.client.post(URL, data(organization_name="<b>HJB</b>"))
+        response = self.client.get(reverse("audit:list"))
+        self.assertContains(response, escape("<b>HJB</b>"))
+
+    def test_a_shorter_duration_asks_for_a_confirmation(self):
+        response = self.client.post(URL, data(former_residents_days=200))
+        self.assertIn("confirm_shorter", response.context["form"].errors)
+        self.assertContains(response, "Compte d&#x27;un ancien résident")
+        self.assertEqual(retention.days("former_residents"), 365)
+        self.client.post(URL, data(former_residents_days=200, confirm_shorter="on"))
+        self.assertEqual(retention.days("former_residents"), 200)
+        # Longer: no confirmation needed.
+        self.client.post(URL, data(former_residents_days=300))
+        self.assertEqual(retention.days("former_residents"), 300)
+
+    def test_two_people_at_the_same_time(self):
+        old = data()
+        self.client.post(URL, data(emergency_phone="03 84 00 00 00"))
+        response = self.client.post(URL, old | {"organization_name": "HJB"})
+        self.assertContains(response, "Quelqu&#x27;un a changé les réglages pendant ce temps")
+        row = ResidenceSettings.load()
+        self.assertEqual(row.emergency_phone, "03 84 00 00 00")  # not undone
+        self.assertNotEqual(row.organization_name, "HJB")
+
+    def test_bounds_in_the_inputs(self):
+        form = self.client.get(URL).context["form"]
+        attrs = form.fields["audit_log_days"].widget.attrs
+        self.assertEqual((attrs["min"], attrs["max"]), (180, 365))
+
+    def test_sms_error_is_shown_next_to_the_choice(self):
+        response = self.client.post(URL, data(sms_provider="ovh"))
+        self.assertContains(response, 'id="id_sms_provider_error"')
+
+    def test_paused_codes_say_so(self):
+        from accounts import phone_verification
+
+        ResidenceSettings.objects.update_or_create(pk=1, defaults={"sms_provider": "paused"})
+        resident = make_user("lea", phone="+33612345678")
+        with self.assertRaisesMessage(
+            phone_verification.VerificationError, "Les SMS sont coupés pour le moment"
+        ):
+            phone_verification.send_code(resident)
+
+    def test_summary_hour_on_the_board(self):
+        ResidenceSettings.objects.update_or_create(pk=1, defaults={"summary_hour": 8})
+        response = self.client.get(reverse("reports_staff:board"))
+        self.assertContains(response, "Récapitulatif à 8 h")
+
+
+class ReceiptsAfterASwitchTests(TestCase):
+    def test_the_old_service_is_still_asked(self):
+        import os
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from messaging import receipts
+        from messaging.models import Campaign, Delivery, Receipt
+
+        karim = make_user("karim", Role.FRONT_DESK)
+        campaign = Campaign.objects.create(title="T", body="B", author=karim, everyone=True)
+        Delivery.objects.create(
+            campaign=campaign,
+            recipient=make_user("ines"),
+            channel=Delivery.Channel.SMS,
+            status=Delivery.Status.SENT,
+            sent_at=timezone.now() - timedelta(minutes=10),
+            sms_provider="smsgate",
+            provider_message_id="abc",
+            receipt=Receipt.PENDING,
+            title="T",
+            body="B",
+        )
+        with mock.patch.dict(
+            os.environ, {"SMSGATE_URL": "https://gate.example", "SMSGATE_TOKEN": "t"}
+        ):
+            names = [p.name for p in receipts._pollers(timezone.now())]
+        self.assertIn("smsgate", names)
+        # Without its keys, it cannot be asked.
+        with mock.patch.dict(os.environ, {"SMSGATE_URL": ""}):
+            names = [p.name for p in receipts._pollers(timezone.now())]
+        self.assertNotIn("smsgate", names)

@@ -1,0 +1,19 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}{{ educator.first_name|default:educator.get_username }}{% endblock %}
+{% block body_class %}resident-page resident-page--task{% endblock %}
+{% block content %}
+<div class="task-bar">
+  <a class="icon-button" href="{% url 'inbox:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux messages</span></a>
+  <div>
+    <h1 class="task-bar__title">{{ educator.first_name|default:educator.get_username }}</h1>
+    <p class="text-muted text-small">Répond en général {{ reply_hours }}.</p>
+  </div>
+</div>
+{% include "appointments/_messages.html" %}
+
+<p class="text-muted text-small icon-text thread-note" id="thread-note">{% icon "lock" %}<span>Lu par {{ educator.first_name|default:educator.get_username }} seulement. Urgence : appelez l'accueil.</span></p>
+
+{% include "appointments/_thread.html" with me=user %}
+{% include "appointments/_composer.html" with note="thread-note" %}
+{% endblock %}

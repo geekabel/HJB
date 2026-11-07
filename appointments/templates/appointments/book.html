@@ -1,0 +1,73 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Prendre rendez-vous{% endblock %}
+{% block body_class %}resident-page resident-page--task{% endblock %}
+{% block content %}
+<div class="task-bar">
+  <a class="icon-button" href="{% url 'rdv:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>
+  <h1 class="task-bar__title">Prendre rendez-vous</h1>
+</div>
+{% include "appointments/_messages.html" %}
+
+{% if not educators %}
+<p class="empty-state">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil.</p>
+{% else %}
+<section class="stack stack--tight" aria-labelledby="who-title">
+  <h2 id="who-title" class="rdv__step">1. Avec qui ?</h2>
+  <ul class="rdv-people">
+    <li><a class="rdv-person" href="?avec={{ any_key }}"{% if not educator %} aria-current="true"{% endif %}><span class="rdv-person__initial rdv-person__initial--any" aria-hidden="true">{% icon "group" %}</span>Le premier libre</a></li>
+    {% for person in educators %}
+    <li><a class="rdv-person" href="?avec={{ person.pk }}"{% if educator == person %} aria-current="true"{% endif %}><span class="rdv-person__initial" aria-hidden="true">{{ person.first_name|default:person.get_username|slice:":1"|upper }}</span>{{ person.first_name|default:person.get_username }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+
+{% if not days %}
+<p class="empty-state">Pas de créneau libre dans les 2 semaines{% if educator %} avec {{ educator.first_name }}. Essayez «&nbsp;Le premier libre&nbsp;»{% else %}. Revenez dans quelques jours{% endif %}.</p>
+{% else %}
+{% if first and not wanted %}
+<div class="card rdv-line">
+  <p class="stack stack--tight"><span class="text-muted text-small">Le plus tôt</span><strong>{{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</strong></p>
+  <a class="button button--secondary" href="?avec={{ key }}&amp;jour={{ first.start|date:'Y-m-d' }}&amp;heure={{ first.start|time:'Hi' }}#time-title">Choisir<span class="visually-hidden"> le {{ first.start|date:"l j F" }} à {{ first.start|time:"H:i" }}</span></a>
+</div>
+{% endif %}
+
+<section class="stack stack--tight" aria-labelledby="day-title">
+  <h2 id="day-title" class="rdv__step">2. Quel jour ?</h2>
+  <ul class="rdv-days" data-keep-current-in-view>
+    {% for each, slots in days %}
+    <li><a class="rdv-day" href="?avec={{ key }}&amp;jour={{ each|date:'Y-m-d' }}#time-title"{% if each == day %} aria-current="true"{% endif %}><span class="text-small" aria-hidden="true">{{ each|date:"D" }}</span><strong aria-hidden="true">{{ each|date:"j" }}</strong><span class="rdv-day__month" aria-hidden="true">{{ each|date:"b" }}</span><span class="visually-hidden">{{ each|date:"l j F" }}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<form class="stack" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="avec" value="{{ key }}">
+  <input type="hidden" name="jour" value="{{ day|date:'Y-m-d' }}">
+  <fieldset class="stack stack--tight">
+    <legend><h2 id="time-title" class="rdv__step">3. Quelle heure ? <span class="text-muted">{{ day|date:"l j F" }}{% if length %}, {{ length }} min{% endif %}</span></h2></legend>
+    {% for label, group in time_groups %}{% if group %}
+    <p class="rdv-times__label">{{ label }}</p>
+    <div class="rdv-times">
+      {% for slot in group %}
+      <label class="rdv-time"><input type="radio" name="heure" value="{{ slot.start|time:'Hi' }}" required{% if slot.start|time:'Hi' == wanted %} checked{% endif %}><span>{{ slot.start|time:"H:i" }}</span></label>
+      {% endfor %}
+    </div>
+    {% endif %}{% endfor %}
+  </fieldset>
+  <div class="field">
+    <label for="motif">Motif <span class="text-muted">(facultatif)</span></label>
+    <select id="motif" name="motif" aria-describedby="motif-help">
+      {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+    </select>
+    <span class="field__help icon-text" id="motif-help">{% icon "lock" %}<span>Seul l'éducateur le voit.</span></span>
+  </div>
+  <div class="action-bar">
+    <p class="action-bar__summary{% if not chosen %} text-muted{% endif %}" data-booking-summary data-day="{{ day|date:'l j F' }}">{% if chosen %}{{ chosen.start|date:"l j F" }} à {{ chosen.start|time:"H:i" }}{% else %}Choisissez une heure{% endif %}</p>
+    <button class="button" type="submit">{% icon "calendar" %}Réserver</button>
+  </div>
+</form>
+{% endif %}
+{% endif %}
+{% endblock %}

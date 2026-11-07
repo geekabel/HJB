@@ -1,0 +1,130 @@
+{% extends "ui/staff.html" %}
+{% load static icons %}
+{% block title %}Mes disponibilités{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Mes disponibilités</h1>
+    <p class="text-muted">Vos rendez-vous, vos créneaux et vos absences.</p>
+  </div>
+</header>
+
+{% if not is_educator %}
+<p class="alert alert--info">{% icon "info" %}<span>Vous n'avez pas le rôle Éducateur : les résidents ne peuvent pas réserver avec vous, même avec des créneaux ouverts.</span></p>
+{% endif %}
+
+<div class="profile">
+  <section class="card stack" aria-labelledby="meetings-title">
+    <h2 id="meetings-title" class="card__title">Prochains rendez-vous</h2>
+    {% if meetings %}
+    <ul class="plain-list stack">
+      {% for meeting in meetings %}
+      <li class="stack stack--tight">
+        <strong><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}–{{ meeting.end|time:"H:i" }}</time></strong>
+        <span>{{ meeting.resident.get_full_name|default:meeting.resident.get_username }}{% if meeting.room %} · chambre {{ meeting.room }}{% endif %}</span>
+        <span class="text-muted text-small">Motif : {{ meeting.get_reason_display }}{% if meeting.holiday %} · jour férié ({{ meeting.holiday }}){% endif %}</span>
+        {% if meeting.can_cancel %}
+        <details class="cancel">
+          <summary>Annuler<span class="visually-hidden"> le rendez-vous du {{ meeting.start|date:"j F à H:i" }}</span></summary>
+          <form method="post" action="{% url 'appointments:cancel_meeting' meeting.pk %}">
+            {% csrf_token %}
+            <button class="button button--danger" type="submit">Oui, annuler et prévenir la personne</button>
+          </form>
+        </details>
+        {% else %}
+        <span class="text-muted text-small">En cours</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="text-muted text-small icon-text">{% icon "lock" %}<span>Le motif n'est montré qu'à vous.</span></p>
+    {% else %}
+    <p class="text-muted">Aucun rendez-vous à venir.</p>
+    {% endif %}
+    {% if cancelled %}
+    <h3 class="text-small">Annulés</h3>
+    <ul class="plain-list stack stack--tight">
+      {% for meeting in cancelled %}
+      <li class="text-muted"><s><time datetime="{{ meeting.start|date:'Y-m-d\TH:i:sO' }}">{{ meeting.start|date:"l j F" }}, {{ meeting.start|time:"H:i" }}</time></s> · {{ meeting.resident.get_full_name|default:meeting.resident.get_username }}, {% if meeting.cancelled_by_id %}annulé par la personne{% else %}départ de la résidence{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="card stack" aria-labelledby="absences-title">
+    <h2 id="absences-title" class="card__title">Absences</h2>
+    <p class="text-small">Ces jours-là, personne ne peut réserver. Les jours fériés sont déjà fermés.</p>
+    {% if absences %}
+    <ul class="plain-list stack stack--tight">
+      {% for absence in absences %}
+      <li class="row row--between">
+        <span>{% if absence.first_day == absence.last_day %}Le {{ absence.first_day|date:"l j F" }}{% else %}Du {{ absence.first_day|date:"j F" }} au {{ absence.last_day|date:"j F" }}{% endif %}</span>
+        <form method="post" action="{% url 'appointments:delete_absence' absence.pk %}">
+          {% csrf_token %}
+          <button class="button button--quiet" type="submit">Retirer<span class="visually-hidden"> l'absence du {{ absence.first_day|date:"j F" }}</span></button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <form class="stack" method="post" action="{% url 'appointments:add_absence' %}">
+      {% csrf_token %}
+      <div class="grid-auto">
+        {{ absence_form.first_day.as_field_group }}
+        {{ absence_form.last_day.as_field_group }}
+      </div>
+      <button class="button button--secondary" type="submit">{% icon "plus" %}Ajouter l'absence</button>
+    </form>
+  </section>
+</div>
+<script src="{% static 'appointments/grid.js' %}" defer></script>
+
+<form class="profile" method="post">
+  {% csrf_token %}
+  <section class="card stack" aria-labelledby="slots-title">
+    <div class="row row--between">
+      <h2 id="slots-title" class="card__title">Mes créneaux, chaque semaine</h2>
+      <p class="row text-small" aria-hidden="true"><span class="slot-key">Libre</span>= les résidents peuvent réserver</p>
+    </div>
+    <a class="skip-inline" href="#settings-title">Passer la grille</a>
+    <div class="table-scroll" role="region" aria-labelledby="grid-caption" tabindex="0">
+      <table class="slot-grid" data-slot-grid>
+        <caption id="grid-caption" class="visually-hidden">Créneaux ouverts chaque semaine, par demi-heure</caption>
+        <thead>
+          <tr>
+            <td></td>
+            {% for day, label in days %}<th scope="col">{{ label|capfirst }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr{% if row.full_hour %} class="slot-grid__hour"{% endif %}>
+            <th scope="row">{{ row.time|time:"H:i" }}</th>
+            {% for cell in row.cells %}
+            <td>
+              <label class="slot">
+                <input class="visually-hidden" type="checkbox" name="cell" value="{{ cell.key }}"{% if cell.key in opened %} checked{% endif %}>
+                <span class="slot__face"><span class="visually-hidden">{{ cell.day|capfirst }} de {{ row.time|time:"H:i" }} à {{ row.end|time:"H:i" }}</span><span class="slot__text" aria-hidden="true">Libre</span></span>
+              </label>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted text-small">Touchez une case pour l'ouvrir, puis «&nbsp;Enregistrer les créneaux&nbsp;». À la souris, glissez pour en ouvrir plusieurs.</p>
+  </section>
+
+  <aside class="stack">
+    <section class="card stack" aria-labelledby="settings-title">
+      <h2 id="settings-title" class="card__title">Réglages</h2>
+      {{ form.slot_minutes.as_field_group }}
+      {{ form.notice.as_field_group }}
+      {{ form.remind_residents.as_field_group }}
+      {{ form.reply_hours.as_field_group }}
+      <button class="button" type="submit">{% icon "check" %}Enregistrer les créneaux</button>
+    </section>
+  </aside>
+</form>
+{% endblock %}

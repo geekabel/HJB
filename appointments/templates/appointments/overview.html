@@ -1,0 +1,50 @@
+{% extends "ui/resident.html" %}
+{% load icons french %}
+{% block title %}Rendez-vous{% endblock %}
+{% block content %}
+<h1>Rendez-vous</h1>
+{% include "appointments/_messages.html" %}
+
+{% if next_meeting %}
+<a class="next-meeting" href="{% url 'rdv:detail' next_meeting.pk %}">
+  <span class="date-tile" aria-hidden="true"><span>{{ next_meeting.start|date:"D" }}</span><strong>{{ next_meeting.start|date:"j" }}</strong><span>{{ next_meeting.start|date:"b" }}</span></span>
+  <span class="next-meeting__body">
+    <span class="next-meeting__when">{{ next_meeting.start|dans }}</span>
+    <strong><span class="visually-hidden">, {{ next_meeting.start|date:"l j F" }}, de {{ next_meeting.start|time:"H:i" }} à {{ next_meeting.end|time:"H:i" }}</span><span aria-hidden="true">{{ next_meeting.start|time:"H:i" }} – {{ next_meeting.end|time:"H:i" }}</span></strong>
+    <span class="text-muted">avec {{ next_meeting.educator.first_name|default:next_meeting.educator.get_username }}</span>
+  </span>
+  {% icon "chevron" %}
+</a>
+{% if later %}
+<ul class="link-list" aria-label="Rendez-vous suivants">
+  {% for meeting in later %}
+  <li><a href="{% url 'rdv:detail' meeting.pk %}">{% icon "calendar" %}<span><strong>{{ meeting.start|date:"l j F" }} à {{ meeting.start|time:"H:i" }}</strong><small>avec {{ meeting.educator.first_name|default:meeting.educator.get_username }}</small></span>{% icon "chevron" %}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% else %}
+<div class="empty-card">
+  <span class="empty-card__icon" aria-hidden="true">{% icon "calendar" %}</span>
+  <p>Aucun rendez-vous prévu.</p>
+</div>
+{% endif %}
+
+{% if can_book %}
+<section class="stack stack--tight" aria-labelledby="book-title">
+  <h2 id="book-title" class="section-title">Prendre rendez-vous</h2>
+  {% if full %}
+  <p class="text-muted text-small">Vous avez déjà {{ max_upcoming }} rendez-vous à venir : c'est le maximum.</p>
+  {% elif next_free %}
+  <ul class="quick-times" aria-label="Premiers créneaux libres">
+    {% for slot in next_free %}
+    <li><a class="quick-time" href="{% url 'rdv:book' %}?avec={{ any_key }}&amp;jour={{ slot.start|date:'Y-m-d' }}&amp;heure={{ slot.start|time:'Hi' }}"><span aria-hidden="true">{{ slot.start|date:"D j b" }}</span><strong aria-hidden="true">{{ slot.start|time:"H:i" }}</strong><span class="visually-hidden">{{ slot.start|date:"l j F" }} à {{ slot.start|time:"H:i" }}</span></a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <a class="button button--block" href="{% url 'rdv:book' %}">{% icon "calendar" %}Voir tous les créneaux</a>
+</section>
+{% else %}
+<p class="text-muted">Aucun éducateur ne propose de rendez-vous pour le moment. Passez à l'accueil.</p>
+{% endif %}
+<a class="button button--quiet button--block" href="{% url 'rdv:educators' %}">{% icon "message" %}Écrire à un éducateur</a>
+{% endblock %}

@@ -1,0 +1,1 @@
+<span class="badge {% if report.status == 'new' %}badge--neutral{% elif report.status == 'done' or report.status == 'closed' %}badge--success{% else %}badge--info{% endif %}">{{ report.get_status_display }}</span>

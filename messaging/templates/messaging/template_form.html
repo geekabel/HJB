@@ -1,0 +1,38 @@
+{% extends "ui/staff.html" %}
+{% load icons %}
+{% block title %}{% if template.pk %}Modèle «&nbsp;{{ template.name }}&nbsp;»{% else %}Nouveau modèle{% endif %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'messaging:templates' %}">{% icon "back" %}Tous les modèles</a>
+
+<h1>{% if template.pk %}Modifier le modèle{% else %}Nouveau modèle{% endif %}</h1>
+
+<div class="profile">
+  <form class="card stack" method="post" novalidate>
+    {% csrf_token %}
+    {{ form.type.as_field_group }}
+    {{ form.name.as_field_group }}
+    {{ form.title.as_field_group }}
+    {{ form.body.as_field_group }}
+    {{ form.sms_body.as_field_group }}
+    {{ form.reply_expected.as_field_group }}
+    <div class="row">
+      <button class="button" type="submit">Enregistrer</button>
+      <a class="button button--quiet" href="{% url 'messaging:templates' %}">Annuler</a>
+    </div>
+  </form>
+
+  <section class="card stack" aria-labelledby="fields-title">
+    <h2 id="fields-title">Champs</h2>
+    <p class="text-muted">Écrits entre accolades, ils sont remplis pour chaque personne.</p>
+    <dl class="details">
+      {% for name, label in fields.items %}<dt><code>{{ "{" }}{{ name }}{{ "}" }}</code></dt><dd>{{ label }}</dd>{% endfor %}
+    </dl>
+    {% if template.pk %}
+    <form method="post" action="{% url 'messaging:template_delete' template.pk %}">
+      {% csrf_token %}
+      <button class="button button--quiet" type="submit">Supprimer ce modèle</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

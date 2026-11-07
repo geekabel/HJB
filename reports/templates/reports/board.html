@@ -1,0 +1,32 @@
+{% extends "ui/staff.html" %}
+{% load icons french %}
+{% block title %}Signalements{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>Signalements</h1>
+    <p class="text-muted">À traiter : urgent sous 4 h, gênant sous 48 h, peut attendre sous 7 jours. Récapitulatif à {{ summary_hour }} h, du lundi au vendredi.</p>
+  </div>
+</header>
+
+<nav aria-label="Filtrer les signalements">
+  <ul class="chips">
+    {% for key, label in filters %}
+    <li><a class="chip" href="{% url 'reports_staff:board' %}{% if key != 'all' %}?show={{ key }}{% endif %}"{% if key == current %} aria-current="page"{% endif %}>{{ label }}{% if key == "late" and late_count %} ({{ late_count }}){% endif %}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{% if not total %}
+<div class="empty-card">{% icon "check" %}<p>Aucun signalement ici.</p></div>
+{% else %}
+<div class="board">
+  {% for status, label, items in columns %}
+  <section class="board__column" aria-labelledby="column-{{ status }}">
+    <h2 class="board__title" id="column-{{ status }}">{{ label }} <span class="board__count">{{ items|length }}</span></h2>
+    {% for report in items %}{% include "reports/_card.html" %}{% empty %}<p class="board__empty">Aucun.</p>{% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

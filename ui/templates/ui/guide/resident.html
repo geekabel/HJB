@@ -1,0 +1,47 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Accueil (exemple){% endblock %}
+{% block header %}
+<div class="row">
+  <span class="logo-tile">{% roofs %}</span>
+  <div>
+    <p><strong>Bonjour Awa</strong></p>
+    <p class="text-muted text-small">Chambre 312 · 3e étage</p>
+  </div>
+</div>
+<button class="icon-button" type="button">
+  {% icon "bell" %}<span class="visually-hidden">Notifications</span>
+  <span class="counter">2<span class="visually-hidden"> nouvelles</span></span>
+</button>
+{% endblock %}
+
+{% block content %}
+<h1 class="visually-hidden">Accueil</h1>
+<p class="alert alert--info">{% icon "info" %}<span>Page d'exemple du guide de style : les noms et dates sont inventés.</span></p>
+
+<section class="card card--accent" aria-labelledby="visit">
+  <div class="roofs" aria-hidden="true"><span></span><span></span><span></span></div>
+  <p class="row text-small">{% icon "door" %}Visite de logement · réponse attendue</p>
+  <h2 id="visit">Demain, jeudi 6 novembre, entre 15 h et 17 h</h2>
+  <p class="card__text">Contrôle de l'alarme incendie et du compteur. Serez-vous là ?</p>
+  <div class="grid-2">
+    <button class="button" type="button">Je serai présent</button>
+    <button class="button button--secondary" type="button">Absent</button>
+  </div>
+</section>
+
+<nav class="grid-2" aria-label="Raccourcis">
+  <a class="card card--link" href="#">{% icon "alert" %}<span class="card__title">Signaler un problème</span></a>
+  <a class="card card--link" href="#">{% icon "calendar" %}<span class="card__title">Voir un éducateur</span></a>
+  <a class="card card--link" href="#">{% icon "wifi" %}<span class="card__title">Mon wifi</span></a>
+  <a class="card card--link" href="#">{% icon "vote" %}<span class="card__title">1 vote en cours</span></a>
+</nav>
+
+<section class="stack" aria-labelledby="requests">
+  <h2 id="requests">Mes demandes</h2>
+  <a class="card card--link" href="#">
+    <span class="row"><span class="card__title">Lampe salle de bain</span><span class="badge badge--info">Planifié</span></span>
+    <span class="card__text">Intervention vendredi 7 novembre, de 10 h à 12 h</span>
+  </a>
+</section>
+{% endblock %}

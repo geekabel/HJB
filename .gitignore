@@ -2,10 +2,10 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
+.venv
 venv/
 
-# Outils
+# Tools
 .ruff_cache/
 .pytest_cache/
 .coverage
@@ -14,14 +14,23 @@ htmlcov/
 # Django
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3-wal
+db.sqlite3-shm
 /media/
 /staticfiles/
 
-# Secrets et réglages locaux
+# Secrets and local settings
 .env
 *.local
 
-# Éditeurs et systèmes
+# Editors and systems
 .idea/
 .vscode/
 .DS_Store
+
+# Pages captured for the W3C validator
+/build/
+
+# Real first-loading file of a server (deploy/initial-data.example.yaml)
+deploy/initial-data.yaml
+deploy/deploy.conf

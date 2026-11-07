@@ -1,0 +1,19 @@
+{% load french %}
+{% comment %}
+  Messages of a conversation (cards T28 and D5). Variables: page (direct.Page:
+  the last 50 messages, or 50 older ones), me, new_ids (just read). One line per day above its messages; in a bubble only
+  the time: the side and the color say who wrote it (the name is read out).
+{% endcomment %}
+{% if page.older %}<p class="thread__more"><a href="?avant={{ page.older }}">Messages plus anciens</a></p>{% endif %}
+{% if page.messages %}
+<ol class="thread" aria-label="Messages">
+  {% for message in page.messages %}
+  {% ifchanged message.sent_at|date:"Y-m-d" %}<li class="thread__day"><time datetime="{{ message.sent_at|date:'Y-m-d' }}">{{ message.sent_at|jour }}</time></li>{% endifchanged %}
+  <li class="thread__message{% if message.author_id == me.pk %} thread__message--mine{% endif %}"{% if forloop.last and page.latest %} id="last-message"{% endif %}>
+    <p class="thread__text" dir="auto"><span class="visually-hidden">{% if message.author_id == me.pk %}Vous{% else %}{{ message.author.first_name|default:message.author.get_username }}{% endif %}&nbsp;: </span>{{ message.text|linebreaksbr }}</p>
+    <p class="thread__meta"><time datetime="{{ message.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ message.sent_at|date:"H:i" }}</time>{% if message.pk in new_ids %} · <strong class="thread__new">Nouveau</strong>{% endif %}</p>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}
+{% if page.latest %}<div id="messages-end"></div>{% else %}<p class="thread__more"><a href="?#messages-end">Revenir aux derniers messages</a></p>{% endif %}

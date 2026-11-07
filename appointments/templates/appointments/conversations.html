@@ -1,0 +1,27 @@
+{% extends "ui/staff.html" %}
+{% load french %}
+{% block title %}Discussions{% endblock %}
+{% block content %}
+<header class="stack stack--tight">
+  <h1>Discussions</h1>
+  <p class="text-muted">Privé : seuls vous et le résident les lisez.</p>
+</header>
+{% if conversations %}
+<ul class="plain-list stack stack--tight">
+  {% for item in conversations %}
+  <li><a class="card card--link conversation-line" href="{% url 'appointments:conversation' item.pk %}">
+    <span class="stack stack--tight">
+      <strong>{{ item.resident.get_full_name|default:item.resident.get_username }}</strong>
+      <span class="text-muted text-small">{% if item.last_author == user.pk %}Vous : {% endif %}{{ item.last_text|truncatechars:80 }}</span>
+    </span>
+    <span class="stack stack--tight conversation-line__side">
+      <span class="text-muted text-small">{{ item.updated_at|date:"j F à H:i" }}</span>
+      {% if item.unread %}<span class="badge badge--warning">À vous de répondre<span class="visually-hidden">, {{ item.unread }} non lu{{ item.unread|pluriel }}</span></span>{% endif %}
+    </span>
+  </a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty-state">Aucun message pour le moment. Les résidents vous écrivent depuis leur onglet Messages.</p>
+{% endif %}
+{% endblock %}

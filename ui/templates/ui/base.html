@@ -1,0 +1,25 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  {# interactive-widget: on Android the keyboard shrinks the page, so the message field stays above it (design card D5). https://developer.chrome.com/blog/viewport-resize-behavior #}
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#eef7fc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#071a26" media="(prefers-color-scheme: dark)">
+  <title>{% block title %}HJB Résidence{% endblock %} · HJB Résidence</title>
+  <link rel="preload" href="{% static 'ui/fonts/atkinson-hyperlegible-latin-400-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'ui/css/hjb.css' %}">
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="icon" href="{% static 'ui/icons/favicon.ico' %}" sizes="48x48">
+  <link rel="icon" href="{% static 'ui/icons/icon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'ui/icons/apple-touch-icon.png' %}">
+  <meta name="apple-mobile-web-app-title" content="HJB">
+  <script src="{% static 'ui/js/app.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}"{% if user.is_authenticated and not request.session.push_checked %} data-push-sync="{% url 'push:subscribe' %}" data-push-key="{{ push_public_key }}" data-csrf="{{ csrf_token }}"{% endif %}>
+  <a class="skip-link" href="#content">Aller au contenu</a>
+  {% block body %}{% endblock %}
+</body>
+</html>

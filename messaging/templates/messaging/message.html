@@ -1,0 +1,24 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}{{ delivery.title }}{% endblock %}
+{% block content %}
+<div class="row">
+  <a class="icon-button" href="{% url 'inbox:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux messages</span></a>
+  <p class="text-muted text-small">{{ short_type }}{% if delivery.sent_at %} · <time datetime="{{ delivery.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ delivery.sent_at|date:"j F à H:i" }}</time>{% endif %}</p>
+</div>
+
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<article class="card stack">
+  <h1 class="message__title">{{ delivery.title }}</h1>
+  <p class="compose__text">{{ delivery.body }}</p>
+</article>
+
+{% if poll %}{% include "polls/_vote.html" with action="" %}{% elif asks %}{% include "messaging/_answer.html" with action="" %}{% endif %}
+{% endblock %}

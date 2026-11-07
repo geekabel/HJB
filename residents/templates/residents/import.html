@@ -1,0 +1,106 @@
+{% extends "ui/staff.html" %}
+{% load icons french %}
+{% block title %}Importer des résidents{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'residents:list' %}">{% icon "back" %}Tous les résidents</a>
+
+<header class="stack stack--tight">
+  <h1>Importer des résidents</h1>
+  <p class="text-muted">Depuis un tableau Excel ou un fichier CSV. Vous verrez chaque ligne avant de confirmer.</p>
+</header>
+
+{% if rows %}
+<section class="card card--framed stack" aria-labelledby="preview-title">
+  <div class="page-header">
+    <h2 id="preview-title">Aperçu · {{ file_name }}</h2>
+    <p><strong>{{ rows|length }}</strong> ligne{{ rows|length|pluriel }} · <strong class="text-action">{{ ready_count }} prête{{ ready_count|pluriel }}</strong> · <strong class="text-warning">{{ to_fix_count }} à corriger</strong></p>
+  </div>
+
+  {% if other_preview %}
+  <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>Un autre fichier a été envoyé depuis.</strong> Voici son aperçu. Rien n'a été importé.</p></div>
+  {% endif %}
+  {% if state_changed %}
+  <div class="alert alert--warning" role="alert">{% icon "alert" %}<p><strong>La situation a changé depuis l'aperçu.</strong> Une chambre ou un numéro a été pris entre-temps. Vérifiez la liste à jour ci-dessous avant de confirmer.</p></div>
+  {% endif %}
+  {% if to_fix_count %}
+  <div class="alert alert--info">{% icon "info" %}<p>Les lignes à corriger ne seront pas importées. Corrigez-les dans le fichier puis envoyez-le de nouveau, ou importez d'abord les lignes prêtes.</p></div>
+  {% endif %}
+
+  <div class="table-scroll" role="region" aria-labelledby="preview-caption" tabindex="0">
+    <table class="table">
+      <caption id="preview-caption" class="visually-hidden">Lignes du fichier, leur état et les corrections à faire</caption>
+      <thead>
+        <tr>
+          <th scope="col">Ligne</th>
+          <th scope="col">Nom</th>
+          <th scope="col">État</th>
+          <th scope="col">Téléphone</th>
+          <th scope="col">Chambre</th>
+          <th scope="col">Arrivée</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="table__number">{{ row.number }}</td>
+          <th scope="row" class="table__row-header">{{ row.full_name|default:"(sans nom)" }}</th>
+          <td class="table__state">
+            <div class="stack stack--tight">
+              {% if row.ready %}<span class="badge badge--info">Prête</span>{% else %}<span class="badge badge--warning">À corriger</span>{% endif %}
+              {% for error in row.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}
+              {% for warning in row.warnings %}<span class="text-muted text-small">{{ warning }}</span>{% endfor %}
+            </div>
+          </td>
+          <td class="table__number">{{ row.phone_display|default:"–" }}</td>
+          <td class="table__number">{{ row.room|default:"–" }}</td>
+          <td class="table__number">{% if row.auto_arrival %}Aujourd'hui{% elif row.arrival_date %}<time datetime="{{ row.arrival }}">{{ row.arrival_date|date:"j F Y" }}</time>{% else %}{{ row.arrival|default:"–" }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form class="stack" method="post" action="{% url 'residents:import_preview' %}">
+    {% csrf_token %}
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="ready" value="{{ ready }}">
+    {% if ready_count and perms.accounts.issue_activation_codes %}
+    <label class="choices"><input type="checkbox" name="send_codes" value="yes">Envoyer par SMS un code d'activation aux nouveaux résidents qui ont un numéro</label>
+    <p class="text-muted text-small">Sans cette option, chaque personne reçoit son code à l'accueil, après vérification de son identité : c'est le plus sûr.</p>
+    {% endif %}
+    <div class="row">
+      {% if ready_count %}
+      <button class="button" type="submit" name="action" value="import">Importer {% if ready_count > 1 %}les {{ ready_count }} lignes prêtes{% else %}la ligne prête{% endif %}</button>
+      {% endif %}
+      <button class="button button--quiet" type="submit" name="action" value="cancel">Annuler l'import</button>
+    </div>
+  </form>
+</section>
+
+{% else %}
+<div class="profile">
+  <form class="card stack" method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <h2>Envoyer le fichier</h2>
+    {{ form.file.as_field_group }}
+    <div class="row">
+      <button class="button" type="submit">{% icon "send" %}Voir l'aperçu</button>
+    </div>
+  </form>
+
+  <section class="card stack" aria-labelledby="columns-title">
+    <h2 id="columns-title">Colonnes attendues</h2>
+    <p class="text-muted">La première ligne donne le titre de chaque colonne. L'ordre n'a pas d'importance.</p>
+    <dl class="details">
+      <dt>Prénom</dt><dd>Obligatoire</dd>
+      <dt>Nom</dt><dd>Obligatoire</dd>
+      <dt>Téléphone</dt><dd>Portable, par exemple 06 12 34 56 78</dd>
+      <dt>Chambre</dt><dd>Numéro, par exemple 312</dd>
+      <dt>Arrivée</dt><dd>Date, par exemple 01/09/2026. Vide : aujourd'hui</dd>
+      <dt>E-mail</dt><dd>Facultatif</dd>
+    </dl>
+    <p><a href="{% url 'residents:import_template' %}" download>Télécharger un modèle vide (.csv)</a></p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

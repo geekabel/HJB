@@ -1,0 +1,43 @@
+{% extends layout %}
+{% load icons french %}
+{% block title %}Mon compte{% endblock %}
+{% block content %}
+<header class="stack stack--tight">
+  <h1>Mon compte</h1>
+  <p class="text-muted">{{ user.get_full_name|default:user.get_username }}</p>
+</header>
+
+{% if messages and layout == "ui/resident.html" %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<ul class="link-list">
+  <li><a href="{% url 'push:settings' %}">{% icon "bell" %}<span>Notifications<small>{% if devices %}Activées sur {{ devices }} appareil{{ devices|pluriel }}{% else %}Pas encore activées{% endif %}</small></span>{% icon "chevron" %}</a></li>
+  {% if layout == "ui/resident.html" %}
+  <li><a href="{% url 'housing:my_wifi' %}">{% icon "wifi" %}<span>Mon wifi</span>{% icon "chevron" %}</a></li>
+  {% endif %}
+  <li data-hide-when-installed><a href="{% url 'install' %}">{% icon "download" %}<span>Installer l'application</span>{% icon "chevron" %}</a></li>
+  <li><a href="{% url 'privacy' %}">{% icon "lock" %}<span>Vos données</span>{% icon "chevron" %}</a></li>
+</ul>
+
+<section class="stack stack--tight" aria-labelledby="login-title">
+  <h2 id="login-title" class="section-title">Connexion</h2>
+  {% if passkey %}
+  <p>{% if other_passkeys %}{{ other_passkeys|add:1 }} clés d'accès. La dernière : <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>.{% else %}Clé d'accès créée le <time datetime="{{ passkey.created_at|date:'Y-m-d\TH:i:sO' }}">{{ passkey.created_at|date:"j F Y" }}</time>.{% endif %}</p>
+  {% elif app_code %}
+  <p>Application de codes reliée.</p>
+  {% else %}
+  <p>Aucune clé d'accès.</p>
+  {% endif %}
+  <p class="text-muted text-small">Téléphone perdu ? {% if layout == "ui/staff.html" %}Prévenez un administrateur.{% else %}Passez à l'accueil.{% endif %}</p>
+</section>
+
+<form method="post" action="{% url 'access:logout' %}">
+  {% csrf_token %}
+  <button class="button button--quiet" type="submit">{% icon "logout" %}Me déconnecter</button>
+</form>
+{% endblock %}

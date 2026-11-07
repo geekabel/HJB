@@ -1,0 +1,13 @@
+{% load icons %}
+{% comment %}
+  Message field at the bottom of a conversation (design card D5), like the
+  messaging apps: one line that grows, a round send button. It stays at the
+  bottom of the screen while the messages scroll. Variables: text, max_length,
+  note (id of the line that describes the field).
+{% endcomment %}
+<form class="composer" method="post">
+  {% csrf_token %}
+  <label class="visually-hidden" for="text">Votre message</label>
+  <textarea id="text" name="text" rows="1" maxlength="{{ max_length }}" required placeholder="Votre message"{% if note %} aria-describedby="{{ note }}"{% endif %} data-autogrow>{{ text }}</textarea>
+  <button class="composer__send" type="submit">{% icon "send" %}<span class="visually-hidden">Envoyer</span></button>
+</form>

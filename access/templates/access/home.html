@@ -1,0 +1,76 @@
+{% extends "ui/resident.html" %}
+{% load icons %}
+{% block title %}Accueil{% endblock %}
+{% block content %}
+{% if messages %}
+<div class="stack" role="status">
+  {% for message in messages %}
+  <div class="alert alert--{{ message.level_tag }}">{% icon "info" %}<p>{{ message }}</p></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="stack stack--tight">
+  <h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
+  {% if room %}<p class="text-muted">Chambre {{ room.number }}{% if room.floor %} · {{ room.floor }}{% endif %}</p>{% endif %}
+</div>
+
+{# Card T34: the first thing to do leads the page, like a question that waits #}
+{% if lead %}
+<section class="ask-card stack" aria-labelledby="lead-title">
+  <p class="ask-card__lead icon-text">{% icon lead.icon %}<span>{{ lead.lead|default:"À faire" }}</span></p>
+  <h2 id="lead-title" class="ask-card__title">{{ lead.title }}</h2>
+  <p>{{ lead.detail }}</p>
+  <a class="button button--on-color button--block" href="{{ lead.url }}">{{ lead.action }}</a>
+</section>
+{% endif %}
+
+{% if todos %}
+<section class="stack stack--tight" aria-labelledby="todo-title">
+  <h2 id="todo-title" class="section-title">Aussi à faire</h2>
+  <ul class="link-list link-list--todo">
+    {% for todo in todos %}
+    <li><a href="{{ todo.url }}">{% icon todo.icon %}<span>{{ todo.title }}<small>{{ todo.detail }}</small></span>{% icon "chevron" %}</a></li>
+    {% endfor %}
+  </ul>
+  {% if more_todos > 0 %}<a href="{% url 'inbox:list' %}?show=todo">Voir les autres messages à répondre ({{ more_todos }})</a>{% endif %}
+</section>
+{% elif not lead %}
+<div class="empty-card empty-card--done">
+  <span class="empty-card__icon" aria-hidden="true">{% icon "check" %}</span>
+  <p>Rien à faire pour le moment.</p>
+</div>
+{% endif %}
+
+<nav aria-label="Raccourcis">
+  <ul class="shortcut-grid">
+    <li><a href="{% url 'reports:new' %}"><span class="shortcut-grid__icon shortcut-grid__icon--warm" aria-hidden="true">{% icon "tool" %}</span>Signaler un problème</a></li>
+    <li><a href="{% url 'rdv:book' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "calendar" %}</span>Prendre rendez‑vous</a></li>
+    <li><a href="{% url 'housing:my_wifi' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "wifi" %}</span>Mon wifi</a></li>
+    <li><a href="{% url 'rdv:educators' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "message" %}</span>Écrire à un éducateur</a></li>
+  </ul>
+</nav>
+
+{% if my_reports %}
+<section class="stack stack--tight" aria-labelledby="reports-title">
+  <div class="row row--between">
+    <h2 id="reports-title" class="section-title">Mes signalements</h2>
+    <a class="link-target" href="{% url 'reports:list' %}">Tout voir<span class="visually-hidden"> : mes signalements</span></a>
+  </div>
+  <ul class="link-list">
+    {% for report in my_reports %}
+    <li><a href="{% url 'reports:detail' report.pk %}">{% icon report.icon %}<span><strong>{{ report.get_category_display }}</strong><small>{% if report.status == "scheduled" %}Intervention {{ report.intervention_start|date:"D j N" }}, {{ report.intervention_start|time:"H:i" }}–{{ report.intervention_end|time:"H:i" }}{% else %}n° {{ report.pk }} · {{ report.created_at|date:"j N" }}{% endif %}</small></span>{% include "reports/_status.html" %}{% icon "chevron" %}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if announcement %}
+<section class="stack stack--tight" aria-labelledby="news-title">
+  <h2 id="news-title" class="section-title">Dernière annonce</h2>
+  <ul class="link-list">
+    <li><a href="{% url 'inbox:message' announcement.campaign_id %}">{% icon "megaphone" %}<span><strong>{{ announcement.title }}</strong><small>{{ announcement.received_at|date:"j F" }}</small></span>{% icon "chevron" %}</a></li>
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

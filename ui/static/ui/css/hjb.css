@@ -1,0 +1,3859 @@
+/*
+ * HJB Résidence design system.
+ *
+ * Colors taken from the logo: blue #03A9F4, green #8BC34A, yellow #FFC107,
+ * with a night blue for text. One color, one meaning:
+ *   blue = action and information, yellow = warning, green = done.
+ *
+ * Organized in layers (MDN: @layer), from lowest to highest priority.
+ * Checked with the W3C Nu Html Checker (see tools/validate_w3c.py).
+ */
+
+@layer reset, tokens, base, layout, components, utilities;
+
+/* ------------------------------------------------------------------ */
+/* Fonts served by the site (SIL OFL 1.1 license, see fonts/)           */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("../fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The digits of the text come from Bricolage Grotesque: the zero of
+   Atkinson Hyperlegible has a slash, and "09:00" then looked crossed out,
+   like a time that is not free (design card D7). Codes keep a monospace font,
+   where 0 and O must stay different. */
+@font-face {
+  font-family: "HJB Digits";
+  src: url("../fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
+/* ------------------------------------------------------------------ */
+/* Light reset                                                          */
+/* ------------------------------------------------------------------ */
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  ul,
+  ol,
+  figure,
+  fieldset {
+    margin: 0;
+  }
+
+  fieldset {
+    padding: 0;
+    border: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* The hidden attribute wins over the display of components (older
+     layer: its !important comes before those of later layers). */
+  [hidden]:not([hidden="until-found"]) {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Tokens: light by default, dark if the system prefers it              */
+/* ------------------------------------------------------------------ */
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* Logo colors (decoration only, never for text) */
+    --roof-green: #8bc34a;
+    --roof-blue: #03a9f4;
+    --roof-yellow: #ffc107;
+
+    /* Backgrounds and text */
+    --bg: #eef7fc;
+    --surface: #ffffff;
+    --surface-2: #e3eef5;
+    --ink: #06202f;
+    --text-muted: #4a6272;
+    --line: #cfe0ea;
+    --control: #6f8b9c; /* border of fields and chips: 3.6:1 on white */
+
+    /* Action and information (blue) */
+    --action: #006fa3; /* links and blue text: 5.5:1 on white */
+    --action-hover: #00557d;
+    --action-bg: #006fa3;
+    /* Blue of the logo in the stripe of the ask-card: a darker one in dark
+       mode, where the card itself is the logo blue. */
+    --logo-blue: #03a9f4;
+    --on-action: #ffffff;
+    --action-soft: #e1f4fd;
+
+    /* Warning (yellow), done (green), error (red) */
+    --warning: #ffc107;
+    --on-warning: #06202f;
+    --warning-soft: #fff3cd;
+    --warning-text: #6b4e00;
+    --success: #33691e;
+    --success-soft: #eef6e4;
+    --error: #b3261e;
+    --on-error: #ffffff; /* 7.5:1 on --error */
+    --error-soft: #fde8e6;
+
+    /* Staff menu */
+    --menu-bg: #06202f;
+    --menu-text: #dcebf3;
+    --menu-soft: #a3bac8;
+    --menu-active: #12384d;
+    --menu-line: #1d3d50;
+
+    --focus: #006fa3;
+
+    /* Typography */
+    --font-title: "Bricolage Grotesque", "Trebuchet MS", "Segoe UI", sans-serif;
+    --font-text: "HJB Digits", "Atkinson Hyperlegible", Verdana, "Segoe UI", sans-serif;
+    --font-code: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --t-tiny: 0.75rem; /* badges, counters, labels of the bottom bar */
+    --t-small: 0.875rem; /* help texts, dates, details */
+    --t-body: 1rem;
+    --t-large: 1.125rem;
+    --t-h3: 1.25rem;
+    --t-h2: 1.375rem;
+    --t-h1: clamp(1.75rem, 1.4rem + 1.5vw, 2.25rem);
+
+    /* Spacing, radii, sizes */
+    --s-1: 0.25rem;
+    --s-2: 0.5rem;
+    --s-3: 0.75rem;
+    --s-4: 1rem;
+    --s-5: 1.25rem;
+    --s-6: 1.5rem;
+    --s-8: 2rem;
+    --s-10: 2.5rem;
+    --r-small: 0.5rem;
+    --r: 0.75rem;
+    --r-large: 1.25rem;
+    --target: 2.75rem; /* 44 px: minimum size of a clickable area */
+    --resident-width: 40rem;
+    --text-width: 65ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #071a26;
+      --surface: #10293a;
+      --surface-2: #0b2332;
+      --ink: #eaf4fa;
+      --text-muted: #a3bac8;
+      --line: #23404f;
+      --control: #7f9bab;
+
+      --action: #6ccfff;
+      --action-hover: #9fdfff;
+      --action-bg: #03a9f4;
+      --logo-blue: #01579b;
+      --on-action: #06202f;
+      --action-soft: #0f3a52;
+
+      --warning-soft: #3b3208;
+      --warning-text: #ffd54f;
+      --success: #9ccc65;
+      --success-soft: #1e3311;
+      --error: #ffb4ab;
+      --on-error: #06202f;
+      --error-soft: #3d1512;
+
+      --menu-bg: #04121b;
+      --menu-active: #12384d;
+
+      --focus: #6ccfff;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                 */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-title);
+    font-weight: 650;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: var(--t-h1);
+  }
+
+  h2 {
+    font-size: var(--t-h2);
+  }
+
+  h3 {
+    font-size: var(--t-h3);
+  }
+
+  p,
+  li {
+    max-width: var(--text-width);
+  }
+
+  a {
+    color: var(--action);
+    text-underline-offset: 0.2em;
+  }
+
+  a:hover {
+    color: var(--action-hover);
+  }
+
+  code {
+    font-family: var(--font-code);
+    font-size: 0.9em;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* The browser grey fails the contrast in dark mode (review of D5) */
+  ::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout                                                               */
+/* ------------------------------------------------------------------ */
+
+@layer layout {
+  /* Skip link: visible only with the keyboard */
+  .skip-link {
+    position: absolute;
+    inset-block-start: var(--s-2);
+    inset-inline-start: var(--s-2);
+    z-index: 100;
+    padding: var(--s-2) var(--s-4);
+    border-radius: var(--r-small);
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-weight: 700;
+    transform: translateY(-200%);
+  }
+
+  .skip-link:focus-visible {
+    transform: none;
+  }
+
+  /* Resident area: mobile first, one centered column */
+  .resident-page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .resident-page__header,
+  .resident-page__content {
+    width: 100%;
+    max-width: var(--resident-width);
+    margin-inline: auto;
+    padding-inline: max(var(--s-5), env(safe-area-inset-left, 0px));
+  }
+
+  .resident-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-block: var(--s-5) var(--s-3);
+  }
+
+  .resident-page__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding-block: var(--s-5) var(--s-8);
+  }
+
+  .resident-page__header + .resident-page__content {
+    padding-block-start: var(--s-2);
+  }
+
+  /* On a computer, the navigation becomes a rail on the left (design card D1) */
+  @media (min-width: 64rem) {
+    .resident-page:has(> .resident-nav) {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+    }
+
+    .resident-page:has(> .resident-nav) .resident-page__content {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      max-width: 46rem;
+      padding-inline: var(--s-10);
+      padding-block-start: var(--s-8);
+      /* Centered in the space next to the rail: the page looks balanced
+         without stretching lines (design card D6) */
+      margin-inline: auto;
+    }
+
+    /* The rail already shows the brand */
+    .resident-page:has(> .resident-nav) .resident-page__header {
+      display: none;
+    }
+  }
+
+  /* Task screens of the residents (design card D5): booking, writing to an
+     educator. Below 64rem they cover the tab bar, like a modal of an app
+     (Apple HIG, tab bars): the only bar at the bottom is the one of the task.
+     The title bar stays at the top. */
+  .task-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+  }
+
+  .task-bar__title {
+    font-size: var(--t-h2);
+  }
+
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+  }
+
+  .action-bar__summary {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-weight: 700;
+  }
+
+  @media (max-width: 63.99rem) {
+    .resident-page--task .resident-nav {
+      display: none;
+    }
+
+    .resident-page--task .resident-page__content {
+      padding-block: 0;
+    }
+
+    /* The bars reach both edges of the screen, also on a tablet where the
+       column is narrower, and their content lines up with the column:
+       50% is half the column, 50vw half the screen. */
+    .task-bar {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 10;
+      margin-inline: calc(50% - 50vw);
+      padding: var(--s-2) calc(50vw - 50%);
+      background: var(--bg);
+      box-shadow: 0 1px 0 var(--line);
+    }
+
+    /* On a short page (tablet) the bar still sits at the bottom */
+    .resident-page__content > form:has(> .action-bar) {
+      flex: 1;
+    }
+
+    .action-bar {
+      position: sticky;
+      inset-block-end: 0;
+      z-index: 10;
+      margin-block-start: auto;
+      margin-inline: calc(50% - 50vw);
+      padding: var(--s-3) calc(50vw - 50%) max(var(--s-3), env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      box-shadow: 0 -1px 0 var(--line);
+    }
+
+    /* A focused field never ends under a bar (WCAG 2.4.11) */
+    html:has(.resident-nav) {
+      scroll-padding-block-end: 5rem;
+    }
+
+    html:has(.task-bar) {
+      scroll-padding-block: 4.5rem 6rem;
+    }
+
+    /* A field the browser shows (missing answer) keeps its step title in view */
+    .resident-page--task :is(input, textarea, select) {
+      scroll-margin-block-start: 3rem;
+    }
+  }
+
+  /* Staff area: a top bar with a "Menu" button below 64rem, a side menu above
+     (design card D1) */
+  .staff-page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 64rem) {
+    .staff-page {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  .staff-page__content {
+    flex: 1;
+    min-width: 0;
+    padding-block: var(--s-6) var(--s-8);
+    padding-inline: max(var(--s-5), env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+  }
+
+  @media (min-width: 64rem) {
+    .staff-page__content {
+      padding-inline: var(--s-10);
+    }
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2);
+  }
+
+  /* Error pages 403, 404, 500 (design card D1) */
+  .error-page__content {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-4);
+    padding: var(--s-6) var(--s-5);
+    text-align: center;
+  }
+
+  .error-page__content p {
+    max-width: 30rem;
+    margin: 0;
+  }
+
+  /* Brand name next to the logo (resident home and login) */
+  .brand-name {
+    font-family: var(--font-title);
+    font-weight: 650;
+  }
+
+  /* Title of a section inside a page: more space above than below */
+  .section-title {
+    margin-block-start: var(--s-4);
+  }
+
+  /* A section title with a link on its right ("Tout voir") */
+  .row:has(> .section-title) {
+    align-items: baseline;
+    margin-block-start: var(--s-4);
+  }
+
+  .row > .section-title {
+    margin-block-start: 0;
+  }
+
+  /* A list of links, one per row, each a full-width target (Mon compte) */
+  .link-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .link-list li + li {
+    border-block-start: 1px solid var(--line);
+  }
+
+  .link-list a {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 3.5rem;
+    padding: var(--s-2) var(--s-4);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .link-list a:hover {
+    background: var(--surface-2);
+  }
+
+  .link-list a > span:not(.counter, .avatar, .badge) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .link-list small {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .link-list svg {
+    flex: none;
+    color: var(--action);
+  }
+
+  .link-list svg:last-child {
+    color: var(--text-muted);
+  }
+
+  /* The title of a message: smaller than a page title, it is often long */
+  .message__title {
+    font-size: var(--t-h2);
+  }
+
+  /* The button after the list of discussions: apart from the list */
+  .inbox__write {
+    margin-block-start: var(--s-2);
+  }
+
+  /* Things to do: a yellow edge, the color of "action expected" */
+  .link-list--todo li {
+    border-inline-start: 4px solid var(--warning);
+  }
+
+  .link-list--todo strong,
+  .link-list--todo a > span {
+    font-weight: 700;
+  }
+
+  .link-list--todo small {
+    font-weight: 400;
+  }
+
+  .empty-state svg {
+    color: var(--success);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-3);
+  }
+
+  .grid-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--s-4);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Components                                                           */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* Logo tile: the three roofs */
+  .logo-tile {
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    display: grid;
+    place-items: center;
+    border-radius: 0.875rem;
+    background: #ffffff;
+    border: 1px solid var(--line);
+  }
+
+  .logo-tile svg {
+    width: 1.875rem;
+    height: auto;
+  }
+
+  /* Strip with the three logo colors, on top of important cards */
+  .roofs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: 0.375rem;
+  }
+
+  .roofs span:nth-child(1) {
+    background: var(--roof-green);
+  }
+
+  .roofs span:nth-child(2) {
+    background: var(--roof-blue);
+  }
+
+  .roofs span:nth-child(3) {
+    background: var(--roof-yellow);
+  }
+
+  /* Buttons */
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: var(--target);
+    padding-inline: var(--s-4);
+    border: 2px solid var(--action-bg);
+    border-radius: var(--r);
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .button:hover {
+    color: var(--on-action);
+    filter: brightness(1.08);
+  }
+
+  .button svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex: none;
+  }
+
+  .button--secondary {
+    background: var(--surface);
+    color: var(--action);
+  }
+
+  .button--secondary:hover {
+    color: var(--action-hover);
+    filter: none;
+    background: var(--action-soft);
+  }
+
+  .button--quiet {
+    border-color: var(--control);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .button--quiet:hover {
+    color: var(--ink);
+    filter: none;
+    background: var(--surface-2);
+  }
+
+  /* Discreet action, read as a link (keeps the size of a target) */
+  .button--text {
+    padding-inline: var(--s-2);
+    border-color: transparent;
+    background: none;
+    color: var(--action);
+    font-size: var(--t-small);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .button--text:hover {
+    color: var(--action-hover);
+    filter: none;
+  }
+
+  /* Action that closes something (a resident's departure) */
+  .button--danger {
+    border-color: var(--error);
+    background: var(--error);
+    color: var(--on-error);
+  }
+
+  .button--danger:hover {
+    color: var(--on-error);
+  }
+
+  .button--block {
+    width: 100%;
+  }
+
+  .button:disabled,
+  .button[aria-disabled="true"] {
+    border-color: var(--line);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  /* Filter chips: the chosen state also reads without color (font weight) */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding-inline: var(--s-4);
+    border: 1px solid var(--control);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: var(--t-small);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .chip[aria-pressed="true"],
+  .chip[aria-current="true"],
+  .chip[aria-current="page"] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  /* Cards */
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-large);
+    background: var(--surface);
+  }
+
+  .card--link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .card--link:hover {
+    color: inherit;
+    border-color: var(--control);
+  }
+
+  /* Three levels of titles only (design card D4): the page (h1), a section
+     of the page (h2), and the title of a card, whatever its level. */
+  /* :where keeps this rule weak: a title with its own class keeps its size */
+  .card__title,
+  :where(.card) :where(h2, h3):where(:not(.section-title, .vote__question)) {
+    font-family: var(--font-text);
+    font-size: var(--t-large);
+    font-weight: 700;
+  }
+
+  /* The date of a meeting: the main fact of its page */
+  .meeting-when {
+    font-family: var(--font-title);
+    font-size: var(--t-h2);
+  }
+
+  .card__text {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  /* Card for an expected action: blue background, roofs strip */
+  .card--accent {
+    /* Focus outline in the text color: 5.5:1 in light mode, 6.4:1 in dark mode */
+    --focus: var(--on-action);
+    overflow: hidden;
+    padding: 0 var(--s-5) var(--s-5);
+    gap: var(--s-3);
+    border: 0;
+    background: var(--action-bg);
+    color: var(--on-action);
+  }
+
+  .card--accent .roofs {
+    margin-inline: calc(-1 * var(--s-5));
+    margin-block-end: var(--s-2);
+  }
+
+  .card--accent .card__text {
+    color: inherit;
+  }
+
+  .card--accent .button {
+    border-color: var(--on-action);
+    background: var(--on-action);
+    color: var(--action-bg);
+  }
+
+  .card--accent .button--secondary {
+    background: transparent;
+    color: var(--on-action);
+  }
+
+  /* Status badges: a written label, never color alone */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+    padding: 0.125rem var(--s-2);
+    border-radius: 999px;
+    font-size: var(--t-tiny);
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .badge--info {
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .badge--warning {
+    background: var(--warning);
+    color: var(--on-warning);
+  }
+
+  .badge--success {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  .badge--neutral {
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+
+  .badge--error {
+    background: var(--error-soft);
+    color: var(--error);
+  }
+
+  /* Counter pill (unread, to handle) */
+  .counter {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.375rem;
+    height: 1.375rem;
+    padding-inline: 0.375rem;
+    border-radius: 999px;
+    background: var(--warning);
+    color: var(--on-warning);
+    font-size: var(--t-tiny);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Information banners */
+  .alert {
+    display: flex;
+    gap: var(--s-3);
+    align-items: flex-start;
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r);
+    font-size: var(--t-small);
+  }
+
+  .alert svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-block-start: 0.0625rem;
+  }
+
+  .alert--info {
+    background: var(--action-soft);
+    color: var(--ink);
+  }
+
+  .alert--warning {
+    background: var(--warning-soft);
+    color: var(--ink);
+  }
+
+  .alert--warning svg {
+    color: var(--warning-text);
+  }
+
+  .alert--success {
+    background: var(--success-soft);
+    color: var(--ink);
+  }
+
+  .alert--error {
+    background: var(--error-soft);
+    color: var(--ink);
+  }
+
+  .alert--error svg {
+    color: var(--error);
+  }
+
+  /* Form fields */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+
+  .field label,
+  .field legend {
+    font-weight: 700;
+  }
+
+  .field input:not([type="checkbox"], [type="radio"]),
+  .field select,
+  .field textarea {
+    width: 100%;
+    min-height: var(--target);
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--control);
+    border-radius: var(--r-small);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .field textarea {
+    resize: vertical;
+  }
+
+  .field__help {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .field__error {
+    display: flex;
+    gap: var(--s-1);
+    align-items: center;
+    color: var(--error);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .field__errors {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+  }
+
+  .field__error svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+
+  /* Same specificity as the field rule (above): this one, lower down, wins. */
+  .field :is(input, select, textarea)[aria-invalid="true"] {
+    border-width: 2px;
+    border-color: var(--error);
+  }
+
+  /* Choices as tiles (radio buttons and checkboxes) */
+  .choices {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 3rem;
+    padding: var(--s-2) var(--s-4);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  /* Drawn radios and checkboxes: the same look in light and dark mode
+     (the browser's own grey dark controls clash with the palette). */
+  .choices input {
+    display: grid;
+    place-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+    margin: 0;
+    border: 2px solid var(--control);
+    border-radius: 0.3rem;
+    background: var(--surface);
+    appearance: none;
+  }
+
+  .choices input[type="radio"] {
+    border-radius: 50%;
+  }
+
+  .choices input:checked {
+    border-color: var(--action-bg);
+  }
+
+  .choices input[type="radio"]:checked::before {
+    content: "";
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+  }
+
+  .choices input[type="checkbox"]:checked {
+    background: var(--action-bg);
+  }
+
+  .choices input[type="checkbox"]:checked::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.7rem;
+    margin-block-start: -0.15rem;
+    border: solid var(--on-action);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  @media (forced-colors: active) {
+    .choices input {
+      appearance: auto;
+    }
+  }
+
+  /* A long label: the box stays with its first line */
+  .choices--top {
+    align-items: flex-start;
+  }
+
+  .choices--top input {
+    margin-block-start: 0.15rem;
+  }
+
+  .choices:has(input:checked) {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    font-weight: 700;
+  }
+
+  /* Round icon button (notifications, back) */
+  .icon-button {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--target);
+    height: var(--target);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .icon-button svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .icon-button .counter {
+    position: absolute;
+    inset-block-start: 0.125rem;
+    inset-inline-end: 0.125rem;
+  }
+
+  /* Resident navigation bar, fixed at the bottom on phones */
+  .resident-nav {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 10;
+    border-block-start: 1px solid var(--line);
+    background: var(--surface);
+    padding-block-end: env(safe-area-inset-bottom, 0px);
+  }
+
+  .resident-nav ul {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    max-width: var(--resident-width);
+    margin-inline: auto;
+    padding: 0;
+    list-style: none;
+  }
+
+  .resident-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    min-height: 4rem;
+    color: var(--text-muted);
+    font-size: var(--t-tiny);
+    text-decoration: none;
+  }
+
+  .resident-nav a:hover {
+    color: var(--ink);
+  }
+
+  .resident-nav a[aria-current] {
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .resident-nav svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  /* Five tabs on a 320 px phone: the labels stay on one line, whole */
+  @media (max-width: 22rem) {
+    .resident-nav a {
+      font-size: 0.6875rem;
+      white-space: nowrap;
+    }
+  }
+
+  .resident-nav__brand {
+    display: none;
+  }
+
+  @media (min-width: 64rem) {
+    .resident-nav {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      position: sticky;
+      inset-block-start: 0;
+      align-self: start;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-6);
+      padding: var(--s-6) var(--s-3);
+      border-block-start: 0;
+      border-inline-end: 1px solid var(--line);
+    }
+
+    .resident-nav__brand {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding-inline: var(--s-2);
+      font-family: var(--font-title);
+      font-weight: 650;
+      line-height: 1.2;
+    }
+
+    .resident-nav ul {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-1);
+      max-width: none;
+      margin: 0;
+    }
+
+    .resident-nav a {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: var(--s-3);
+      min-height: var(--target);
+      padding-inline: var(--s-3);
+      border-radius: var(--r-small);
+      font-size: var(--t-body);
+    }
+
+    .resident-nav a:hover {
+      background: var(--surface-2);
+    }
+
+    .resident-nav a[aria-current] {
+      background: var(--action-soft);
+    }
+
+    .resident-nav a .counter {
+      position: static;
+      margin-inline-start: auto;
+    }
+  }
+
+  /* Staff menu (design card D1): a top bar with a "Menu" button below 64rem,
+     a column on the left above. Without JavaScript the panel stays open. */
+  .staff-menu {
+    display: flex;
+    flex-direction: column;
+    background: var(--menu-bg);
+    color: var(--menu-text);
+  }
+
+  .staff-menu__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    min-height: 3.5rem;
+    padding: var(--s-2) var(--s-4);
+  }
+
+  .staff-menu__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    color: inherit;
+    font-family: var(--font-title);
+    font-size: var(--t-large);
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .staff-menu__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: var(--target);
+    padding-inline: var(--s-3);
+    border: 1px solid var(--menu-line);
+    border-radius: var(--r-small);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .staff-menu__toggle[hidden] {
+    display: none;
+  }
+
+  .staff-menu__panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding: var(--s-2) var(--s-4) var(--s-4);
+    border-block-start: 1px solid var(--menu-line);
+  }
+
+  .staff-menu--closed .staff-menu__panel {
+    display: none;
+  }
+
+  /* With the script, the bar stays at the top below 64rem. Without it, the
+     menu is always open, so it scrolls away with the page. An open menu
+     never grows taller than the screen. */
+  @media (max-width: 63.99rem) {
+    .staff-menu--enhanced {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 20;
+    }
+
+    .staff-menu--enhanced .staff-menu__panel {
+      max-height: calc(100vh - 3.5rem);
+      max-height: calc(100dvh - 3.5rem);
+      overflow-y: auto;
+    }
+
+    /* Focused fields and anchors never hide under the sticky bar (WCAG 2.4.11) */
+    html:has(.staff-menu--enhanced) {
+      scroll-padding-block-start: 4.5rem;
+    }
+
+    html:has(.staff-menu--enhanced):has(.action-bar) {
+      scroll-padding-block-end: 5rem;
+    }
+  }
+
+  .staff-menu ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .staff-menu ul a,
+  .staff-menu__person a,
+  .staff-menu__person button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    min-height: var(--target);
+    padding-inline: var(--s-3);
+    border-radius: var(--r-small);
+    color: var(--menu-text);
+    font-size: var(--t-body);
+    text-decoration: none;
+  }
+
+  .staff-menu ul a:hover,
+  .staff-menu__person a:hover,
+  .staff-menu__person button:hover {
+    background: var(--menu-active);
+    color: #ffffff;
+  }
+
+  .staff-menu a[aria-current] {
+    background: var(--menu-active);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .staff-menu :focus-visible {
+    outline-color: var(--roof-blue);
+  }
+
+  .staff-menu__person {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding-block-start: var(--s-3);
+    border-block-start: 1px solid var(--menu-line);
+  }
+
+  .staff-menu__person small {
+    display: block;
+    color: var(--menu-soft);
+    font-size: var(--t-tiny);
+    font-weight: 400;
+  }
+
+  .staff-menu__person button {
+    justify-content: flex-start;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: var(--t-body);
+    cursor: pointer;
+  }
+
+  .staff-menu__person svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+  }
+
+  @media (min-width: 64rem) {
+    .staff-menu {
+      position: sticky;
+      inset-block-start: 0;
+      height: 100vh;
+      height: 100dvh;
+      padding-block: var(--s-4);
+    }
+
+    .staff-menu__bar {
+      padding-inline: var(--s-4);
+    }
+
+    .staff-menu__toggle {
+      display: none;
+    }
+
+    .staff-menu__panel,
+    .staff-menu--closed .staff-menu__panel {
+      display: flex;
+      flex: 1;
+      border-block-start: 0;
+      padding-block-start: var(--s-4);
+    }
+
+    .staff-menu__person {
+      margin-block-start: auto;
+    }
+  }
+
+  /* Tables: horizontal scroll inside their frame, never the whole page */
+  .table-scroll {
+    /* position: relative keeps "visually hidden" texts (absolutely positioned)
+       inside the frame: otherwise they widen the page on mobile. */
+    position: relative;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--r-large);
+    background: var(--surface);
+  }
+
+  .table {
+    width: 100%;
+    min-width: 48rem;
+    border-collapse: collapse;
+    font-size: var(--t-small);
+  }
+
+  .table th,
+  .table td {
+    padding: var(--s-3) var(--s-4);
+    border-block-end: 1px solid var(--line);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .table th {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .table tbody tr:last-child > * {
+    border-block-end: 0;
+  }
+
+  .table__number {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Pagination: previous, position, next */
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3);
+  }
+
+  /* Button aligned with the bottom of a nearby field, in a form row */
+  /* Row aligned to the top: icon next to a text on several lines */
+  .row--top {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .row--top > svg {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--action);
+  }
+
+  .row:has(> .field) {
+    align-items: flex-end;
+  }
+
+  /* Dashboard stat with a number */
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+  }
+
+  /* In a column, a badge keeps its size instead of stretching */
+  .stat > .badge,
+  .stack > .badge {
+    align-self: flex-start;
+  }
+
+  .stat__value {
+    font-family: var(--font-title);
+    font-size: var(--t-h1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  /* Color swatches of the style guide */
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+
+  .swatch__color {
+    height: 3.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+  }
+
+  .swatch__color--action {
+    background: var(--action-bg);
+  }
+
+  .swatch__color--ink {
+    background: var(--ink);
+  }
+
+  .swatch__color--bg {
+    background: var(--bg);
+  }
+
+  .swatch__color--warning {
+    background: var(--warning);
+  }
+
+  .swatch__color--success {
+    background: var(--success);
+  }
+
+  .swatch__color--error {
+    background: var(--error);
+  }
+
+  .swatch__color--roof-green {
+    background: var(--roof-green);
+  }
+
+  .swatch__color--roof-blue {
+    background: var(--roof-blue);
+  }
+
+  .swatch__color--roof-yellow {
+    background: var(--roof-yellow);
+  }
+
+  /* Page header: title on the left, actions on the right (they go below on mobile) */
+  .page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+
+  .stack--tight {
+    gap: var(--s-1);
+  }
+
+  .stack--loose {
+    gap: var(--s-8);
+  }
+
+  /* The back link belongs to the title below it: no full gap between them,
+     no underline (it reads as the way back, like the arrow of an app). */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: var(--s-2);
+    min-height: var(--target);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  .back-link svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .staff-page__content > .back-link + :is(header, h1) {
+    margin-block-start: calc(var(--s-2) - var(--s-6));
+  }
+
+  /* Wifi names and passwords: 0 and O must stay different (design card D7) */
+  .credential {
+    font-family: var(--font-code);
+  }
+
+  /* Search and filter bar above a list */
+  .filters__search {
+    flex: 1 1 12rem;
+  }
+
+  /* Staff lists (design card D8): the search with its button inside the
+     field; the other filters fold away on a phone. */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--s-3);
+  }
+
+  .search-box {
+    display: flex;
+  }
+
+  .search-box input:focus-visible {
+    position: relative;
+    z-index: 1;
+  }
+
+  .search-box input {
+    flex: 1;
+    min-width: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .search-box__button {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 3rem;
+    border: 1px solid var(--action-bg);
+    border-radius: 0 var(--r-small) var(--r-small) 0;
+    background: var(--action-bg);
+    color: var(--on-action);
+    cursor: pointer;
+  }
+
+  .search-box__button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .filters__more > summary {
+    list-style: none;
+  }
+
+  .filters__more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .filters__lists {
+    align-items: flex-end;
+    margin-block-start: var(--s-3);
+  }
+
+  @media (min-width: 48rem) {
+    /* Opened by app.js on a wide screen (class --wide): the lists sit next
+       to the search. Without it, the summary stays to fold them again. */
+    .filters__more--wide[open] {
+      flex: 0 1 auto;
+    }
+
+    .filters__more--wide[open] > summary {
+      display: none;
+    }
+
+    .filters__more--wide[open] .filters__lists {
+      margin-block-start: 0;
+    }
+  }
+
+  /* Choices side by side keep one width, in a regular grid (design card D8) */
+  .row:has(> .choices) {
+    display: grid;
+    align-items: stretch;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
+  }
+
+  /* A legend at the top of a card sits inside it, not on its border */
+  fieldset.card > legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+  }
+
+
+  /* First cell of a row: a name, read as a row header */
+  .table .table__row-header {
+    color: var(--ink);
+    font-size: inherit;
+  }
+
+  /* Tables that fit any screen (design card D3): the name is the link and
+     covers the row; secondary columns go below 64rem; below 48rem each row
+     becomes a card, each value with its label. */
+  .table--cards {
+    min-width: 0;
+  }
+
+  .table--cards tbody tr {
+    position: relative;
+  }
+
+  .table--cards tbody tr:hover {
+    background: var(--surface-2);
+  }
+
+  .table__link {
+    color: inherit;
+    font-weight: 700;
+  }
+
+  .table__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .table__link:focus-visible {
+    outline: none;
+  }
+
+  .table__link:focus-visible::after {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+    border-radius: var(--r-small);
+  }
+
+  @media (max-width: 63.99rem) {
+    .table--cards .table__secondary {
+      display: none;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .table-scroll:has(> .table--cards) {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+    }
+
+    .table--cards thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .table--cards,
+    .table--cards tbody,
+    .table--cards tr,
+    .table--cards th,
+    .table--cards td {
+      display: block;
+    }
+
+    .table--cards tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
+    }
+
+    .table--cards tbody tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--s-1) var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--line);
+      border-radius: var(--r-large);
+      background: var(--surface);
+    }
+
+    .table--cards tbody tr > * {
+      padding: 0;
+      border: 0;
+      white-space: normal;
+    }
+
+    .table--cards .table__row-header {
+      flex-basis: 100%;
+      font-size: var(--t-body);
+    }
+
+    .table--cards td[data-label]::before {
+      content: attr(data-label) " : " / "";
+      color: var(--text-muted);
+    }
+  }
+
+  /* A conversation in the educator's list: who, the last words, the time */
+  .conversation-line {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+
+  .conversation-line__side {
+    flex: none;
+    align-items: flex-end;
+  }
+
+  /* Figures on one line, instead of a row of big cards (design card D3) */
+  .summary-line {
+    margin: 0;
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A badge that is a link (a count of things to do) */
+  .badge--link {
+    min-height: 2rem;
+    padding-inline: var(--s-3);
+    text-decoration: none;
+  }
+
+  .badge--link svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* A button that opens a short list of choices (details, no script) */
+  .menu-button {
+    position: relative;
+  }
+
+  .menu-button summary {
+    list-style: none;
+  }
+
+  .menu-button summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu-button__list {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 5;
+    min-width: 16rem;
+    margin: var(--s-1) 0 0;
+    padding: var(--s-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgb(6 32 47 / 0.15);
+    list-style: none;
+  }
+
+  .menu-button__list a {
+    display: flex;
+    align-items: center;
+    min-height: var(--target);
+    padding-inline: var(--s-3);
+    border-radius: var(--r-small);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .menu-button__list a:hover {
+    background: var(--surface-2);
+  }
+
+  /* Column that holds explanations: wide enough for a sentence */
+  .table__state {
+    min-width: 16rem;
+  }
+
+  .table__action {
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .masked-phone {
+    font-family: var(--font-code);
+    font-size: var(--t-small);
+  }
+
+  /* Profile: form and info column side by side on large screens */
+  .profile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .profile {
+      grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+    }
+  }
+
+  .details {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--s-2) var(--s-4);
+    margin: 0;
+  }
+
+  .details dt {
+    color: var(--text-muted);
+  }
+
+  .details dd {
+    margin: 0;
+    overflow-wrap: break-word;
+  }
+
+  /* Each value under its label: for the narrow side column (design card D3) */
+  .details--stacked {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .details--stacked dd + dt {
+    margin-block-start: var(--s-2);
+  }
+
+  /* Card highlighted by a frame (import preview waiting for confirmation) */
+  .card--framed {
+    border: 2px solid var(--action);
+  }
+
+  /* Steps of a journey (account activation) */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps__step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .steps__step::before {
+    content: "";
+    height: 0.375rem;
+    border-radius: 0.1875rem;
+    background: var(--line);
+  }
+
+  .steps__step--reached {
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .steps__step--reached::before {
+    background: var(--action-bg);
+  }
+
+  .steps__step[aria-current="step"] {
+    color: var(--ink);
+  }
+
+  /* Code input: large spaced characters, easy to read back */
+  .field .code-field {
+    font-family: var(--font-code);
+    font-size: var(--t-h2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Sheet to print (activation code) */
+  .code-sheet {
+    align-items: center;
+    text-align: center;
+  }
+
+  .code-sheet__code {
+    font-family: var(--font-code);
+    font-size: clamp(1.75rem, 7vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .code-sheet figure {
+    align-items: center;
+    margin: 0;
+  }
+
+  /* A secret shown once (wifi password, card T15): easy to read and to copy */
+  .secret-value {
+    margin: 0;
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+    font-family: var(--font-code);
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
+  /* Resident wifi page (card T16) */
+  .row--between {
+    justify-content: space-between;
+  }
+
+  /* A small icon before a text that may wrap */
+  .icon-text {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s-2);
+  }
+
+  .icon-text svg {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    margin-block-start: 0.125rem;
+  }
+
+  .icon-tile {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--target);
+    height: var(--target);
+    border-radius: var(--r);
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .icon-tile svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .wifi-network {
+    font-family: var(--font-title);
+    font-size: var(--t-large);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .wifi-values {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    margin: 0;
+  }
+
+  .wifi-values dt {
+    margin-block-end: var(--s-1);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .wifi-values dd {
+    margin: 0;
+  }
+
+  .copy-box {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: calc(var(--target) + var(--s-2));
+    padding: var(--s-1) var(--s-1) var(--s-1) var(--s-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+  }
+
+  .copy-box__value {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-code);
+    font-size: var(--t-large);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    overflow-wrap: anywhere;
+    user-select: all;
+  }
+
+  .copy-box__value--masked {
+    letter-spacing: 0.2em;
+    user-select: none;
+  }
+
+  .copy-box__button {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--target);
+    height: var(--target);
+    border: 0;
+    border-radius: var(--r-small);
+    background: transparent;
+    color: var(--action);
+    cursor: pointer;
+  }
+
+  .copy-box__button:hover {
+    background: var(--action-soft);
+  }
+
+  .copy-box__button svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .copy-box__button[hidden] {
+    display: none;
+  }
+
+  .copy-status {
+    margin: 0;
+    color: var(--success);
+    font-weight: 700;
+  }
+
+  /* No :empty rule: the live region must stay in the accessibility tree */
+  /* Message composer (card T20): the form, and the previews beside it */
+  .compose {
+    display: grid;
+    gap: var(--s-6);
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .compose {
+      grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    }
+
+    .compose__aside {
+      position: sticky;
+      inset-block-start: var(--s-4);
+    }
+  }
+
+  .compose__step {
+    padding-inline: var(--s-2);
+    font-family: var(--font-title);
+    font-size: var(--t-large);
+    font-weight: 700;
+  }
+
+  .compose__template {
+    flex: 1 1 16rem;
+  }
+
+  .compose__counts {
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-small);
+    background: var(--surface-2);
+    font-size: var(--t-small);
+  }
+
+  .compose__recipients {
+    max-height: 20rem;
+    overflow-y: auto;
+    margin-block-start: var(--s-2);
+  }
+
+  .compose__bubble {
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r);
+    background: var(--surface-2);
+  }
+
+  .compose__text {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .row--bottom {
+    align-items: flex-end;
+  }
+
+  .row--bottom > .field {
+    flex: 1 1 16rem;
+  }
+
+  /* Vote fields of the composer (card T25): hidden when another type is
+     chosen. Without :has (old browser), they simply stay visible. */
+  .compose:has(input[name="type"]:checked:not([value="vote"])) .compose__poll {
+    display: none;
+  }
+
+  /* Only what the chosen options need (design card D3), never a field with
+     an error: a vote has no date of event, "Maintenant" has no send time. */
+  .compose:has(input[name="type"][value="vote"]:checked)
+    .compose__event:not(.compose__event--used, :has(.field__errors)) {
+    display: none;
+  }
+
+  .compose:has(input[name="when"][value="now"]:checked)
+    .compose__send-at:not(:has(.field__errors)) {
+    display: none;
+  }
+
+  .vote__question {
+    font-weight: 700;
+  }
+
+  /* Results of a vote (card T25) */
+  .poll-result__meter {
+    display: block;
+    width: 100%;
+    height: 0.75rem;
+  }
+
+  /* Answer "Présent" / "Absent" (card T22): two big buttons side by side */
+  .answer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-3);
+  }
+
+  .answer .button {
+    min-height: calc(var(--target) + var(--s-2));
+  }
+
+  .button--selected {
+    outline: 3px solid var(--action);
+    outline-offset: 2px;
+  }
+
+  /* Resident inbox (card T23): filter chips, then one card per message */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .inbox-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2);
+  }
+
+  .inbox-tools p {
+    margin: 0;
+  }
+
+  .inbox {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .inbox__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding: var(--s-3) var(--s-4) var(--s-3) var(--s-6);
+    border: 1px solid var(--line);
+    border-radius: var(--r-large);
+    background: var(--surface);
+  }
+
+  .inbox__item p {
+    margin: 0;
+  }
+
+  .inbox__item:hover {
+    border-color: var(--control);
+  }
+
+  /* The whole card opens the message, but the link name stays the title */
+  .inbox__title::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  .inbox__title:focus-visible {
+    outline: none;
+  }
+
+  .inbox__item:has(.inbox__title:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Unread: a dot, and the title in bold (not color alone) */
+  .inbox__item--unread::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 1.25rem;
+    inset-inline-start: var(--s-2);
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--action);
+  }
+
+  .inbox__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+
+  .inbox__title {
+    color: var(--ink);
+    font-weight: 400;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .inbox__item--unread .inbox__title {
+    font-weight: 700;
+  }
+
+  .inbox__when {
+    flex: none;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .inbox__kind {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  /* Two lines of the text at most */
+  .inbox__excerpt {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .inbox__status {
+    color: var(--warning-text);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .inbox__answer {
+    color: var(--success);
+    font-size: var(--t-small);
+  }
+
+  /* Unread counter on the Messages entry of the bar */
+  .resident-nav a {
+    position: relative;
+  }
+
+  .resident-nav .counter {
+    position: absolute;
+    inset-block-start: 0.25rem;
+    inset-inline-start: calc(50% + 0.375rem);
+  }
+
+  /* High contrast mode removes backgrounds: keep the unread dot */
+  @media (forced-colors: active) {
+    .inbox__item--unread::before {
+      background: CanvasText;
+      forced-color-adjust: none;
+    }
+  }
+
+  /* Weekly grid of an educator (card T26): one checkbox per half hour */
+  .slot-grid {
+    width: 100%;
+    min-width: 36rem;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: var(--s-1) 2px;
+    font-size: var(--t-small);
+  }
+
+  .slot-grid thead th {
+    padding: var(--s-1);
+    color: var(--text-muted);
+    font-weight: 400;
+    text-align: start;
+  }
+
+  .slot-grid thead td,
+  .slot-grid tbody th {
+    width: 3.5rem;
+  }
+
+  /* The hours stay in view when the grid scrolls sideways (phones) */
+  .slot-grid tbody th {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background: var(--surface);
+    padding-inline-end: var(--s-2);
+    color: var(--text-muted);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    white-space: nowrap;
+  }
+
+  .slot-grid__hour th,
+  .slot-grid__hour td {
+    padding-block-start: var(--s-2);
+  }
+
+  .slot {
+    display: block;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .slot__face {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    padding-inline: var(--s-2);
+    /* Closed: white with a dashed edge; open: blue and the word "Libre"
+       (design card D3, the two looked alike) */
+    border: 1px dashed var(--control); /* 3:1 at least: the edge of a control */
+    border-radius: var(--r-small);
+    background: var(--surface);
+    color: var(--action);
+  }
+
+  .slot__text {
+    visibility: hidden;
+  }
+
+  /* Open: a color and the word "Libre" (not color alone) */
+  .slot input:checked + .slot__face {
+    border-style: solid;
+    border-color: var(--action);
+    box-shadow: inset 0 0 0 1px var(--action);
+    background: var(--action-soft);
+    font-weight: 700;
+  }
+
+  .slot input:checked + .slot__face .slot__text {
+    visibility: visible;
+  }
+
+  .slot input:focus-visible + .slot__face {
+    outline: 3px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .slot:hover .slot__face {
+    border-color: var(--ink);
+  }
+
+  /* The legend is a small open slot, the same as in the grid */
+  .slot-key {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--s-2);
+    border: 1px solid var(--action);
+    border-radius: var(--r-small);
+    box-shadow: inset 0 0 0 1px var(--action);
+    background: var(--action-soft);
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  /* A link that skips a long block: hidden until it gets the focus */
+  .skip-inline:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Booking a meeting, resident side (card T27, mockup R5) */
+  .rdv__step {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    font-weight: 700;
+  }
+
+  .rdv-people,
+  .rdv-days {
+    display: grid;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rdv-people {
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  }
+
+  /* Days on one line that scrolls sideways (design card D2) */
+  .rdv-days {
+    /* Containing block of the visually hidden day names: they scroll with
+       the strip instead of widening the page */
+    position: relative;
+    grid-auto-flow: column;
+    grid-auto-columns: 3.75rem;
+    overflow-x: auto;
+    padding: var(--s-1);
+    margin-inline: calc(-1 * var(--s-1));
+    scroll-snap-type: x proximity;
+  }
+
+  .rdv-days li {
+    scroll-snap-align: start;
+  }
+
+  .rdv-day__month {
+    color: var(--text-muted);
+    font-size: var(--t-tiny);
+  }
+
+  .rdv-person,
+  .rdv-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .rdv-person {
+    min-height: 6rem;
+    padding-inline: var(--s-1);
+    font-size: var(--t-small);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .rdv-day {
+    min-height: 4rem;
+  }
+
+  .rdv-person[aria-current="true"],
+  .rdv-day[aria-current="true"] {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    font-weight: 700;
+  }
+
+  .rdv-person__initial {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-weight: 700;
+  }
+
+  .rdv-person__initial--any {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  /* A card with the text on the left and its action on the right */
+  .rdv-line {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+
+  .rdv-line p {
+    margin: 0;
+  }
+
+  .rdv-line > svg {
+    flex: none;
+    color: var(--action);
+  }
+
+  .rdv-times {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: var(--s-2);
+  }
+
+  .rdv-times__label {
+    margin: var(--s-2) 0 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  /* A time is a whole tile: the radio button stays for keyboards and
+     screen readers, but only its label shows (design card D2) */
+  .rdv-time {
+    position: relative;
+    display: block;
+  }
+
+  .rdv-time input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .rdv-time span {
+    display: grid;
+    place-items: center;
+    min-height: var(--target);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rdv-time input:checked + span {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    font-weight: 700;
+  }
+
+  .rdv-time input:focus-visible + span {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* A summary that holds a heading: the triangle on the same line */
+  details[data-platform] > summary {
+    cursor: pointer;
+  }
+
+  details[data-platform] > summary > h2 {
+    display: inline;
+  }
+
+  /* The legend of step 3 lines up with steps 1 and 2 */
+  legend:has(> .rdv__step) {
+    padding-inline: 0;
+  }
+
+  /* Nothing here yet: one plain line, no frame (design card D2) */
+  .empty-state {
+    margin: 0;
+    padding: var(--s-4) 0;
+    color: var(--text-muted);
+  }
+
+  /* An empty list (design card D6): an icon in a soft circle and one line,
+     instead of a grey sentence lost on the page (NN/g, empty states). */
+  .empty-card {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--text-muted);
+  }
+
+  .empty-card p {
+    margin: 0;
+  }
+
+  .empty-card__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .empty-card__icon svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .empty-card--done .empty-card__icon {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  /* The next meeting (design card D6): a date tile like a calendar page */
+  .next-meeting {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .next-meeting:hover {
+    border-color: var(--action);
+  }
+
+  .next-meeting > svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-inline-start: auto;
+    color: var(--text-muted);
+  }
+
+  .next-meeting__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    min-width: 0;
+  }
+
+  .next-meeting__when {
+    color: var(--action);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .date-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 4rem;
+    height: 4.5rem;
+    border-radius: var(--r);
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-size: var(--t-tiny);
+    line-height: 1.2;
+    text-transform: lowercase;
+  }
+
+  .date-tile strong {
+    font-family: var(--font-title);
+    font-size: var(--t-h2);
+    line-height: 1.1;
+  }
+
+  /* The first free times: one tap opens the booking with the time chosen */
+  .quick-times {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .quick-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 4rem;
+    padding: var(--s-2);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: var(--t-small);
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .quick-time strong {
+    font-size: var(--t-large);
+  }
+
+  .quick-time:hover {
+    border-color: var(--action);
+    background: var(--action-soft);
+  }
+
+  /* Report form (card T30): choices as tiles, an icon above the label */
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-2);
+  }
+
+  .tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-1);
+    min-height: 5.25rem;
+    padding: var(--s-2);
+    border: 1px solid var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    font-size: var(--t-small);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .tile svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  /* The radio stays for the keyboard and screen readers, out of sight */
+  .tile input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tile:has(input:checked) {
+    border: 2px solid var(--action);
+    background: var(--action-soft);
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .tile:has(input:focus-visible) {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .tile--text {
+    min-height: 4rem;
+  }
+
+  .tile--text small {
+    color: var(--text-muted);
+    font-size: var(--t-tiny);
+    font-weight: 400;
+  }
+
+  .photo-add {
+    position: relative;
+  }
+
+  .photo-add__face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: 3.5rem;
+    padding: var(--s-2) var(--s-4);
+    border: 1px dashed var(--control);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--action);
+    font-weight: 700;
+  }
+
+  .photo-add__face svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+
+  .photo-add input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .photo-add:has(input:focus-visible) .photo-add__face {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .photo-add:hover .photo-add__face {
+    border-color: var(--action);
+    background: var(--action-soft);
+  }
+
+  .photo-previews,
+  .report-photos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 8rem));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .photo-previews img,
+  .report-photos img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--r-small);
+  }
+
+  .report-photos {
+    grid-template-columns: repeat(3, minmax(0, 12rem));
+  }
+
+  .report-text {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Reports board (card T31): four columns from new to done. On a phone
+     they follow one another; late reports have a yellow border. */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--s-4);
+    align-items: start;
+  }
+
+  .board__column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border-radius: var(--r-large);
+    background: var(--surface-2);
+  }
+
+  .board__title {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--s-1) var(--s-2);
+    font-size: var(--t-body);
+  }
+
+  .board__count {
+    color: var(--text-muted);
+  }
+
+  .report-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+  }
+
+  .report-card--late {
+    border: 2px solid var(--warning);
+  }
+
+  .report-card p {
+    margin: 0;
+  }
+
+  .report-card__title {
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .report-card__link {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  /* The whole card opens the report; the button stays on top */
+  .report-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .report-card:not(.report-card--late):hover {
+    border-color: var(--action);
+  }
+
+  .report-card form {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Staff report page: one column in the order of the work on a phone
+     (problem, actions, history, resident), two columns on a computer. */
+  .report-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+  }
+
+  .report-layout__main,
+  .report-layout__side {
+    display: contents;
+  }
+
+  .report-layout__problem {
+    order: 1;
+  }
+
+  .report-layout__actions {
+    order: 2;
+  }
+
+  .report-layout__history {
+    order: 3;
+  }
+
+  .report-layout__resident {
+    order: 4;
+  }
+
+  @media (min-width: 64rem) {
+    .report-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+      gap: var(--s-6);
+      align-items: start;
+    }
+
+    .report-layout__main,
+    .report-layout__side {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+    }
+  }
+
+  /* Day on its own row, then "De" and "À" side by side */
+  .plan-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-2);
+  }
+
+  .plan-fields > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .history {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin: 0;
+    padding-inline-start: var(--s-5);
+  }
+
+  /* The question that waits for the resident (card T33, mockup R4): a
+     strong blue card with the three colours of the logo on top. */
+  .ask-card {
+    position: relative;
+    overflow: hidden;
+    padding: var(--s-6) var(--s-4) var(--s-4);
+    border-radius: var(--r-large);
+    background: var(--action-bg);
+    color: var(--on-action);
+  }
+
+  .ask-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 6px;
+    background: linear-gradient(90deg, #8bc34a 0 33.3%, var(--logo-blue) 33.3% 66.6%, #ffc107 66.6%);
+  }
+
+  .ask-card p {
+    margin: 0;
+  }
+
+  .ask-card__lead,
+  .ask-card__soft {
+    font-size: var(--t-small);
+  }
+
+  .ask-card__title {
+    color: inherit;
+    font-size: var(--t-h2);
+  }
+
+  .ask-card textarea {
+    width: 100%;
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--control);
+    border-radius: var(--r-small);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .button--on-color {
+    border-color: var(--surface);
+    background: var(--surface);
+    color: var(--action);
+  }
+
+  .button--on-color:hover {
+    background: var(--action-soft);
+    filter: none;
+  }
+
+  .button--outline-on-color {
+    border: 1px solid currentcolor;
+    background: transparent;
+    color: inherit;
+    list-style: none;
+  }
+
+  .button--outline-on-color::-webkit-details-marker {
+    display: none;
+  }
+
+  .ask-card__more[open] > summary {
+    margin-block-end: var(--s-3);
+  }
+
+  .ask-card :focus-visible {
+    outline-color: var(--on-action);
+  }
+
+  .ask-card__lead svg {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  /* Resident home (card T34): four shortcuts as tiles, two by two */
+  .shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shortcut-grid a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    height: 100%;
+    min-height: 5.5rem;
+    padding: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .shortcut-grid a:hover {
+    border-color: var(--action);
+  }
+
+  .shortcut-grid__icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--r-small);
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .shortcut-grid__icon--warm {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .shortcut-grid__icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Staff dashboard (card T35, mockup P1) */
+  .figures {
+    display: grid;
+    /* two by two on a phone, one row on a computer */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Label, number, detail: three rows shared by the tiles of a line
+     (subgrid), so the numbers line up even when a label wraps. */
+  .figure {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-1);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+  }
+
+  .figure--warn {
+    border: 2px solid var(--warning);
+  }
+
+  .figure__link {
+    display: grid;
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-1);
+  }
+
+  .figure:not(:has(.figure__link)),
+  .figure__link {
+    padding: var(--s-4);
+  }
+
+  .figure__value {
+    align-self: end;
+  }
+
+  .figure__link {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .figure__link:hover .figure__label {
+    text-decoration: underline;
+  }
+
+  .figure__label,
+  .figure__detail {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .figure--warn .figure__detail {
+    color: var(--warning-text);
+    font-weight: 700;
+  }
+
+  .figure__value {
+    font-family: var(--font-title);
+    font-size: var(--t-h1);
+    line-height: 1.1;
+  }
+
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--s-4);
+    align-items: start;
+  }
+
+  .planned {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .planned a {
+    display: flex;
+    gap: var(--s-3);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .planned a:hover strong {
+    text-decoration: underline;
+  }
+
+  .planned a > span:last-child {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .planned small {
+    color: var(--text-muted);
+  }
+
+  .planned .badge {
+    align-self: flex-start;
+    margin-block-start: var(--s-1);
+  }
+
+  .planned__when {
+    flex: none;
+    width: 7rem;
+    font-weight: 700;
+  }
+
+  .rotation-title {
+    margin-block-start: var(--s-3);
+  }
+
+  .rotation {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: center;
+  }
+
+  .rotation__floor {
+    display: flex;
+    flex-direction: column;
+    padding: var(--s-2) var(--s-1);
+    border-radius: var(--r-small);
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+
+  .rotation__floor small {
+    font-size: var(--t-tiny);
+  }
+
+  .rotation__floor--last {
+    outline: 2px solid var(--action-bg);
+    outline-offset: -2px;
+    color: var(--ink);
+  }
+
+  .rotation__floor--next {
+    background: var(--action-bg);
+    color: var(--on-action);
+  }
+
+  /* How long data is kept (page "Vos données"): what, then how long */
+  .durations {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .durations > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    padding-block: var(--s-2);
+    border-block-end: 1px solid var(--line);
+  }
+
+  .durations > div:last-child {
+    border-block-end: 0;
+  }
+
+  .durations dt {
+    font-weight: 600;
+  }
+
+  .durations dd {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  /* History of a report: newest first, a line between the steps */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .timeline__step {
+    position: relative;
+    display: flex;
+    gap: var(--s-3);
+    padding-block-end: var(--s-4);
+  }
+
+  .timeline__step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    inset: 1.5rem auto 0 0.6875rem;
+    width: 2px;
+    background: var(--line);
+  }
+
+  .timeline__step:last-child {
+    padding-block-end: 0;
+  }
+
+  .timeline__dot {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: var(--on-action);
+  }
+
+  .timeline__step--current .timeline__dot {
+    background: var(--warning);
+    color: var(--ink);
+  }
+
+  .timeline__dot svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .timeline p {
+    margin: 0;
+  }
+
+  .timeline__what {
+    font-weight: 700;
+  }
+
+  /* A round initial, in lists of people */
+  .avatar {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: var(--on-action);
+    font-weight: 700;
+  }
+
+  /* Direct messages (cards T28 and D5): theirs on the left, mine on the
+     right, one line per day, the time under the text */
+  .thread {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .thread__more {
+    margin: 0;
+    text-align: center;
+    font-size: var(--t-small);
+  }
+
+  .thread__day {
+    align-self: center;
+    margin-block: var(--s-3) var(--s-1);
+    padding: var(--s-1) var(--s-3);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    font-weight: 700;
+  }
+
+  .thread__message {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    max-width: min(85%, 32rem);
+    align-self: flex-start;
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-large) var(--r-large) var(--r-large) var(--r-small);
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(6 32 47 / 0.08);
+  }
+
+  .thread__message--mine {
+    align-self: flex-end;
+    border-radius: var(--r-large) var(--r-large) var(--r-small) var(--r-large);
+    background: var(--action-bg);
+    color: var(--on-action);
+  }
+
+  .thread__message p {
+    margin: 0;
+  }
+
+  .thread__meta {
+    align-self: flex-end;
+    color: var(--text-muted);
+    font-size: var(--t-tiny);
+  }
+
+  .thread__message--mine .thread__meta {
+    color: inherit;
+  }
+
+  .thread__text {
+    overflow-wrap: anywhere;
+  }
+
+  .thread__new {
+    color: var(--warning-text);
+  }
+
+  .thread__message--mine .thread__new {
+    color: inherit;
+  }
+
+  /* The message field (design card D5): one line that grows with the text,
+     a round send button, kept at the bottom of the screen. */
+  .composer {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--s-2);
+    margin-block-start: auto;
+    padding-block: var(--s-3) max(var(--s-3), env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+  }
+
+  .composer textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: var(--target);
+    max-height: 10rem;
+    padding: 0.625rem var(--s-4);
+    border: 1px solid var(--control);
+    border-radius: 1.375rem;
+    background: var(--surface);
+    resize: none;
+  }
+
+  .composer__send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    border: 0;
+    border-radius: 50%;
+    background: var(--action-bg);
+    color: var(--on-action);
+    cursor: pointer;
+  }
+
+  .composer__send:hover {
+    background: var(--action-hover);
+  }
+
+  .composer__send svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* With few messages, they sit just above the field, like the messaging
+     apps; the free space stays at the top */
+  .resident-page--task .thread {
+    margin-block-start: auto;
+  }
+
+  .resident-page--task .thread + .composer {
+    margin-block-start: 0;
+  }
+
+  /* Staff side: the messages and the field fill the rest of the screen */
+  .conversation {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    max-width: 48rem;
+  }
+
+  .thread-note {
+    margin-block-end: var(--s-2);
+  }
+
+  /* Notification settings (card T19) */
+  .push-error {
+    margin: 0;
+    color: var(--error);
+    font-weight: 700;
+  }
+
+  .validity {
+    display: block;
+    width: 100%;
+    height: 0.5rem;
+    border-radius: 999px;
+  }
+
+  .validity__track {
+    fill: var(--line);
+  }
+
+  .validity__fill {
+    fill: var(--action-bg);
+  }
+
+  .validity--low .validity__fill {
+    fill: var(--warning-text); /* the yellow of --warning is too pale on the track */
+  }
+
+  .code-sheet svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* QR code of the authenticator app (card T14c): on white, for any camera */
+  .qr-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-3);
+    margin: 0;
+    text-align: center;
+  }
+
+  .qr-card svg {
+    max-width: 100%;
+    height: auto;
+    padding: var(--s-2);
+    border-radius: var(--r-small);
+    background: #fff;
+  }
+
+  .bullet-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding-inline-start: var(--s-5);
+    list-style: disc;
+  }
+
+  .numbered-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding-inline-start: var(--s-6);
+    list-style: decimal;
+  }
+
+  .plain-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media print {
+    .staff-menu,
+    .back-link,
+    .no-print,
+    .alert {
+      display: none;
+    }
+
+    .staff-page {
+      display: block;
+      background: #fff;
+      color: #000;
+    }
+
+    .code-sheet {
+      border: 0;
+    }
+  }
+
+  /* Cancel a meeting (card T29): a summary large enough for a finger */
+  .cancel summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: var(--error);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+  }
+
+  @media (forced-colors: active) {
+    .button,
+    .chip,
+    .badge,
+    .choices {
+      border: 1px solid CanvasText;
+    }
+
+    .resident-nav a[aria-current],
+    .staff-menu a[aria-current] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+
+    .rdv-time input:checked + span {
+      border: 3px solid Highlight;
+    }
+  }
+
+  /* Visual review of the newer screens (card D9) */
+  .report-form legend {
+    margin-block-end: var(--s-2);
+  }
+
+  .board__empty {
+    margin: 0;
+    padding-inline: var(--s-2);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .staff-menu__when-closed,
+  .staff-menu__when-open {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+
+  .staff-menu__toggle[aria-expanded="true"] .staff-menu__when-closed,
+  .staff-menu__toggle:not([aria-expanded="true"]) .staff-menu__when-open {
+    display: none;
+  }
+
+  /* A small text link with a full touch area (44 px) */
+  .link-target {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+  }
+
+  .bullets {
+    padding-inline-start: var(--s-5);
+  }
+
+  /* The emergency number: a large touch area in the warning. Vertical
+     padding on an inline link grows the area, not the line. */
+  .alert a[href^="tel:"] {
+    padding-block: 0.75rem;
+    font-weight: 700;
+  }
+
+  .link-list .badge {
+    align-self: flex-start;
+  }
+
+  /* Settings: a readable width, and the duration fields lined up (each
+     field takes the label, input, help and error rows of its line). */
+  .settings-form {
+    max-inline-size: 48rem;
+  }
+
+  .settings-durations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    column-gap: var(--s-4);
+  }
+
+  .settings-durations > .field {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-2);
+    align-content: start;
+    margin-block-end: var(--s-3);
+  }
+
+  .settings-durations > .field > label {
+    align-self: end;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilities                                                            */
+/* ------------------------------------------------------------------ */
+
+@layer utilities {
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .text-small {
+    font-size: var(--t-small);
+  }
+
+  .text-action {
+    color: var(--action);
+  }
+
+  .text-warning {
+    color: var(--warning-text);
+  }
+}
