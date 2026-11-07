@@ -19,10 +19,14 @@
 
 <form class="stack stack--loose" method="post" novalidate>
   {% csrf_token %}
+  {{ form.version }}
   {% if form.errors %}
   <div class="alert alert--warning" role="alert">
     {% icon "alert" %}
-    <p><strong>Les réglages ne sont pas enregistrés.</strong> Corrigez les champs signalés.</p>
+    <div class="stack stack--tight">
+      <p><strong>Les réglages ne sont pas enregistrés.</strong> Corrigez les champs signalés.</p>
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
   </div>
   {% endif %}
 
@@ -42,12 +46,15 @@
 
   <section class="card stack" aria-labelledby="sms-title">
     <h2 id="sms-title" class="card__title">SMS</h2>
-    <fieldset class="field"{% if form.sms_provider.errors %} aria-describedby="{{ form.sms_provider.auto_id }}_error"{% endif %}>
+    {% if fallback %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Le service choisi n'a plus ses clés sur le serveur : c'est le service du serveur qui envoie.</p></div>{% endif %}
+    {% if paused %}<div class="alert alert--warning" role="status">{% icon "alert" %}<p>Les SMS sont coupés.</p></div>{% endif %}
+    <fieldset class="field" aria-describedby="sms-help{% if form.sms_provider.errors %} {{ form.sms_provider.auto_id }}_error{% endif %}">
       <legend>{{ form.sms_provider.label|capfirst }}</legend>
       <div class="stack stack--tight">
         {% for choice in form.sms_provider %}<label class="choices">{{ choice.tag }}{{ choice.choice_label }}</label>{% endfor %}
       </div>
-      <span class="field__help">{{ form.sms_provider.help_text }} Service du serveur : {% if server_sms == "ovh" %}OVHcloud{% elif server_sms == "smsgate" %}SMSGate{% elif server_sms == "console" %}console (développement){% else %}aucun{% endif %}.</span>
+      <span class="field__help" id="sms-help">{{ form.sms_provider.help_text }} Service du serveur : {% include "residence/_sms_name.html" with name=server_sms %}. Utilisé maintenant : {% include "residence/_sms_name.html" with name=active_sms %}. «&nbsp;Aucun&nbsp;» arrête tout : messages, codes de vérification à l'activation. Les SMS d'un envoi en cours sont alors notés en échec.</span>
+      {% if form.sms_provider.errors %}<span class="field__errors" id="{{ form.sms_provider.auto_id }}_error">{% for error in form.sms_provider.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}</span>{% endif %}
     </fieldset>
   </section>
 
@@ -57,6 +64,7 @@
     <div class="grid-auto">
       {% for field in form.retention_fields %}{{ field.as_field_group }}{% endfor %}
     </div>
+    {{ form.confirm_shorter.as_field_group }}
   </section>
 
   {% if perms.accounts.manage_wifi_settings %}

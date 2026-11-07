@@ -17,6 +17,10 @@ class DisabledProvider(SmsProvider):
         )
 
 
+class SmsPaused(ConfigurationError):
+    """The administration cut the SMS: nothing leaves until it turns them on."""
+
+
 class PausedProvider(DisabledProvider):
     """SMS cut by the administration in the settings (card T37b).
 
@@ -25,4 +29,4 @@ class PausedProvider(DisabledProvider):
     """
 
     def send(self, number, text):
-        raise ConfigurationError("Les SMS sont coupés dans les réglages de la résidence.")
+        raise SmsPaused("Les SMS sont coupés dans les réglages de la résidence.")

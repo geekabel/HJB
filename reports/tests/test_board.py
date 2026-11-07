@@ -252,11 +252,12 @@ class ReviewTests(BoardTestCase):
         self.report()
         log_in_verified(self.client, self.marc)
         self.client.get(BOARD)
-        with self.assertNumQueries(12):
+        # 13: the summary hour is read from the residence settings (card T37b).
+        with self.assertNumQueries(13):
             self.client.get(BOARD)
         for _ in range(3):
             self.report()
         log_in_verified(self.client, self.marc)
         self.client.get(BOARD)
-        with self.assertNumQueries(12):  # the same with more reports
+        with self.assertNumQueries(13):  # the same with more reports
             self.client.get(BOARD)

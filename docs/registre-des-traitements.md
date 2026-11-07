@@ -28,16 +28,19 @@ La page « Vos données » affiche les mêmes. La commande
 `--apply`, elle le supprime et note les nombres dans le journal. Elle tourne
 une fois par jour, **une fois les durées validées par l'association**.
 
-| Données | Durée par défaut | Point de départ |
-| --- | --- | --- |
-| Compte d'un ancien résident, et ce qui s'y rattache (ses signalements restent, rendus anonymes) | 365 jours | dernier départ |
-| Photos d'un signalement | 180 jours | clôture du signalement |
-| Rendez-vous et leur motif | 365 jours | fin du rendez-vous |
-| Messages directs avec un éducateur | 365 jours | envoi |
-| Destinataires d'un message, réponses « Présent ou Absent » | 365 jours | début de l'envoi |
-| Anciens accès wifi d'une chambre | 365 jours | fin de l'accès |
-| Journal d'audit | 365 jours | action |
-| Codes d'activation, essais ratés, vérifications du téléphone | 30 jours | expiration ou envoi |
+| Données | Durée par défaut | Bornes permises | Point de départ |
+| --- | --- | --- | --- |
+| Compte d'un ancien résident, et ce qui s'y rattache (ses signalements restent, rendus anonymes) | 365 jours | 180 à 1095 | dernier départ |
+| Photos d'un signalement | 180 jours | 30 à 730 | clôture du signalement |
+| Rendez-vous et leur motif | 365 jours | 90 à 1095 | fin du rendez-vous |
+| Messages directs avec un éducateur | 365 jours | 90 à 1095 | envoi |
+| Destinataires d'un message, réponses « Présent ou Absent » | 365 jours | 90 à 1095 | début de l'envoi |
+| Anciens accès wifi d'une chambre | 365 jours | 90 à 1095 | fin de l'accès |
+| Journal d'audit | 365 jours | 180 à 365 | action |
+| Codes d'activation, essais ratés, vérifications du téléphone | 30 jours | 7 à 90 | expiration ou envoi |
+
+Les durées données plus bas, section par section, sont celles par défaut.
+Une durée plus courte demande une confirmation dans la page « Réglages ».
 
 Repères :
 
@@ -76,8 +79,10 @@ Repères :
   et de la lecture, réponse « Présent ou Absent ».
 - **Destinataires** : l'équipe qui envoie des messages ; le service SMS.
   - OVHcloud (France), par son API d'envoi de SMS ;
-  - ou SMSGate, pour les essais : un téléphone Android de la résidence, en
-    mode local, cloud ou serveur privé (à préciser).
+  - ou SMSGate : un téléphone Android de la résidence, en mode local,
+    cloud ou serveur privé (à préciser). Prévu pour les essais ;
+    l'administration peut le choisir dans « Réglages » si ses clés sont sur
+    le serveur (en secours, par exemple).
 - **Durée** : 365 jours après l'envoi pour les destinataires, les personnes
   choisies ou retirées par leur nom, et les réponses. Le texte du message
   reste.

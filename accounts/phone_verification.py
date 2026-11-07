@@ -118,10 +118,15 @@ def send_code(user):
             # The SMS was not sent: this code cannot be used. The send still counts
             # in the hourly limit, so that the SMS credit is not used up.
             PhoneVerification.objects.filter(pk=verification.pk).update(expires_at=now)
-            raise VerificationError(
-                "Le SMS n'a pas pu partir. Réessayez dans une minute, ou passez à l'accueil.",
-                "sms",
-            ) from error
+            from sms.providers.disabled import SmsPaused
+
+            if isinstance(error, SmsPaused):
+                message = "Les SMS sont coupés pour le moment. Passez à l'accueil."
+            else:
+                message = (
+                    "Le SMS n'a pas pu partir. Réessayez dans une minute, ou passez à l'accueil."
+                )
+            raise VerificationError(message, "sms") from error
     return verification
 
 

@@ -74,6 +74,11 @@ def _chosen():
         return ""
 
 
+def sms_paused():
+    """True if the administration cut the SMS (residence settings)."""
+    return _chosen() == "paused"
+
+
 def active_provider():
     """The provider chosen in the settings of the residence, else the
     server's. A chosen provider whose keys went missing falls back to the

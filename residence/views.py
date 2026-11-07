@@ -19,7 +19,7 @@ from .models import ResidenceSettings
 @permission_required("accounts.manage_settings", raise_exception=True)
 @recent_confirmation_required
 def edit(request):
-    from sms.service import configured_provider
+    from sms.service import active_provider, configured_provider, ready_providers
 
     with transaction.atomic():
         current = ResidenceSettings.objects.select_for_update().get(pk=ResidenceSettings.load().pk)
@@ -46,5 +46,10 @@ def edit(request):
             "active_nav": "settings",
             "form": form,
             "server_sms": configured_provider().name,
+            "active_sms": active_provider().name,
+            "paused": current.sms_provider == "paused",
+            # A chosen service whose keys went: the server's one sends instead.
+            "fallback": current.sms_provider not in ("", "paused")
+            and current.sms_provider not in ready_providers(),
         },
     )

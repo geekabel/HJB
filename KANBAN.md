@@ -653,6 +653,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Association (nom, adresse, contact « Vos données »), numéro d'urgence, heure du récapitulatif (7 h à 11 h), service SMS (serveur, un autre service prêt, ou coupé), durées de conservation entre des bornes sûres
 - [x] Chaque changement au journal, avec l'avant et l'après
 - [x] Les variables `DJANGO_EMERGENCY_PHONE` et `DJANGO_PRIVACY_CONTACT` et le réglage `RETENTION_DAYS` disparaissent : une seule source
+- [x] Relecture indépendante : accusés SMS encore demandés à l'ancien service après un changement ; « Aucun » dit clairement ce qu'il arrête (messages, codes d'activation) ; service utilisé maintenant affiché, et alerte si le service choisi n'a plus ses clés ; erreur du choix SMS visible ; deux personnes en même temps ne s'écrasent plus ; une durée plus courte demande une case à cocher ; heure du récapitulatif juste sur le tableau ; bornes dans les champs et dans le registre
 
 #### T38 Déploiement
 - **Docs** : [déployer Django](https://docs.djangoproject.com/en/6.1/howto/deployment/).
