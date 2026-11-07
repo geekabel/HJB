@@ -398,6 +398,21 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Notes** : pas de barre d'action collée en bas du nouveau message. Le formulaire et son récapitulatif sont dans une grille ; une barre collée demanderait de le refaire. À revoir si l'équipe l'utilise surtout sur téléphone.
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Mois abrégés à la française (« juil. »). Tuiles de même hauteur, la grille ne saute plus. Le compteur des filtres se lit « 2 actifs ». Sans JavaScript, le bouton « Filtres » reste pour replier. Contour du focus entier sur la recherche. Règles CSS inutiles retirées.
 
+#### D9 Revue visuelle des écrans arrivés après D8 (fait le 7 nov. 2026)
+- **Demande** : Godwin, 7 nov. : les écrans de T30 à T37b n'avaient pas eu de revue visuelle.
+- [x] Revue indépendante sur téléphone, tablette et ordinateur, en clair et en sombre (18 points)
+- [x] Tableau de bord : chiffres alignés (sous-grille), « Ch. N » d'un bloc, pastille de retard sous le titre
+- [x] Carte bleue de l'accueil : bande du logo visible en mode sombre
+- [x] Signalement (équipe) : « Jour » sur sa ligne, puis « De » et « À » côte à côte ; heures sans secondes ; « Appeler le 06… » ; la personne à qui c'est confié reste dans la liste
+- [x] Numéro d'urgence et 112 : grande zone de toucher ; « appelez le 112 »
+- [x] Boutons radio et cases à cocher dessinés : mêmes en clair et en sombre (forced-colors respecté)
+- [x] Réglages : largeur lisible, durées alignées, case de confirmation alignée sur sa première ligne, barre « Enregistrer » qui ne cache plus le champ actif
+- [x] Formulaire de signalement : espace régulier sous chaque question
+- [x] Tableau des signalements : un seul message quand le filtre est vide ; titres coupés proprement ; dates « 9 nov. »
+- [x] Menu de l'équipe sur téléphone : « Fermer » et une croix quand il est ouvert
+- [x] Petits liens à 44 px (Tout voir, Tous les signalements, connexion) ; « rendez‑vous » ne se coupe plus ; puces de « Vos données »
+- [ ] Reste : espace insécable avant « ? : ; » dans tous les textes (ancien et nouveau), à faire en une passe
+
 ### E3 Wifi
 
 #### T15 Accès wifi chiffré (équipe) (fait le 5 nov. 2026)

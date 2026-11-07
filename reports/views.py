@@ -85,6 +85,7 @@ def board(request):
                 "filters": FILTERS,
                 "current": key,
                 "late_count": late_count,
+                "total": len(reports),
                 "now": now,
                 "summary_hour": reminders.summary_window()[0].hour,
             },
@@ -100,7 +101,10 @@ def _detail_context(request, report, **forms):
         "report": report,
         "events": report.events.select_related("author"),
         "assign_form": forms.get("assign_form")
-        or AssignForm(initial={"assignee": report.assigned_to_id or request.user.pk}),
+        or AssignForm(
+            initial={"assignee": report.assigned_to_id or request.user.pk},
+            current=report.assigned_to_id,
+        ),
         # Prefixes: both forms have a "note" field, their ids must differ.
         "plan_form": forms.get("plan_form")
         or PlanForm(initial=initial_plan(report), prefix="plan"),

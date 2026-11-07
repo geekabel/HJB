@@ -1,4 +1,4 @@
 {% load icons %}{% comment %}
   The number to call at once (card T30). Variable: emergency_phone (may be empty).
 {% endcomment %}
-<div class="alert alert--warning">{% icon "phone" %}<p>Fuite d'eau, odeur de gaz, prise qui chauffe ? Appelez tout de suite {% if emergency_phone %}le <a href="tel:{{ emergency_phone|cut:' ' }}">{{ emergency_phone }}</a>{% else %}l'accueil{% endif %}. Feu ou personne en danger : <a href="tel:112">112</a>.</p></div>
+<div class="alert alert--warning">{% icon "phone" %}<p>Fuite d'eau, odeur de gaz, prise qui chauffe ? Appelez tout de suite {% if emergency_phone %}le <a href="tel:{{ emergency_phone|cut:' ' }}">{{ emergency_phone }}</a>{% else %}l'accueil{% endif %}. Feu ou personne en danger : <a class="emergency-call" href="tel:112">appelez le 112</a>.</p></div>

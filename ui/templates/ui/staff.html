@@ -15,7 +15,7 @@
 <nav class="staff-menu" aria-label="Menu de l'équipe">
   <div class="staff-menu__bar">
     <a class="staff-menu__brand" href="{% url 'home' %}"><span class="logo-tile">{% roofs "" %}</span>Espace équipe</a>
-    <button class="staff-menu__toggle" type="button" aria-expanded="false" aria-controls="staff-menu-panel" data-menu-toggle hidden>{% icon "menu" %}<span>Menu</span></button>
+    <button class="staff-menu__toggle" type="button" aria-expanded="false" aria-controls="staff-menu-panel" data-menu-toggle hidden><span class="staff-menu__when-closed">{% icon "menu" %}Menu</span><span class="staff-menu__when-open">{% icon "close" %}Fermer</span></button>
   </div>
   <div class="staff-menu__panel" id="staff-menu-panel">
     <ul>

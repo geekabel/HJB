@@ -105,7 +105,7 @@ class ResidentHomeTests(TestCase):
         log_in_verified(self.client, make_user("ines", first_name="Inès"))
         response = self.client.get(reverse("home"))
         self.assertContains(response, "Rien à faire pour le moment.")
-        self.assertContains(response, "Prendre rendez-vous")
+        self.assertContains(response, "Prendre rendez\u2011vous")
 
     def test_meeting_soon_and_new_message(self):
         from datetime import timedelta

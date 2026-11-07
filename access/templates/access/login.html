@@ -26,7 +26,7 @@
 
 <p class="text-muted text-small">Téléphone perdu ou changé ? Passez à l'accueil avec une pièce d'identité.</p>
 
-<p class="text-small"><a href="{% url 'privacy' %}">Vos données personnelles</a></p>
+<p class="text-small"><a class="link-target" href="{% url 'privacy' %}">Vos données personnelles</a></p>
 
-<p class="text-small">Équipe : <a href="{% url 'access:login_app_code' %}{% if next %}?next={{ next|urlencode }}{% endif %}">connexion avec un code d'application</a></p>
+<p class="text-small">Équipe : <a class="link-target" href="{% url 'access:login_app_code' %}{% if next %}?next={{ next|urlencode }}{% endif %}">connexion avec un code d'application</a></p>
 {% endblock %}
