@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
 | T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
 | T36 | RGPD | E9 Mise en service | T09, T15 |
 | T37 | Sécurité avant la mise en ligne | E9 Mise en service | toutes |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T31 | Tableau des signalements (équipe) | 7 nov. 2026 |
 | T32 | Délais, relances et récapitulatif quotidien | 7 nov. 2026 |
 | T33 | Suivi et confirmation par le résident | 7 nov. 2026 |
+| T34 | Accueil du résident | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -610,9 +610,12 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 
 ### E8 Accueils
 
-#### T34 Accueil du résident
+#### T34 Accueil du résident (fait le 7 nov. 2026)
 - **Maquette** : R1.
-- [ ] Action attendue en tête, raccourcis, mes demandes, dernière annonce
+- [x] Action attendue en tête : la première chose à faire (répondre à une visite, voter, confirmer une réparation) dans une carte bleue avec son bouton ; les autres suivent dans « Aussi à faire »
+- [x] Chambre et étage sous « Bonjour » ; quatre raccourcis en tuiles, deux par deux
+- [x] Mes signalements en cours (les deux derniers, avec leur état ou la visite prévue) et « Tout voir »
+- [x] Dernière annonce reçue
 
 #### T35 Tableau de bord de l'équipe
 - **Maquette** : P1.
