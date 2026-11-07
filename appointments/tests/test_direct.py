@@ -317,7 +317,7 @@ class HistoryPageTests(DirectTestCase):
     def test_last_messages_then_older_ones(self):
         talk = Conversation.objects.create(resident=self.ines, educator=self.samia)
         DirectMessage.objects.bulk_create(
-            DirectMessage(conversation=talk, author=self.ines, text=f"Message {n}")
+            DirectMessage(conversation=talk, author=self.samia, text=f"Message {n}")
             for n in range(1, 121)
         )
         log_in_verified(self.client, self.ines)
@@ -330,8 +330,11 @@ class HistoryPageTests(DirectTestCase):
         self.assertEqual(len(page.messages), direct.PAGE)
         self.assertContains(response, f'href="?avant={page.older}"')
         self.assertContains(response, 'id="last-message"')
-        # The page before: 50 older messages, no "last message" anchor.
+        # The page before: 50 older messages, no "last message" anchor, and
+        # nothing marked as read there.
+        talk.messages.update(read_at=None)
         response = self.client.get(url, {"avant": page.older})
+        self.assertFalse(talk.messages.filter(read_at__isnull=False).exists())
         older = response.context["page"]
         self.assertEqual(older.messages[-1].text, "Message 70")
         self.assertNotContains(response, 'id="last-message"')

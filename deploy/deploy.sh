@@ -69,10 +69,12 @@ write_file() { # path mode owner
 		printf '   [essai] écrire %s\n' "${path}"
 		return 0
 	fi
-	install -d "$(dirname "${path}")"
-	printf '%s\n' "${new}" >"${path}"
-	chmod "${mode}" "${path}"
-	chown "${owner}" "${path}"
+	# Called in "&& ... || true" lists, where bash ignores set -e: each
+	# command checks its own result.
+	install -d "$(dirname "${path}")" || die "dossier de ${path} impossible à créer."
+	printf '%s\n' "${new}" >"${path}" || die "${path} impossible à écrire."
+	chmod "${mode}" "${path}" || die "chmod ${path} a échoué."
+	chown "${owner}" "${path}" || die "chown ${path} a échoué."
 	return 0
 }
 
@@ -91,6 +93,9 @@ load_config() {
 		fi
 	done
 	[[ -n "${DOMAIN}" ]] || die "DOMAIN est vide (deploy.conf)."
+	[[ "${DOMAIN}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] ||
+		die "DOMAIN doit être un nom de domaine, sans https:// ni / (par exemple hjb.example.org)."
+	[[ "${ACME_EMAIL}" =~ ^[^[:space:]@#]+@[^[:space:]@#]+$ ]] || die "ACME_EMAIL n'est pas une adresse e-mail."
 	[[ -n "${ACME_EMAIL}" ]] || die "ACME_EMAIL est vide (deploy.conf)."
 	APP_DIR="${APP_HOME}/app"
 	VENV="${APP_HOME}/venv"
@@ -144,7 +149,7 @@ install_python() {
 	fi
 	say "Python ${PYTHON_VERSION}"
 	run install -d -m 755 "${PYTHON_DIR}"
-	run env UV_PYTHON_INSTALL_DIR="${PYTHON_DIR}" uv python install "${PYTHON_VERSION}"
+	run env UV_PYTHON_INSTALL_DIR="${PYTHON_DIR}" uv python install --no-config "${PYTHON_VERSION}"
 }
 
 create_user() {
@@ -162,7 +167,9 @@ create_user() {
 	run install -d -o "${APP_USER}" -g "${APP_USER}" -m 700 "${BACKUP_DIR}"
 	run install -d -o root -g "${APP_USER}" -m 750 "${ENV_DIR}"
 	# Caddy reads the static files: it needs to cross the home folder.
-	run setfacl -m "u:caddy:x" "${APP_HOME}" 2>/dev/null || run chmod 751 "${APP_HOME}"
+	if [[ "${DRY_RUN}" != "1" ]] && ! setfacl -m "u:caddy:x" "${APP_HOME}" 2>/dev/null; then
+		chmod 751 "${APP_HOME}"
+	fi
 }
 
 # One role and one database, owned by the app user. "Peer" login over
@@ -191,7 +198,7 @@ fetch_code() {
 		run runuser -u "${APP_USER}" -- git -C "${APP_DIR}" reset -q --hard "origin/${BRANCH}"
 	fi
 	if [[ "${DRY_RUN}" != "1" ]]; then
-		say "Version : $(git -C "${APP_DIR}" log -1 --format='%h %s')"
+		say "Version : $(runuser -u "${APP_USER}" -- git -C "${APP_DIR}" log -1 --format='%h %s')"
 	fi
 }
 
@@ -199,10 +206,10 @@ setup_venv() {
 	say "Environnement Python et dépendances"
 	if [[ ! -x "${VENV}/bin/python" ]]; then
 		run runuser -u "${APP_USER}" -- env UV_PYTHON_INSTALL_DIR="${PYTHON_DIR}" \
-			uv venv --python "${PYTHON_VERSION}" "${VENV}"
+			uv venv --no-config --python "${PYTHON_VERSION}" "${VENV}"
 	fi
 	run runuser -u "${APP_USER}" -- env UV_CACHE_DIR="${APP_HOME}/.cache/uv" \
-		uv pip install --python "${VENV}/bin/python" -r "${APP_DIR}/requirements.txt"
+		uv pip install --no-config --python "${VENV}/bin/python" -r "${APP_DIR}/requirements.txt"
 }
 
 # The environment file of every service. Created once with fresh keys;
@@ -281,7 +288,7 @@ Requires=postgresql.service
 [Service]
 Type=notify
 ${common}
-ExecStart=${VENV}/bin/gunicorn config.wsgi --bind 127.0.0.1:${APP_PORT} --workers ${workers} --timeout 60 --access-logfile - --error-logfile -
+ExecStart=${VENV}/bin/gunicorn config.wsgi --bind 127.0.0.1:${APP_PORT} --workers ${workers} --timeout 60 --error-logfile -
 ExecReload=/bin/kill -s HUP \$MAINPID
 KillMode=mixed
 TimeoutStopSec=30
@@ -312,11 +319,12 @@ EOF
 
 	timer_unit minute "run_scheduled" "*-*-* *:*:00" \
 		"${VENV}/bin/python manage.py run_scheduled" "${common}" && changed=1 || true
+	# "-": a failed step is noted, the next ones still run.
 	timer_unit daily "send_wifi_reminders, nettoyage" "*-*-* 10:00:00 Europe/Paris" \
-		"${VENV}/bin/python manage.py send_wifi_reminders
-ExecStart=${VENV}/bin/python manage.py prune_push_subscriptions
-ExecStart=${VENV}/bin/python manage.py prune_db_task_results
-ExecStart=${VENV}/bin/python manage.py clearsessions" "${common}" && changed=1 || true
+		"-${VENV}/bin/python manage.py send_wifi_reminders
+ExecStart=-${VENV}/bin/python manage.py prune_push_subscriptions
+ExecStart=-${VENV}/bin/python manage.py prune_db_task_results
+ExecStart=-${VENV}/bin/python manage.py clearsessions" "${common}" && changed=1 || true
 	timer_unit backup "sauvegarde" "*-*-* 03:15:00 Europe/Paris" \
 		"${VENV}/bin/python manage.py backup_data --to ${BACKUP_DIR} --keep ${BACKUP_KEEP}" \
 		"${common}" && changed=1 || true
@@ -345,6 +353,8 @@ After=postgresql.service
 [Service]
 Type=oneshot
 ${common}
+# A stuck run never blocks the next ones for good.
+TimeoutStartSec=30min
 ExecStart=${exec}
 EOF
 	write_file "/etc/systemd/system/hjb-${name}.timer" 644 root:root <<EOF && changed=1 || true
@@ -369,28 +379,30 @@ EOF
 # so other sites of the server stay untouched.
 setup_caddy() {
 	say "Caddy : site ${DOMAIN} et HTTPS"
-	run install -d -m 755 /etc/caddy/sites /var/log/caddy
-	run chown caddy:caddy /var/log/caddy
+	run install -d -m 755 /etc/caddy/sites
+	run install -d -o caddy -g caddy -m 755 /var/log/caddy
 	local site=/etc/caddy/sites/hjb.caddy changed=0
+	# The template of the deployed code, not of the clone the script runs from.
 	sed -e "s#@DOMAIN@#${DOMAIN}#g" -e "s#@ACME_EMAIL@#${ACME_EMAIL}#g" \
 		-e "s#@STATIC_ROOT@#${STATIC_ROOT}#g" -e "s#@APP_PORT@#${APP_PORT}#g" \
-		"${HERE}/templates/hjb.caddy" | write_file "${site}" 644 root:root && changed=1 || true
+		"${APP_DIR}/deploy/templates/hjb.caddy" | write_file "${site}" 644 root:root && changed=1 || true
 	local main=/etc/caddy/Caddyfile
 	if ! grep -q '^import /etc/caddy/sites/\*.caddy' "${main}" 2>/dev/null; then
-		if grep -q 'easy way to configure your Caddy web server' "${main}" 2>/dev/null; then
+		if [[ ! -s "${main}" ]] || grep -q 'easy way to configure your Caddy web server' "${main}"; then
 			# Still the welcome page of the package: replaced (a copy is kept).
-			run cp "${main}" "${main}.origine"
+			[[ -s "${main}" ]] && run cp "${main}" "${main}.origine"
 			printf '# Sites of this server, one file each.\nimport /etc/caddy/sites/*.caddy\n' |
 				write_file "${main}" 644 root:root || true
+			changed=1
 		else
-			run cp "${main}" "${main}.avant-hjb"
-			if [[ "${DRY_RUN}" != "1" ]]; then
-				printf '\nimport /etc/caddy/sites/*.caddy\n' >>"${main}"
-			fi
+			die "${main} contient déjà d'autres sites. Ajoutez-y la ligne « import /etc/caddy/sites/*.caddy » (hors de tout bloc), puis relancez."
 		fi
-		changed=1
 	fi
-	run caddy validate --config "${main}" --adapter caddyfile
+	# adapt checks the configuration without opening the log files: a
+	# "caddy validate" as root would create them as root, unreadable by
+	# the caddy service.
+	run caddy adapt --config "${main}" --adapter caddyfile >/dev/null
+	run chown -R caddy:caddy /var/log/caddy
 	if ((changed)); then
 		run systemctl reload caddy
 	fi
@@ -399,38 +411,66 @@ setup_caddy() {
 # ufw: SSH, HTTP (certificates and redirect), HTTPS, and HTTP/3 (UDP).
 setup_firewall() {
 	say "Pare-feu (ufw)"
-	run ufw allow OpenSSH
+	local ssh_port
+	ssh_port="$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}' || true)"
+	run ufw allow "${ssh_port:-22}/tcp"
 	run ufw allow 80/tcp
 	run ufw allow 443/tcp
 	run ufw allow 443/udp
 	run ufw --force enable
-	warn "Hostinger : ouvrez aussi 22, 80, 443 (TCP) et 443 (UDP) dans le pare-feu du panneau, s'il est actif."
+	warn "Hostinger : ouvrez aussi ${ssh_port:-22}, 80, 443 (TCP) et 443 (UDP) dans le pare-feu du panneau, s'il est actif."
 }
 
 restart_app() {
 	say "Redémarrage du site et du worker"
-	run systemctl restart hjb-worker.service
-	run systemctl reload-or-restart hjb-web.service
+	# A restart, not a reload: a reload would keep the old environment file
+	# and the old unit (Gunicorn HUP never re-reads EnvironmentFile).
+	run systemctl restart hjb-worker.service hjb-web.service
 }
 
-# The site seen from outside, like a visitor.
+# The site seen from outside, like a visitor. Caddy asks for the
+# certificate a few seconds after its reload: up to two minutes of tries.
 check_site() {
 	say "Vérification de https://${DOMAIN}"
-	local url="https://${DOMAIN}/connexion/" code headers
+	local url="https://${DOMAIN}/connexion/" code="" headers header try
 	if [[ "${DRY_RUN}" == "1" ]]; then
 		printf '   [essai] curl %s\n' "${url}"
-		return
+		return 0
 	fi
-	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "${url}" || true)"
-	[[ "${code}" == "200" ]] || die "la page de connexion répond ${code:-rien} (attendu : 200)."
-	headers="$(curl -sSI --max-time 20 "${url}")"
-	for header in strict-transport-security content-security-policy x-frame-options; do
-		grep -qi "^${header}:" <<<"${headers}" || die "en-tête ${header} absent."
+	local here there
+	here="$(curl -4 -sS --max-time 10 https://api.ipify.org 2>/dev/null || true)"
+	there="$(getent ahostsv4 "${DOMAIN}" | awk '{print $1; exit}')"
+	if [[ -z "${there}" ]]; then
+		warn "${DOMAIN} n'a pas encore d'adresse (DNS). Ajoutez l'enregistrement A, attendez, puis : sudo $0 check"
+		return 1
+	fi
+	if [[ -n "${here}" && "${here}" != "${there}" ]]; then
+		warn "${DOMAIN} pointe vers ${there}, mais ce serveur est ${here}. Corrigez l'enregistrement A."
+		return 1
+	fi
+	for try in $(seq 1 24); do
+		code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "${url}" 2>/dev/null || true)"
+		[[ "${code}" == "200" ]] && break
+		sleep 5
 	done
-	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "http://${DOMAIN}/connexion/" || true)"
+	if [[ "${code}" != "200" ]]; then
+		warn "la page de connexion répond ${code:-rien} après ${try} essais (attendu : 200). Voir : journalctl -u caddy -u hjb-web"
+		return 1
+	fi
+	headers="$(curl -sSI --max-time 10 "${url}")"
+	for header in strict-transport-security content-security-policy x-frame-options; do
+		grep -qi "^${header}:" <<<"${headers}" || {
+			warn "en-tête ${header} absent."
+			return 1
+		}
+	done
+	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "http://${DOMAIN}/connexion/" || true)"
 	[[ "${code}" == "308" || "${code}" == "301" ]] || warn "HTTP ne redirige pas vers HTTPS (${code})."
-	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${DOMAIN}/static/ui/css/hjb.css" || true)"
-	[[ "${code}" == "200" ]] || die "les fichiers statiques répondent ${code}."
+	code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://${DOMAIN}/static/ui/css/hjb.css" || true)"
+	if [[ "${code}" != "200" ]]; then
+		warn "les fichiers statiques répondent ${code}."
+		return 1
+	fi
 	say "Le site répond, en HTTPS, avec ses en-têtes de sécurité."
 }
 
@@ -449,7 +489,7 @@ Prochaines étapes :
      SMSGATE_USERNAME et SMSGATE_PASSWORD), mettre DJANGO_SMS_PROVIDER=smsgate,
      puis : sudo $0 update
   2. Charger la résidence :
-     sudo cp ${HERE}/initial-data.example.yaml ${ENV_DIR}/initial-data.yaml   (puis le remplir)
+     sudo cp ${APP_DIR}/deploy/initial-data.example.yaml ${ENV_DIR}/initial-data.yaml   (puis le remplir)
      sudo runuser -u ${APP_USER} -- bash -c 'set -a; . ${ENV_FILE}; set +a; cd ${APP_DIR}; ${VENV}/bin/python manage.py load_initial_data ${ENV_DIR}/initial-data.yaml --dry-run'
   3. Code du premier administrateur : même commande avec « activation_code <identifiant> ».
   4. Adresse du site d'administration : ligne DJANGO_ADMIN_URL de ${ENV_FILE}.
@@ -460,6 +500,9 @@ EOF
 
 main() {
 	local action="${1:-}"
+	# A neutral working folder: the app user cannot read /root or a home
+	# folder, and uv or git would fail there.
+	cd /
 	case "${action}" in
 	install)
 		require_root
@@ -474,10 +517,10 @@ main() {
 		write_env
 		django_setup
 		install_units
-		setup_caddy
 		setup_firewall
+		setup_caddy
 		restart_app
-		check_site
+		check_site || warn "Le site n'est pas encore joignable. Suivez les étapes ci-dessous, puis : sudo $0 check"
 		next_steps
 		;;
 	update)
@@ -489,7 +532,7 @@ main() {
 		install_units
 		setup_caddy
 		restart_app
-		check_site
+		check_site || exit 1
 		;;
 	status)
 		load_config
@@ -497,7 +540,7 @@ main() {
 		;;
 	check)
 		load_config
-		check_site
+		check_site || exit 1
 		;;
 	*)
 		sed -n '2,8p' "$0"

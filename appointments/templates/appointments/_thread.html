@@ -16,4 +16,4 @@
   {% endfor %}
 </ol>
 {% endif %}
-{% if not page.latest %}<p class="thread__more"><a href="?#last-message">Revenir aux derniers messages</a></p>{% endif %}
+{% if page.latest %}<div id="messages-end"></div>{% else %}<p class="thread__more"><a href="?#messages-end">Revenir aux derniers messages</a></p>{% endif %}

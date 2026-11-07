@@ -75,6 +75,14 @@ class InitialDataTests(TestCase):
             "- a\n- b\n": "rubriques",
             "floors: [\n": "YAML invalide",
             "!!python/object/apply:os.system ['echo hi']\n": "YAML invalide",
+            "floors:\n  - number: 0\n    rooms: [001, 010]\n": "entre guillemets",
+            "floors:\n  - number: true\n": "nombre entier",
+            "floors:\n  - number: 1\n    visit_order: abc\n": "visit_order",
+            "floors:\n  - number: 1\n    name: " + "x" * 61 + "\n": "60 caractères",
+            "residence: [a, b]\n": "residence",
+            "floors: {a: 1}\n": "floors",
+            "staff:\n  - username: x\n    roles: [{admin: 1}]\n": "rôles parmi",
+            "staff:\n  - username: 'a b'\n    roles: [admin]\n": "lettres, chiffres",
         }
         for text, message in cases.items():
             with self.subTest(text=text), self.assertRaisesMessage(CommandError, message):

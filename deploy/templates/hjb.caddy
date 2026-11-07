@@ -16,8 +16,10 @@
 		max_size 35MB
 	}
 
+	# No software names in the answers.
 	header {
 		-Server
+		-Via
 	}
 
 	# Static files, straight from disk (collectstatic). Django serves no
@@ -45,7 +47,9 @@
 			roll_keep 10
 		}
 		format filter {
-			request>uri regexp ^/sms/ovh/[^/]+/ /sms/ovh/REDACTED/
+			request>uri regexp ^/sms/ovh/[^/?]+ /sms/ovh/REDACTED
+			# A missing final slash: Django answers with a redirect to it.
+			resp_headers>Location delete
 		}
 	}
 }

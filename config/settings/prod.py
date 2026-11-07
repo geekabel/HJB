@@ -46,6 +46,9 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
+        # Room for one counter per address; the default (300) would cull
+        # counters under a burst.
+        "OPTIONS": {"MAX_ENTRIES": 50000},
     }
 }
 
@@ -155,6 +158,9 @@ if os.environ.get("DJANGO_BEHIND_PROXY", "1") == "1":
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "filters": {"hide_secrets": {"()": "config.log_filters.HideSecretPaths"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "filters": ["hide_secrets"]},
+    },
     "root": {"handlers": ["console"], "level": "WARNING"},
 }

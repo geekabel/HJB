@@ -197,44 +197,44 @@ Pour lancer une commande de Django sur le serveur :
 sudo runuser -u hjb -- bash -c 'set -a; . /etc/hjb/env; set +a; cd /srv/hjb/app; /srv/hjb/venv/bin/python manage.py <commande>'
 ```
 
+`/etc/hjb/env` est lu par systemd et par bash : pas d'espace, de guillemet ni de `#` dans les valeurs. `update` redémarre le site et le *worker* : un changement de ce fichier est pris en compte.
+
 Le script a été essayé de bout en bout sur Ubuntu 24.04 (sauf systemd et le certificat, absents de l'essai) : installation, mise à jour sans changement, Caddy devant Gunicorn, redirection HTTP vers HTTPS, en-têtes de sécurité, fichiers statiques compressés, adresse du client lue derrière Caddy (un en-tête inventé est ignoré), secret OVH absent du journal, sauvegarde PostgreSQL restaurée, premier chargement.
 
 ## Sauvegardes
 
+En production, `hjb-backup.timer` lance chaque nuit (3 h 15) :
+
 ```sh
 python manage.py backup_data --to /var/backups/hjb --keep 14   # sauvegarde, relit, garde les 14 dernières
-python manage.py verify_backup /var/backups/hjb/hjb-20261107-030000
+python manage.py verify_backup /var/backups/hjb/hjb-20261107-031500 --restore
 ```
 
-Une sauvegarde est un dossier (accès réservé au propriétaire) avec :
-- `db.sqlite3` : une copie faite par l'API de sauvegarde de SQLite, cohérente même pendant les écritures ;
+Une sauvegarde est un dossier (accès réservé à l'utilisateur `hjb`) avec :
+- `db.dump` : la base, par `pg_dump` en format personnalisé, d'une seule photographie cohérente ;
 - `media.tar.gz` : les photos des signalements ;
-- `manifest.json` : le nombre de lignes par table, la liste des photos et l'empreinte SHA-256 des deux fichiers.
+- `manifest.json` : les tables sauvegardées, la liste des photos, l'empreinte SHA-256 des deux fichiers et le nom de la base copiée.
 
-`backup_data` relit chaque sauvegarde juste après l'avoir faite : intégrité de la base, nombre de lignes, empreintes, liste des photos. Une sauvegarde ratée sort en erreur, et les anciennes restent.
+`backup_data` relit chaque sauvegarde juste après l'avoir faite : empreintes, tables, photos. Une sauvegarde ratée sort en erreur, et les anciennes restent. `verify_backup --restore` va plus loin : il la restaure dans une base jetable, compte les comptes, puis la supprime. Faites-le au moins une fois par mois. En développement (SQLite), la sauvegarde est une copie `db.sqlite3`, compactée, avec le nombre de lignes par table.
 
 **Ce que la sauvegarde ne contient pas, exprès :**
 - les clés (`DJANGO_SECRET_KEY`, `DJANGO_WIFI_KEYS`, `DJANGO_VAPID_PRIVATE_KEY`). Gardez-en une copie ailleurs, à part : sans les clés wifi, les mots de passe wifi sauvegardés sont illisibles ; avec elles dans la même sauvegarde, un vol les ouvrirait ;
 - les sessions : une sauvegarde volée ne connecte personne ;
 - les secrets des applications de codes de l'équipe : avec eux, on pourrait calculer les codes.
 
-La copie est ensuite compactée (`VACUUM`) : les lignes retirées ne restent pas dans les pages libres. Le manifeste note aussi le chemin de la base copiée. Vérifiez-le : une ligne cron sans `DJANGO_SETTINGS_MODULE=config.settings.prod` sauvegarderait la base de développement.
+**Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée restent à fixer.
 
-**Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée sont à fixer avec le déploiement (T38).
-
-**Restaurer** :
-1. arrêter le site, le *worker* et les tâches planifiées ;
-2. `python manage.py verify_backup <dossier>` ;
-3. supprimer les fichiers `-wal` et `-shm` à côté de la base, puis remplacer la base par `db.sqlite3` de la sauvegarde ;
-4. vider `DJANGO_MEDIA_ROOT`, puis `tar -xzf <dossier>/media.tar.gz --no-same-owner -C "$DJANGO_MEDIA_ROOT"` ;
-5. `python manage.py migrate`, puis `python manage.py check --deploy`, puis relancer les services ;
+**Restaurer**, en tant que root sur le serveur :
+1. arrêter ce qui écrit : `systemctl stop hjb-minute.timer hjb-daily.timer hjb-backup.timer hjb-worker hjb-web` ;
+2. vérifier la sauvegarde : `verify_backup <dossier> --restore` (voir « Déploiement » pour lancer une commande) ;
+3. remettre la base : `runuser -u hjb -- pg_restore --clean --if-exists --no-owner --single-transaction -d hjb <dossier>/db.dump` (tout ou rien) ;
+4. remettre les photos : vider `/srv/hjb/media`, puis `runuser -u hjb -- tar -xzf <dossier>/media.tar.gz --no-same-owner -C /srv/hjb/media` ;
+5. `sudo deploy/deploy.sh update` (migrations, vérifications, redémarrage des services et des minuteurs) ;
 6. refaire ce qui a eu lieu depuis la date de la sauvegarde : départs, accès coupés, codes donnés. Tout le monde se reconnecte, et l'équipe relie à nouveau son application de codes.
 
 La base et les photos ne sont pas copiées au même instant : une photo envoyée entre les deux peut manquer. C'est sans gravité.
 
-Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
-
-En production (PostgreSQL), la base est sauvegardée par `pg_dump` (format personnalisé, une seule photographie cohérente), sans les données des sessions ni les secrets des applications de codes. `verify_backup <dossier> --restore` la restaure en plus dans une base jetable, compte les comptes, puis la supprime. Pour restaurer pour de bon : arrêter les services, puis `pg_restore --clean --if-exists --no-owner -d hjb <dossier>/db.dump` en tant qu'utilisateur `hjb`.
+Les tests font une sauvegarde, la relisent et la restaurent, sur SQLite et sur PostgreSQL. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
 
 ## Réglages de la résidence
 
