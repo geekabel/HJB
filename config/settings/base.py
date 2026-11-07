@@ -345,3 +345,25 @@ DATA_UPLOAD_MAX_NUMBER_FILES = 10
 # Personal data, card T36: the retention durations and the contact are
 # residence settings (residence app, card T37b), changed by the
 # administration on the page "Réglages".
+
+
+# PostgreSQL, from the environment: production (card T38), and development
+# or tests when POSTGRES_DB is set (the CI runs the tests on it too).
+def postgres_setting():
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["POSTGRES_DB"],
+        "USER": os.environ.get("POSTGRES_USER", ""),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+        "HOST": os.environ.get("POSTGRES_HOST", ""),
+        "PORT": os.environ.get("POSTGRES_PORT", ""),
+        # Keep a connection a minute, and check it before use.
+        # https://docs.djangoproject.com/en/6.1/ref/databases/#persistent-connections
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
+    }
+
+
+# Addresses of a reverse proxy whose X-Forwarded-For is believed (card T38).
+# None in development: REMOTE_ADDR is the client.
+TRUSTED_PROXIES = []

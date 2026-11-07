@@ -10,10 +10,10 @@ bothering residents.
   a single address.
 - An IPv6 address counts for its /64 network: a client cannot change
   address to get around the limit.
-- Behind a proxy, REMOTE_ADDR is the proxy address: the real client
-  address must be set up before going live (card T38).
-- The counter lives in the Django cache (in memory, per process, as long
-  as no shared cache is chosen, T38).
+- Behind Caddy, the address is the client's, read by audit.service
+  client_ip from the proxy's X-Forwarded-For (card T38).
+- The counter lives in the Django cache: in production a database cache
+  shared by every process (card T38).
 
 Django docs: https://docs.djangoproject.com/en/6.1/topics/cache/#the-low-level-cache-api
 Python docs: https://docs.python.org/3/library/ipaddress.html

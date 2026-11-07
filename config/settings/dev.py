@@ -21,12 +21,16 @@ SECRET_KEY = os.environ.get(
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
+# SQLite, or PostgreSQL when POSTGRES_DB is set (as in production).
+if os.environ.get("POSTGRES_DB"):
+    DATABASES = {"default": postgres_setting()}  # noqa: F405
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
+        }
     }
-}
 
 # Passkeys: WebAuthn refuses IP addresses. Open http://localhost:8000,
 # not http://127.0.0.1:8000 (django-otp-webauthn docs).

@@ -31,9 +31,8 @@ class Command(BaseCommand):
             manifest = service.verify(folder)
         except service.BackupError as error:
             raise CommandError(f"Sauvegarde ratée : {error}") from error
-        rows = sum(manifest["rows"].values())
         self.stdout.write(
-            f"Sauvegarde vérifiée : {folder} ({rows} lignes, {len(manifest['files'])} photos). "
+            f"Sauvegarde vérifiée : {folder} ({service.describe(manifest)}). "
             f"Base copiée : {manifest['database']}."
         )
         for name in service.prune(to, keep):

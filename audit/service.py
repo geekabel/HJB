@@ -6,21 +6,38 @@ from audit.service import log_action
 log_action(Action.ROLES_CHANGED, target=user, details={...}, request=request)
 """
 
+import ipaddress
+
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
 from .models import AuditEntry
 
 
 def client_ip(request):
-    """Client address as Django sees it (REMOTE_ADDR, docs HttpRequest.META).
+    """The client's address (card T38).
 
-    Behind a proxy, this is the proxy address: the setting is planned for
-    deployment (card T38). We never read X-Forwarded-For here, because a
-    client can make it up.
+    REMOTE_ADDR, unless the request comes from a trusted proxy
+    (TRUSTED_PROXIES: Caddy on the same machine). Then X-Forwarded-For is
+    read from the right: each proxy appends the address it saw, so the
+    first address that is not a trusted proxy is the client. A client can
+    put anything at the left of the header; that part is never read.
     """
     if request is None:
         return None
-    return request.META.get("REMOTE_ADDR") or None
+    remote = request.META.get("REMOTE_ADDR") or None
+    trusted = set(getattr(settings, "TRUSTED_PROXIES", []))
+    if remote not in trusted:
+        return remote
+    for value in reversed(request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")):
+        value = value.strip()
+        try:
+            ipaddress.ip_address(value)
+        except ValueError:
+            return remote  # a broken header: keep what we know for sure
+        if value not in trusted:
+            return value
+    return remote
 
 
 def _label(target):
