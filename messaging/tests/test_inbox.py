@@ -382,5 +382,5 @@ class ToAnswerTests(InboxTestCase):
         # Card T34: the first one leads the page, four follow: five in all.
         self.assertIsNotNone(response.context["lead"])
         self.assertEqual(len(response.context["todos"]), 4)
-        self.assertContains(response, "Voir tout (2 de plus)")
+        self.assertContains(response, "Voir les autres messages à répondre (2)")
         self.assertContains(response, f"{LIST}?show=todo")

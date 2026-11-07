@@ -234,19 +234,19 @@ def home(request):
     from appointments import direct
     from housing.services import current_stay
 
-    from .home import SHOWN, latest_announcement, open_reports, todos
+    from .home import latest_announcement, open_reports, page, todos
 
     unread_direct = direct.unread_count(user)
-    found = todos(user, unread_direct)
     stay = current_stay(user)
+    lead, others, more = page(todos(user, unread_direct, stay=stay))
     return render(
         request,
         "access/home.html",
         {
             # Card T34: the first thing to do leads the page, the others follow.
-            "lead": found[0] if found else None,
-            "todos": found[1:SHOWN],
-            "more_todos": len(found) - SHOWN,
+            "lead": lead,
+            "todos": others,
+            "more_todos": more,
             "room": stay.room if stay else None,
             "my_reports": open_reports(user),
             "announcement": latest_announcement(user),

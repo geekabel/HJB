@@ -33,7 +33,7 @@
     <li><a href="{{ todo.url }}">{% icon todo.icon %}<span>{{ todo.title }}<small>{{ todo.detail }}</small></span>{% icon "chevron" %}</a></li>
     {% endfor %}
   </ul>
-  {% if more_todos > 0 %}<a href="{% url 'inbox:list' %}?show=todo">Voir tout ({{ more_todos }} de plus)</a>{% endif %}
+  {% if more_todos > 0 %}<a href="{% url 'inbox:list' %}?show=todo">Voir les autres messages à répondre ({{ more_todos }})</a>{% endif %}
 </section>
 {% elif not lead %}
 <div class="empty-card empty-card--done">
@@ -55,11 +55,11 @@
 <section class="stack stack--tight" aria-labelledby="reports-title">
   <div class="row row--between">
     <h2 id="reports-title" class="section-title">Mes signalements</h2>
-    <a href="{% url 'reports:list' %}">Tout voir</a>
+    <a href="{% url 'reports:list' %}">Tout voir<span class="visually-hidden"> : mes signalements</span></a>
   </div>
   <ul class="link-list">
     {% for report in my_reports %}
-    <li><a href="{% url 'reports:detail' report.pk %}">{% icon report.icon %}<span><strong>{{ report.get_category_display }}</strong><small>{% if report.status == "scheduled" %}Intervention {{ report.visit_text }}{% else %}n° {{ report.pk }} · {{ report.created_at|date:"j N" }}{% endif %}</small></span>{% include "reports/_status.html" %}{% icon "chevron" %}</a></li>
+    <li><a href="{% url 'reports:detail' report.pk %}">{% icon report.icon %}<span><strong>{{ report.get_category_display }}</strong><small>{% if report.status == "scheduled" %}Intervention {{ report.intervention_start|date:"D j N" }}, {{ report.intervention_start|time:"H:i" }}–{{ report.intervention_end|time:"H:i" }}{% else %}n° {{ report.pk }} · {{ report.created_at|date:"j N" }}{% endif %}</small></span>{% include "reports/_status.html" %}{% icon "chevron" %}</a></li>
     {% endfor %}
   </ul>
 </section>
