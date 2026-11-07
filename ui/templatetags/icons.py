@@ -68,6 +68,7 @@ ICONS = {
     "close": '<path d="M18 6 6 18M6 6l12 12"/>',
     "search": '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     "filter": '<path d="M3 5h18M6 12h12M10 19h4"/>',
+    "dot": '<circle cx="12" cy="12" r="3.5"/>',
     # Report categories (card T30)
     "bolt": '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
     "drop": '<path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/>',

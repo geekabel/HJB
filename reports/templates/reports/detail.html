@@ -9,6 +9,30 @@
 {% include "appointments/_messages.html" %}
 <p class="row text-muted">{% include "reports/_status.html" %}<span>n° {{ report.pk }} · chambre {{ report.room.number }}</span></p>
 
+{% if report.status == "done" %}
+{# The question that waits for the resident comes first (card T33, mockup R4) #}
+<section class="ask-card stack" aria-labelledby="ask-title">
+  <h2 id="ask-title" class="ask-card__title">Le problème est-il réglé ?</h2>
+  <p class="ask-card__lead">Intervention faite{% if staff_note %} : «&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p>
+  <form method="post" action="{% url 'reports:confirm' report.pk %}">
+    {% csrf_token %}
+    <button class="button button--on-color button--block" type="submit">{% icon "check" %}Oui, c'est réglé</button>
+  </form>
+  <details class="ask-card__more">
+    <summary class="button button--outline-on-color button--block">Pas encore</summary>
+    <form class="stack stack--tight" method="post" action="{% url 'reports:reopen' report.pk %}">
+      {% csrf_token %}
+      <label for="reopen-note">Qu'est-ce qui ne va pas ? <span class="ask-card__soft">(facultatif)</span></label>
+      <textarea id="reopen-note" name="note" rows="2" maxlength="300"></textarea>
+      <button class="button button--on-color" type="submit">Prévenir l'équipe</button>
+    </form>
+  </details>
+  {% if close_on %}<p class="ask-card__soft">Sans réponse, le signalement sera clos le {{ close_on|date:"l j F" }}.</p>{% endif %}
+</section>
+{% elif report.status == "scheduled" %}
+<div class="alert alert--info">{% icon "calendar" %}<p>Intervention prévue {{ report.visit_text }}.{% if not report.access_allowed %} Soyez présent, s'il vous plaît.{% endif %}{% if staff_note %}<br>«&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p></div>
+{% elif report.status == "new" %}<p class="text-muted text-small">Traité avant le {{ report.due_at|date:"j F à H:i" }}, en principe.</p>{% endif %}
+
 <div class="card stack">
   <p class="report-text" dir="auto">{{ report.description|linebreaksbr }}</p>
   {% if report.photos.all %}
@@ -19,16 +43,45 @@
   </ul>
   {% endif %}
   <dl class="details">
-    <dt>Envoyé le</dt><dd><time datetime="{{ report.created_at|date:'Y-m-d\TH:i:sO' }}">{{ report.created_at|date:"j F à H:i" }}</time></dd>
     <dt>Urgence</dt><dd>{{ report.get_urgency_display }}</dd>
     <dt>Accès</dt><dd>{% if report.access_allowed %}L'équipe peut entrer en votre absence{% else %}Vous voulez être présent{% endif %}</dd>
   </dl>
 </div>
-{% if report.status == "scheduled" %}
-<div class="alert alert--info">{% icon "calendar" %}<p>Intervention prévue {{ report.visit_text }}.{% if not report.access_allowed %} Soyez présent, s'il vous plaît.{% endif %}{% if staff_note %}<br>«&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p></div>
-{% elif report.status == "done" %}
-<div class="alert alert--success">{% icon "check" %}<p>Intervention faite.{% if staff_note %}<br>«&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p></div>
-{% elif report.status == "new" %}<p class="text-muted text-small">Traité avant le {{ report.due_at|date:"j F à H:i" }}, en principe.</p>{% endif %}
+
+<section class="card stack" aria-labelledby="history-title">
+  <h2 id="history-title" class="card__title">Historique</h2>
+  {# role="list": Safari drops the list meaning with list-style: none #}
+  <ol class="timeline" role="list">
+    {% for event in events %}
+    {% if forloop.first and report.is_open %}
+    <li class="timeline__step timeline__step--current" aria-current="step">
+      <span class="timeline__dot" aria-hidden="true">{% icon "dot" %}</span>
+    {% else %}
+    <li class="timeline__step">
+      <span class="timeline__dot" aria-hidden="true">{% icon "check" %}</span>
+    {% endif %}
+      <div>
+        <p class="timeline__what">{{ event.resident_label }}</p>
+        <p class="timeline__when text-muted text-small"><time datetime="{{ event.created_at|date:'Y-m-d\TH:i:sO' }}">{{ event.created_at|date:"j F à H:i" }}</time>{% if event.note %} · «&nbsp;{{ event.note }}&nbsp;»{% endif %}</p>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+{% if remind_from %}
+<section class="card stack" aria-labelledby="remind-title">
+  <h2 id="remind-title" class="card__title">Rien ne bouge ?</h2>
+  {% if can_remind %}
+  <form method="post" action="{% url 'reports:remind' report.pk %}">
+    {% csrf_token %}
+    <button class="button button--secondary button--block" type="submit">{% icon "bell" %}Relancer l'équipe</button>
+  </form>
+  {% else %}
+  <p class="text-muted text-small">Vous pourrez relancer l'équipe à partir du {{ remind_from|date:"l j F à H:i" }}.</p>
+  {% endif %}
+</section>
+{% endif %}
 
 {% include "reports/_emergency.html" %}
 {% endblock %}

@@ -57,15 +57,38 @@ def _plural(count, word, plural=None):
     return f"{count} {word if count <= 1 else plural or word + 's'}"
 
 
+def _team(report):
+    """The person in charge if he still handles reports, else all who do."""
+    people = list(handlers())
+    if report.assigned_to in people:
+        return [report.assigned_to]
+    return people
+
+
+@task
+def team_alert_task(report_id, title):
+    """A step of the resident (card T33): "Pas encore réglé", "Relance du résident"."""
+    report = Report.objects.filter(pk=report_id).select_related("room", "assigned_to").first()
+    if report is None:
+        return
+    body = f"Chambre {report.room.number}, {report.get_category_display().lower()}."
+    for person in _team(report):
+        push(
+            person,
+            title=title,
+            body=body,
+            url=reverse("reports_staff:detail", args=[report.pk]),
+            tag=f"signalement-{report.pk}",
+        )
+
+
 @task
 def late_alert_task(report_id):
     """Tell the person in charge (else everyone who handles reports) once."""
     report = Report.objects.filter(pk=report_id).select_related("room", "assigned_to").first()
     if report is None or report.status not in Report.WAITING:
         return  # handled meanwhile
-    people = list(handlers())
-    if report.assigned_to in people:
-        people = [report.assigned_to]
+    people = _team(report)
     body = (
         f"Chambre {report.room.number}, {report.get_category_display().lower()} "
         f"({report.get_urgency_display().lower()})."

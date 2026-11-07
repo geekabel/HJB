@@ -76,6 +76,8 @@ class Report(models.Model):
     due_at = models.DateTimeField("à traiter avant")
     intervention_start = models.DateTimeField("début de l'intervention", null=True, blank=True)
     intervention_end = models.DateTimeField("fin de l'intervention", null=True, blank=True)
+    # Marked done: closed on its own 3 days later without an answer (card T33).
+    done_at = models.DateTimeField("fait le", null=True, blank=True)
     # The team was told once that the report is late (card T32).
     late_alerted_at = models.DateTimeField("retard signalé à l'équipe le", null=True, blank=True)
     created_at = models.DateTimeField("créé le", default=timezone.now)
@@ -113,6 +115,30 @@ class Report(models.Model):
         start = timezone.localtime(self.intervention_start)
         end = timezone.localtime(self.intervention_end)
         return f"{date_format(start, 'l j F')}, de {start:%H:%M} à {end:%H:%M}"
+
+    # The resident may remind the team 48 h after the last step (card T33).
+    REMIND_AFTER = timedelta(hours=48)
+    CLOSE_AFTER = timedelta(days=3)
+
+    def last_step_at(self):
+        """When the resident last saw something move: the last step he sees."""
+        last = (
+            self.events.exclude(type=ReportEvent.Type.ASSIGNED)
+            .order_by("-created_at", "-pk")
+            .values_list("created_at", flat=True)
+            .first()
+        )
+        return last or self.created_at
+
+    def can_remind_from(self):
+        """When the resident may remind the team; None if not for this status."""
+        if self.status not in (*self.WAITING, self.Status.SCHEDULED):
+            return None
+        start = self.last_step_at()
+        if self.status == self.Status.SCHEDULED and self.intervention_end:
+            # Not before the planned visit is over
+            start = max(start, self.intervention_end)
+        return start + self.REMIND_AFTER
 
     def is_late(self, now=None):
         return self.status in self.WAITING and self.due_at <= (now or timezone.now())
@@ -192,6 +218,23 @@ class ReportEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_type_display()} · signalement n° {self.report_id}"
+
+    # The words of a step for the resident (card T33): staff first names only
+    RESIDENT_LABELS = {
+        Type.CREATED: "Signalement envoyé",
+        Type.SCHEDULED: "Intervention planifiée",
+        Type.INTERVENTION: "Intervention faite",
+        Type.CONFIRMED: "Réglé, vous l'avez confirmé",
+        Type.REOPENED: "Pas encore réglé",
+        Type.REMINDER: "Vous avez relancé l'équipe",
+        Type.CLOSED: "Clos",
+    }
+
+    def resident_label(self):
+        if self.type == self.Type.ACKNOWLEDGED:
+            name = self.author.first_name if self.author else ""
+            return f"Pris en charge par {name}" if name else "Pris en charge"
+        return self.RESIDENT_LABELS.get(self.type, self.get_type_display())
 
 
 class DailySummary(models.Model):
