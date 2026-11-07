@@ -134,7 +134,11 @@ class Report(models.Model):
         """When the resident may remind the team; None if not for this status."""
         if self.status not in (*self.WAITING, self.Status.SCHEDULED):
             return None
-        return self.last_step_at() + self.REMIND_AFTER
+        start = self.last_step_at()
+        if self.status == self.Status.SCHEDULED and self.intervention_end:
+            # Not before the planned visit is over
+            start = max(start, self.intervention_end)
+        return start + self.REMIND_AFTER
 
     def is_late(self, now=None):
         return self.status in self.WAITING and self.due_at <= (now or timezone.now())

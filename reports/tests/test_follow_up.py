@@ -126,3 +126,85 @@ class FollowUpTests(BoardTestCase):
         log_in_verified(self.client, self.marc)
         response = self.client.get(reverse("reports_staff:board"))
         self.assertContains(response, "sans réponse")
+
+
+class FollowUpReviewTests(FollowUpTests):
+    """Independent review of T33."""
+
+    def test_staff_and_get_cannot_act(self):
+        report = self.done_report()
+        log_in_verified(self.client, self.karim)
+        response = self.client.post(reverse("reports:confirm", args=[report.pk]))
+        self.assertEqual(response.status_code, 404)
+        log_in_verified(self.client, self.ines)
+        self.assertEqual(
+            self.client.get(reverse("reports:confirm", args=[report.pk])).status_code, 405
+        )
+
+    def test_remind_clock(self):
+        report = self.report()
+        report.events.update(created_at=timezone.now() - timedelta(hours=49))
+        handling.assign(report, self.karim, self.marc)  # on a new report: takes it
+        report.refresh_from_db()
+        self.assertNotEqual(report.status, "new")
+        # take() wrote an "acknowledged" step now: the clock starts again.
+        self.assertGreater(report.can_remind_from(), timezone.now())
+        report.events.update(created_at=timezone.now() - timedelta(hours=49))
+        handling.assign(report, self.karim, self.karim)
+        report.refresh_from_db()
+        self.assertLess(report.can_remind_from(), timezone.now())  # "Confié" does not count
+
+    def test_no_remind_before_the_planned_visit_is_over(self):
+        report = self.report()
+        start = timezone.now() + timedelta(days=5)
+        handling.plan(report, self.marc, start, start + timedelta(hours=1))
+        report.events.update(created_at=timezone.now() - timedelta(hours=49))
+        report.refresh_from_db()
+        self.assertGreater(report.can_remind_from(), start)
+
+    def test_no_remind_once_done_and_no_reopen_once_closed(self):
+        report = self.done_report()
+        response = self.post("remind", report)
+        self.assertContains(response, "un peu plus tard")
+        with mock.patch("reports.reminders._summary", return_value=False):
+            reminders.send_due(report.done_at + timedelta(days=3))
+        response = self.post("reopen", report)
+        self.assertContains(response, "n&#x27;attend pas votre réponse")
+        response = self.page(report)
+        self.assertNotContains(response, "Le problème est-il réglé ?")
+        self.assertContains(response, 'what">Clos')
+        self.assertNotContains(response, 'aria-current="step"')
+
+    def test_reopened_meanwhile_is_not_closed(self):
+        report = self.done_report()
+        handling.reopen(report, self.ines)
+        handling.done(report, self.marc)
+        report.refresh_from_db()
+        self.assertEqual(handling.close_unanswered(report.done_at + timedelta(days=2)), 0)
+
+    def test_one_failure_does_not_stop_the_others(self):
+        first, second = self.done_report(), self.done_report()
+        real = Report.objects.select_for_update
+
+        def flaky():
+            queryset = real()
+            original = queryset.get
+
+            def get(**kwargs):
+                if kwargs.get("pk") == first.pk:
+                    raise RuntimeError("bad row")
+                return original(**kwargs)
+
+            queryset.get = get
+            return queryset
+
+        with mock.patch.object(Report.objects, "select_for_update", side_effect=flaky):
+            closed = handling.close_unanswered(second.done_at + timedelta(days=3))
+        self.assertEqual(closed, 1)
+        second.refresh_from_db()
+        self.assertEqual(second.status, "closed")
+
+    def test_note_cut_at_300(self):
+        report = self.done_report()
+        self.post("reopen", report, {"note": "x" * 500})
+        self.assertEqual(len(report.events.latest("pk").note), 300)

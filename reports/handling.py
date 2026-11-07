@@ -16,10 +16,14 @@ reminds the team 48 h after the last step. Without an answer, a done report
 closes on its own after 3 days (reminders.py).
 """
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 
 from .models import Report, ReportEvent
+
+logger = logging.getLogger(__name__)
 
 
 class StepRefused(Exception):
@@ -171,21 +175,26 @@ def remind(report, resident):
 def close_unanswered(now=None):
     """Close the done reports without an answer for 3 days. Return how many."""
     now = now or timezone.now()
+    limit = now - Report.CLOSE_AFTER
     closed = 0
-    for pk in Report.objects.filter(
-        status=Report.Status.DONE, done_at__lte=now - Report.CLOSE_AFTER
-    ).values_list("pk", flat=True):
-        with transaction.atomic():
-            report = Report.objects.select_for_update().get(pk=pk)
-            if report.status != Report.Status.DONE:
-                continue
-            report.status = Report.Status.CLOSED
-            report.save(update_fields=["status", "updated_at"])
-            ReportEvent.objects.create(
-                report=report,
-                type=ReportEvent.Type.CLOSED,
-                note="Sans réponse pendant 3 jours.",
-                created_at=now,
-            )
-            closed += 1
+    for pk in Report.objects.filter(status=Report.Status.DONE, done_at__lte=limit).values_list(
+        "pk", flat=True
+    ):
+        try:
+            with transaction.atomic():
+                report = Report.objects.select_for_update().get(pk=pk)
+                # Checked again under the lock: reopened and done again meanwhile?
+                if report.status != Report.Status.DONE or report.done_at > limit:
+                    continue
+                report.status = Report.Status.CLOSED
+                report.save(update_fields=["status", "updated_at"])
+                ReportEvent.objects.create(
+                    report=report,
+                    type=ReportEvent.Type.CLOSED,
+                    note="Sans réponse pendant 3 jours.",
+                    created_at=now,
+                )
+                closed += 1
+        except Exception:  # one report must not stop the others
+            logger.exception("Done report not closed")
     return closed

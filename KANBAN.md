@@ -606,6 +606,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] « Relancer l'équipe » 48 h après la dernière étape, une fois par 48 h ; sinon la date à partir de laquelle on pourra
 - [x] Clôture automatique 3 jours après « fait », sans réponse ; la date est sur la carte du tableau
 - **Note de T32 appliquée** : à la réouverture, l'échéance repart de maintenant et l'alerte de retard peut revenir.
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Les signalements « faits » avant l'ajout de la date se ferment aussi (migration de données). Un signalement en erreur n'empêche plus la clôture des autres, et la date est vérifiée de nouveau sous verrou. Pas de relance avant la fin d'une visite planifiée. Phrase fausse sur les rappels retirée. Le point jaune marque l'étape en cours, seulement tant que le signalement est ouvert (aria-current). Champ de texte lisible en mode sombre ; la question vient avant le mot de l'équipe.
 
 ### E8 Accueils
 

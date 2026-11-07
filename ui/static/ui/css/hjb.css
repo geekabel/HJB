@@ -3060,6 +3060,10 @@
 
   .ask-card textarea {
     width: 100%;
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--control);
+    border-radius: var(--r-small);
+    background: var(--surface);
     color: var(--ink);
   }
 
@@ -3132,7 +3136,7 @@
     color: var(--on-action);
   }
 
-  .timeline__step--last .timeline__dot {
+  .timeline__step--current .timeline__dot {
     background: var(--warning);
     color: var(--ink);
   }

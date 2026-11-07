@@ -12,8 +12,8 @@
 {% if report.status == "done" %}
 {# The question that waits for the resident comes first (card T33, mockup R4) #}
 <section class="ask-card stack" aria-labelledby="ask-title">
-  <p class="ask-card__lead">Intervention faite{% if staff_note %} : «&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p>
   <h2 id="ask-title" class="ask-card__title">Le problème est-il réglé ?</h2>
+  <p class="ask-card__lead">Intervention faite{% if staff_note %} : «&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p>
   <form method="post" action="{% url 'reports:confirm' report.pk %}">
     {% csrf_token %}
     <button class="button button--on-color button--block" type="submit">{% icon "check" %}Oui, c'est réglé</button>
@@ -50,10 +50,16 @@
 
 <section class="card stack" aria-labelledby="history-title">
   <h2 id="history-title" class="card__title">Historique</h2>
-  <ol class="timeline">
+  {# role="list": Safari drops the list meaning with list-style: none #}
+  <ol class="timeline" role="list">
     {% for event in events %}
-    <li class="timeline__step{% if forloop.first %} timeline__step--last{% endif %}">
-      <span class="timeline__dot" aria-hidden="true">{% if forloop.first %}{% icon "dot" %}{% else %}{% icon "check" %}{% endif %}</span>
+    {% if forloop.first and report.is_open %}
+    <li class="timeline__step timeline__step--current" aria-current="step">
+      <span class="timeline__dot" aria-hidden="true">{% icon "dot" %}</span>
+    {% else %}
+    <li class="timeline__step">
+      <span class="timeline__dot" aria-hidden="true">{% icon "check" %}</span>
+    {% endif %}
       <div>
         <p class="timeline__what">{{ event.resident_label }}</p>
         <p class="timeline__when text-muted text-small"><time datetime="{{ event.created_at|date:'Y-m-d\TH:i:sO' }}">{{ event.created_at|date:"j F à H:i" }}</time>{% if event.note %} · «&nbsp;{{ event.note }}&nbsp;»{% endif %}</p>
@@ -72,7 +78,7 @@
     <button class="button button--secondary button--block" type="submit">{% icon "bell" %}Relancer l'équipe</button>
   </form>
   {% else %}
-  <p class="text-muted text-small">Vous pourrez relancer l'équipe à partir du {{ remind_from|date:"l j F à H:i" }}. Elle reçoit aussi des rappels automatiques.</p>
+  <p class="text-muted text-small">Vous pourrez relancer l'équipe à partir du {{ remind_from|date:"l j F à H:i" }}.</p>
   {% endif %}
 </section>
 {% endif %}
