@@ -16,7 +16,7 @@
 </div>
 {% else %}
 {% if form.errors %}
-<div class="alert alert--warning" role="alert">{% icon "alert" %}<p>Il manque quelque chose : voyez les points en rouge.{% if photos_lost %} Ajoutez de nouveau vos photos.{% endif %}</p></div>
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p>Vérifiez les points en rouge.{% if photos_lost %} Ajoutez de nouveau vos photos.{% endif %}</p></div>
 {% endif %}
 <form class="stack report-form" method="post" enctype="multipart/form-data">
   {% csrf_token %}

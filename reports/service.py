@@ -3,7 +3,7 @@
 from django.db import transaction
 from django.utils import timezone
 
-from housing.models import Stay
+from housing.services import current_stay
 
 from .models import Report, ReportEvent, ReportPhoto
 
@@ -13,7 +13,7 @@ class NoRoom(Exception):
 
 
 def room_of(resident):
-    stay = Stay.objects.current().filter(resident=resident).select_related("room").first()
+    stay = current_stay(resident)
     return stay.room if stay else None
 
 
@@ -39,8 +39,9 @@ def create(resident, data, now=None):
             )
             for content, width, height in data.get("photos", []):
                 photo = ReportPhoto(report=report, width=width, height=height)
-                photo.image.save("photo.jpg", content, save=True)
-                saved.append(photo.image.name)
+                photo.image.save("photo.jpg", content, save=False)
+                saved.append(photo.image.name)  # before the row: removed on error
+                photo.save()
             ReportEvent.objects.create(
                 report=report, author=resident, type=ReportEvent.Type.CREATED, created_at=now
             )

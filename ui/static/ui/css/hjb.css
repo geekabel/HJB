@@ -449,6 +449,11 @@
     html:has(.task-bar) {
       scroll-padding-block: 4.5rem 6rem;
     }
+
+    /* A field the browser shows (missing answer) keeps its step title in view */
+    .resident-page--task :is(input, textarea, select) {
+      scroll-margin-block-start: 3rem;
+    }
   }
 
   /* Staff area: a top bar with a "Menu" button below 64rem, a side menu above
@@ -1102,6 +1107,14 @@
   .resident-nav svg {
     width: 1.375rem;
     height: 1.375rem;
+  }
+
+  /* Five tabs on a 320 px phone: the labels stay on one line, whole */
+  @media (max-width: 22rem) {
+    .resident-nav a {
+      font-size: 0.6875rem;
+      white-space: nowrap;
+    }
   }
 
   .resident-nav__brand {

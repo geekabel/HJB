@@ -18,7 +18,9 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 MAX_PHOTOS = 3
 MAX_BYTES = 10 * 1024 * 1024  # per photo, as sent by the phone
-MAX_PIXELS = 50_000_000  # a 50 megapixel photo; more is refused unread
+# A 25 megapixel photo (phones take 12 to 24); more is refused unread. A PNG
+# is decoded at full size, so this also bounds the memory used.
+MAX_PIXELS = 25_000_000
 LONGEST_SIDE = 1600
 FORMATS = ["JPEG", "PNG", "WEBP"]
 QUALITY = 82
@@ -37,15 +39,18 @@ def clean(uploaded):
             width, height = image.size
             if width * height > MAX_PIXELS:
                 raise PhotoRefused("Photo trop grande.")
-            image.load()
-            image = ImageOps.exif_transpose(image)
+            # thumbnail() first: a JPEG is then decoded at a reduced size
+            # (draft mode), and the turn works on the small image.
             image.thumbnail((LONGEST_SIDE, LONGEST_SIDE))
+            image = ImageOps.exif_transpose(image)
             if image.mode not in ("RGB", "L"):
                 # Transparency (PNG, WebP) on white, then RGB for JPEG
                 background = Image.new("RGB", image.size, "white")
                 rgba = image.convert("RGBA")
                 background.paste(rgba, mask=rgba.getchannel("A"))
                 image = background
+            # Pillow copies some metadata from info (the JPEG comment): none kept.
+            image.info.clear()
             out = BytesIO()
             image.save(out, format="JPEG", quality=QUALITY, optimize=True)
             return ContentFile(out.getvalue()), image.width, image.height

@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from datetime import date, timedelta
 from io import BytesIO
+from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -148,7 +149,7 @@ class FormTests(ReportTestCase):
 
     def test_too_many_pixels_refused_unread(self):
         out = BytesIO()
-        Image.new("L", (8000, 8000)).save(out, format="PNG")  # 64 megapixels, small file
+        Image.new("L", (6000, 6000)).save(out, format="PNG")  # 36 megapixels, small file
         with self.assertRaisesMessage(photos.PhotoRefused, "trop grande"):
             photos.clean(SimpleUploadedFile("big.png", out.getvalue()))
 
@@ -202,3 +203,65 @@ class PrivacyTests(ReportTestCase):
         with override_settings(EMERGENCY_PHONE=""):
             response = self.client.get(NEW)
         self.assertContains(response, "Appelez tout de suite l'accueil.")
+
+
+class ReviewTests(ReportTestCase):
+    """Independent review of T30."""
+
+    def test_jpeg_comment_removed(self):
+        out = BytesIO()
+        Image.new("RGB", (50, 50)).save(out, format="JPEG", comment=b"<script>x</script>")
+        content, _, _ = photos.clean(SimpleUploadedFile("c.jpg", out.getvalue()))
+        data = content.read()
+        self.assertNotIn(b"script", data)
+        with Image.open(BytesIO(data)) as image:
+            self.assertNotIn("comment", image.info)
+
+    def test_other_formats_and_heavy_files_refused(self):
+        for fmt in ("GIF", "TIFF"):
+            out = BytesIO()
+            Image.new("RGB", (20, 20)).save(out, format=fmt)
+            with self.assertRaises(photos.PhotoRefused):
+                photos.clean(SimpleUploadedFile(f"x.{fmt.lower()}", out.getvalue()))
+        heavy = SimpleUploadedFile("big.jpg", b"0" * (photos.MAX_BYTES + 1))
+        with self.assertRaisesMessage(photos.PhotoRefused, "10 Mo"):
+            photos.clean(heavy)
+
+    def test_failure_leaves_no_file(self):
+        log_in_verified(self.client, self.ines)
+        storage = ReportPhoto.image.field.storage
+        with (
+            mock.patch("reports.service.ReportEvent.objects.create", side_effect=RuntimeError),
+            self.assertRaises(RuntimeError),
+        ):
+            self.client.post(NEW, self.data(photos=[jpeg(exif=False)]))
+        self.assertEqual(Report.objects.count(), 0)
+        _, files = storage.listdir("reports") if storage.exists("reports") else ([], [])
+        self.assertEqual(files, [])
+
+    def test_access_no_and_values_kept_after_an_error(self):
+        log_in_verified(self.client, self.ines)
+        response = self.client.post(NEW, self.data(urgency="", access="no"))
+        self.assertContains(response, "Vérifiez les points en rouge.")
+        self.assertContains(response, 'value="electricity" required checked')
+        self.assertContains(response, 'value="no" required checked')
+        self.assertContains(response, "ne s&#x27;allume plus")
+        self.client.post(NEW, self.data(access="no"))
+        self.assertFalse(Report.objects.get().access_allowed)
+
+    def test_anonymous_and_staff(self):
+        log_in_verified(self.client, self.ines)
+        self.client.post(NEW, self.data(photos=[jpeg(exif=False)]))
+        report = Report.objects.get()
+        urls = [
+            reverse("reports:list"),
+            reverse("reports:detail", args=[report.pk]),
+            reverse("reports:photo", args=[report.photos.get().pk]),
+        ]
+        self.client.logout()
+        for url in urls:
+            self.assertEqual(self.client.get(url).status_code, 302)
+        log_in_verified(self.client, self.karim)
+        self.assertEqual(self.client.get(urls[0]).status_code, 302)
+        for url in urls[1:]:
+            self.assertEqual(self.client.get(url).status_code, 404)

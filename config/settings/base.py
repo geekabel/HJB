@@ -289,7 +289,7 @@ SITE_URL = ""
 
 # Reports, card T30
 # The photos stay private: they live outside the static files, and only a view
-# that checks who asks serves them (reports/views.py). No MEDIA_URL.
+# that checks who asks serves them (reports/resident_views.py). No MEDIA_URL.
 # https://docs.djangoproject.com/en/6.1/topics/files/
 
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT") or BASE_DIR / "media")
@@ -298,3 +298,9 @@ MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT") or BASE_DIR / "media")
 # shown on the report form: the front desk, or the on-call number at night.
 # Empty: the form says "appelez l'accueil".
 EMERGENCY_PHONE = os.environ.get("DJANGO_EMERGENCY_PHONE", "")
+
+# At most 10 files in one request (3 photos per report). The total size of a
+# request is limited by the web server in front of Django (card T38, nginx
+# client_max_body_size): Django does not count the files in it.
+# https://docs.djangoproject.com/en/6.1/ref/settings/#data-upload-max-number-files
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
