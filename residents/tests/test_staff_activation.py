@@ -10,7 +10,7 @@ from django.utils.formats import date_format
 from accounts.activation_codes import redeem_code
 from accounts.models import ActivationCode
 from accounts.roles import Role
-from accounts.tests.helpers import log_in_verified, make_user
+from accounts.tests.helpers import confirm_now, log_in_verified, make_user
 from audit.models import Action, AuditEntry
 from housing.models import Floor, Room, Stay
 from housing.services import current_stay
@@ -33,6 +33,7 @@ class StaffTestCase(TestCase):
 
     def setUp(self):
         log_in_verified(self.client, self.front_desk)
+        confirm_now(self.client)  # a code or a cut access asks for it (card T37)
 
     def code_url(self, resident=None):
         return reverse("residents:activation_code", args=[(resident or self.awa).pk])
@@ -144,6 +145,18 @@ class ActivationCodeTests(StaffTestCase):
         self.assertEqual(lost_phone.get("/").status_code, 302)
         entry = AuditEntry.objects.get(action=Action.ACCESS_CUT)
         self.assertEqual(entry.summary(), "1 clé d'accès supprimée, 1 session fermée.")
+
+    def test_confirmation_needed(self):
+        from access.session_policy import CONFIRMED_AT_KEY
+
+        session = self.client.session
+        del session[CONFIRMED_AT_KEY]
+        session.save()
+        for name in ("residents:cut_access", "residents:activation_code"):
+            with self.subTest(name=name):
+                response = self.client.post(reverse(name, args=[self.awa.pk]))
+                self.assertTrue(response["Location"].startswith(reverse("access:confirm")))
+        self.assertFalse(AuditEntry.objects.filter(action=Action.ACCESS_CUT).exists())
 
     def test_cut_access_restricted(self):
         educator = make_user("eli", Role.EDUCATOR)

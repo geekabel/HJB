@@ -78,7 +78,14 @@ class AppCodeConfirmForm(forms.Form):
     code = AppCodeLoginForm.base_fields["code"]
 
 
-WRONG_APP_CODE = "Identifiant ou code incorrect. Attendez le code suivant et réessayez."
+WRONG_APP_CODE = (
+    "Identifiant ou code incorrect. Attendez le code suivant et réessayez. "
+    "Si cela continue, connectez-vous avec votre clé d'accès."
+)
+APP_CODE_LOCKED = (
+    "Trop de codes faux : cette application est bloquée. Utilisez votre clé d'accès, "
+    "puis reliez l'application à nouveau dans Mon compte."
+)
 TOO_MANY_APP_CODES = "Trop d'essais depuis ce réseau. Réessayez dans 10 minutes."
 # Wrong tries only (a right code never counts), over 10 minutes. Per address
 # and username: a stranger cannot block everyone behind the residence wifi.
@@ -125,23 +132,20 @@ def login_app_code(request):
         else:
             user = User.objects.filter(username=username).first()
             device = app_code.device_of(user) if app_code.allowed(user) else None
-            try:
-                if device is None:
-                    app_code.same_work_without_device()
-                    right = False
-                else:
-                    right = app_code.verify(device, form.cleaned_data["code"], request)
-            except app_code.Waiting as waiting:
-                form.add_error(None, _waiting_message(waiting))
+            # Never "wait" nor "locked" here: the page tells a stranger nothing.
+            if device is None:
+                app_code.same_work_without_device()
+                right = False
             else:
-                if right:
-                    login(request, user, backend="accounts.backends.PermissionsOnlyBackend")
-                    otp_login(request, device)
-                    session_policy.open_session(request, user)
-                    return redirect(next_url or settings.LOGIN_REDIRECT_URL)
-                for name, _most in limits:
-                    rate_limits.record_attempt(name, ip, APP_CODE_WINDOW)
-                form.add_error(None, WRONG_APP_CODE)
+                right = app_code.verify(device, form.cleaned_data["code"], request)
+            if right:
+                login(request, user, backend="accounts.backends.PermissionsOnlyBackend")
+                otp_login(request, device)
+                session_policy.open_session(request, user)
+                return redirect(next_url or settings.LOGIN_REDIRECT_URL)
+            for name, _most in limits:
+                rate_limits.record_attempt(name, ip, APP_CODE_WINDOW)
+            form.add_error(None, WRONG_APP_CODE)
     return render(request, "access/login_app_code.html", {"form": form, "next": next_url})
 
 
@@ -157,7 +161,7 @@ def confirm(request):
     form = AppCodeConfirmForm(request.POST or None) if device else None
     if request.method == "POST" and form is not None and form.is_valid():
         try:
-            right = app_code.verify(device, form.cleaned_data["code"], request)
+            right = app_code.verify(device, form.cleaned_data["code"], request, tell_waiting=True)
         except app_code.Waiting as waiting:
             form.add_error("code", _waiting_message(waiting))
         else:
@@ -165,7 +169,12 @@ def confirm(request):
                 otp_login(request, device)
                 session_policy.open_session(request, request.user)
                 return redirect(next_url)
-            form.add_error("code", "Ce code ne correspond pas. Tapez le code affiché maintenant.")
+            if app_code.is_locked(device):
+                form.add_error("code", APP_CODE_LOCKED)
+            else:
+                form.add_error(
+                    "code", "Ce code ne correspond pas. Tapez le code affiché maintenant."
+                )
     return render(
         request,
         "access/confirm.html",

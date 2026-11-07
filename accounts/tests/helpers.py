@@ -36,3 +36,14 @@ def log_in_verified(client, user):
     session[DEVICE_ID_SESSION_KEY] = passkey.persistent_id
     session.save()
     return passkey
+
+
+def confirm_now(client):
+    """As if the passkey had just been used again (sensitive actions, T14)."""
+    import time
+
+    from access.session_policy import CONFIRMED_AT_KEY
+
+    session = client.session
+    session[CONFIRMED_AT_KEY] = time.time()
+    session.save()

@@ -133,13 +133,19 @@ TASKS = {
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# The "__Host-" prefix: the browser keeps these cookies only if they come
+# over HTTPS, for the whole site and without a Domain attribute. Another
+# site on a subdomain can then neither set nor replace them.
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#cookie_prefixes
+SESSION_COOKIE_NAME = "__Host-sessionid"
+CSRF_COOKIE_NAME = "__Host-csrftoken"
 
 # HSTS: we start with a short duration, then raise it once
-# HTTPS is checked (card T37).
+# HTTPS works on the real domain (card T38: then 31536000, one year).
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
 
 # These two settings affect all subdomains of the chosen domain.
-# They stay off until the domain is known (T37):
+# They stay off until the domain is known (T38):
 # so `check --deploy` shows security.W005 and security.W021.
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS") == "1"
 SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD") == "1"

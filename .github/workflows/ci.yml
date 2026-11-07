@@ -38,6 +38,10 @@ jobs:
       - name: Ruff (format)
         run: ruff format --check .
 
+      # Known vulnerabilities in the application dependencies (card T37).
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt --progress-spinner off
+
       - name: Django checks
         run: python manage.py check
 

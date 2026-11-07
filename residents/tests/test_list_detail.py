@@ -430,3 +430,40 @@ class DesignTests(ResidentsTestCase):
         response = self.client.post(url, {"first_name": "", "last_name": "Koné"})
         self.assertContains(response, 'id="edit" open')
         self.assertContains(response, '<a href="#edit">Voir les champs à corriger</a>')
+
+
+class PhoneChangeTests(TestCase):
+    """A new number could hand an account over (card T37)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.roles import Role
+
+        cls.nadia = make_user("nadia", Role.FRONT_DESK)
+        cls.awa = make_user("awa", first_name="Awa", last_name="Koné", phone="+33612345647")
+
+    def post(self, phone):
+        return self.client.post(
+            reverse("residents:detail", args=[self.awa.pk]),
+            {"first_name": "Awa", "last_name": "Koné", "phone": phone, "email": ""},
+        )
+
+    def test_new_number_needs_a_recent_confirmation_and_is_logged(self):
+        from accounts.tests.helpers import confirm_now
+        from audit.models import Action, AuditEntry
+
+        log_in_verified(self.client, self.nadia)
+        response = self.post("06 99 88 77 66")
+        self.assertTrue(response["Location"].startswith(reverse("access:confirm")))
+        self.awa.refresh_from_db()
+        self.assertEqual(self.awa.phone, "+33612345647")
+        # The same number typed another way is no change.
+        self.assertEqual(self.post("06 12 34 56 47").status_code, 302)
+        self.assertFalse(AuditEntry.objects.filter(action=Action.PHONE_CHANGED).exists())
+        confirm_now(self.client)
+        self.post("06 99 88 77 66")
+        self.awa.refresh_from_db()
+        self.assertEqual(self.awa.phone, "+33699887766")
+        entry = AuditEntry.objects.get(action=Action.PHONE_CHANGED)
+        self.assertNotIn("99887766", str(entry.details))  # masked
+        self.assertEqual(entry.actor, self.nadia)
