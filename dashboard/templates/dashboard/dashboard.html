@@ -35,7 +35,7 @@
       <li><a href="{% url 'reports_staff:detail' report.pk %}">{% icon report.icon %}<span><strong>Ch. {{ report.room.number }} · {{ report.get_category_display }}</strong><small>{{ report.get_urgency_display }} · {% if report.assigned_to %}{{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% else %}personne ne s'en occupe{% endif %}</small></span><span class="badge badge--warning">{{ report.delay }}</span>{% icon "chevron" %}</a></li>
       {% endfor %}
       {% for visit in visit_replies %}
-      <li><a href="{% url 'messaging:tracking' visit.campaign.pk %}">{% icon "door" %}<span><strong>{{ visit.campaign.title }}</strong><small>{{ visit.answered }} réponse{{ visit.answered|pluriel }} sur {{ visit.asked }} · {{ visit.present }} présent{{ visit.present|pluriel }} · {{ visit.absent }} absent{{ visit.absent|pluriel }}</small></span>{% icon "chevron" %}</a></li>
+      <li><a href="{% url 'messaging:tracking' visit.campaign.pk %}">{% icon "door" %}<span><strong>{{ visit.title }}</strong><small>{{ visit.campaign.event_date|date:"l j F"|capfirst }}{% for floor in visit.campaign.floors.all %} · {{ floor }}{% endfor %}</small><small>{{ visit.answered }} réponse{{ visit.answered|pluriel }} sur {{ visit.asked }} · {{ visit.present }} présent{{ visit.present|pluriel }} · {{ visit.absent }} absent{{ visit.absent|pluriel }}</small></span>{% icon "chevron" %}</a></li>
       {% endfor %}
     </ul>
     {% else %}
@@ -53,7 +53,7 @@
     {% if scheduled %}
     <ol class="planned">
       {% for campaign in scheduled %}
-      <li><a href="{% url 'messaging:tracking' campaign.pk %}"><span class="planned__when">{{ campaign.when }}</span><span><strong>{{ campaign.title }}</strong><small>{{ campaign.audience }}</small></span></a></li>
+      <li><a href="{% url 'messaging:tracking' campaign.pk %}"><span class="planned__when">{{ campaign.when }}</span><span><strong>{{ campaign.display_title }}</strong><small>{{ campaign.audience }}</small>{% if campaign.stuck %}<span class="badge badge--warning">En attente, pas parti</span>{% endif %}</span></a></li>
       {% endfor %}
     </ol>
     {% else %}
@@ -64,9 +64,9 @@
     <h3 class="card__title rotation-title">Rotation des visites</h3>
     <ol class="rotation" aria-label="Étages dans l'ordre des visites">
       {% for step in rotation %}
-      <li class="rotation__floor{% if step.is_last %} rotation__floor--last{% elif step.is_next %} rotation__floor--next{% endif %}"{% if step.is_next %} aria-current="step"{% endif %}>
+      <li class="rotation__floor{% if step.is_last %} rotation__floor--last{% endif %}{% if step.is_next %} rotation__floor--next{% endif %}"{% if step.is_next %} aria-current="step"{% endif %}>
         <strong>{{ step.floor.short_label }}</strong>
-        <small>{% if step.is_next %}prochain{% elif step.last_visit %}{{ step.last_visit|date:"j N" }}{% else %}jamais{% endif %}</small>
+        <small>{% if step.is_next %}prochain{% elif step.is_last %}{{ step.last_visit|date:"j N" }}</small><small>dernier{% elif step.last_visit %}{{ step.last_visit|date:"j N" }}{% else %}jamais{% endif %}</small>
       </li>
       {% endfor %}
     </ol>

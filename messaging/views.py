@@ -145,18 +145,27 @@ def compose(request, pk=None):
     if pk is None:
         campaign = Campaign(author=request.user)
         template_pk = request.GET.get("modele", "")
-        if template_pk.isdigit():
+        if template_pk.isascii() and template_pk.isdigit():
             template = MessageTemplate.objects.filter(pk=template_pk).first()
             if template:
                 campaign = _from_template(template)
                 campaign.author = request.user
         floor_pk = request.GET.get("etage", "")
-        floor = Floor.objects.filter(pk=floor_pk).first() if floor_pk.isdigit() else None
+        is_number = floor_pk.isascii() and floor_pk.isdigit()
+        floor = Floor.objects.filter(pk=floor_pk).first() if is_number else None
         if floor is not None:
             # The next visit of the rotation (dashboard, card T35): the visit
             # template if there is one, sent to that floor.
-            template = MessageTemplate.objects.filter(type=MessageType.VISIT).order_by("pk").first()
-            campaign = _from_template(template) if template else Campaign(type=MessageType.VISIT)
+            template = (
+                MessageTemplate.objects.filter(type=MessageType.VISIT, reply_expected=True)
+                .order_by("pk")
+                .first()
+            )
+            campaign = (
+                _from_template(template)
+                if template
+                else Campaign(type=MessageType.VISIT, reply_type=ReplyType.ATTENDANCE)
+            )
             campaign.author = request.user
             campaign.everyone = False
             initial = {"floors": [floor.pk]}

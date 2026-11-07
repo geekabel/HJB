@@ -8,13 +8,18 @@ reason stays between the resident and the educator.
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Exists, Max, OuterRef, Q
+from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
 LATE_SHOWN = 5
+VISITS_SHOWN = 5
 SCHEDULED_SHOWN = 5
+# run_scheduled starts a programmed message within the minute; past this
+# delay, the message is stuck (worker stopped) and the dashboard says so.
+STUCK_AFTER = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -54,14 +59,27 @@ def figures(user, now):
             )
         )
     if user.has_perm("accounts.send_messages"):
-        scheduled = Campaign.objects.filter(status=Campaign.Status.SCHEDULED, send_at__gte=now)
-        first = scheduled.order_by("send_at").values_list("send_at", flat=True).first()
+        scheduled = Campaign.objects.filter(status=Campaign.Status.SCHEDULED)
+        stuck = scheduled.filter(send_at__lt=now - STUCK_AFTER).count()
+        first = (
+            scheduled.filter(send_at__gte=now - STUCK_AFTER)
+            .order_by("send_at")
+            .values_list("send_at", flat=True)
+            .first()
+        )
+        if stuck:
+            detail = f"dont {stuck} en attente, pas parti{'s' if stuck > 1 else ''}"
+        elif first:
+            detail = f"prochain : {_short_moment(first, now)}"
+        else:
+            detail = ""
         found.append(
             Figure(
                 "Messages programmés",
                 scheduled.count(),
-                f"prochain : {_short_moment(first, now)}" if first else "",
+                detail,
                 reverse("messaging:list"),
+                warn=bool(stuck),
             )
         )
     start, end = _today_bounds(now)
@@ -120,6 +138,7 @@ def late_reports(now):
 @dataclass(frozen=True)
 class VisitReplies:
     campaign: object
+    title: str
     asked: int
     present: int
     absent: int
@@ -132,6 +151,7 @@ class VisitReplies:
 def visit_replies(now):
     """The visits to come that ask "Présent ou Absent", with their answers."""
     from messaging.models import AttendanceReply, Campaign, Delivery, ReplyType
+    from messaging.placeholders import fill, values_for
 
     day = timezone.localtime(now).date()
     campaigns = (
@@ -157,16 +177,22 @@ def visit_replies(now):
                 distinct=True,
             ),
         )
-        .order_by("event_date", "pk")[:LATE_SHOWN]
+        .prefetch_related("floors")
+        .order_by("event_date", "pk")[:VISITS_SHOWN]
     )
-    return [VisitReplies(c, c.asked, c.present, c.absent) for c in campaigns]
+    return [
+        VisitReplies(c, fill(c.title, values_for(c)), c.asked, c.present, c.absent)
+        for c in campaigns
+    ]
 
 
 def scheduled_messages(now):
+    """The programmed messages, the stuck ones first (their time is past)."""
     from messaging.models import Campaign
+    from messaging.placeholders import fill, values_for
 
     campaigns = list(
-        Campaign.objects.filter(status=Campaign.Status.SCHEDULED, send_at__gte=now)
+        Campaign.objects.filter(status=Campaign.Status.SCHEDULED)
         .prefetch_related("floors")
         .annotate(
             room_count=Count("rooms", distinct=True), people_count=Count("people", distinct=True)
@@ -176,6 +202,8 @@ def scheduled_messages(now):
     for campaign in campaigns:
         campaign.when = _short_moment(campaign.send_at, now)
         campaign.audience = _audience(campaign)
+        campaign.display_title = fill(campaign.title, values_for(campaign))
+        campaign.stuck = campaign.send_at < now - STUCK_AFTER
     return campaigns
 
 
@@ -199,33 +227,43 @@ class RotationStep:
 
 
 def rotation():
-    """The floors in their visit order (Floor.visit_order), the last one
-    visited and the next one. A visit is a message of type "Visite" sent to
-    a floor (scheduled, sending or sent); its day is the event date, or the
-    sending date."""
-    from housing.models import Floor
-    from messaging.models import Campaign, MessageType
+    """The floors where someone lives, in their visit order
+    (Floor.visit_order), the last one visited and the next one.
 
-    floors = list(Floor.objects.order_by("visit_order", "number"))
+    A visit is a message of type "Visite" that asks "Présent ou Absent"
+    (a cancel notice does not count), sent to a floor: programmed, being
+    sent or sent. Its day is the event date, or else the sending day. When
+    one visit covers several floors, the last of them in the order is the
+    last visited: the rotation goes on after it.
+    """
+    from housing.models import Floor, Stay
+    from messaging.models import Campaign, MessageType, ReplyType
+
+    lived_in = Stay.objects.filter(room__floor=OuterRef("pk"), departure__isnull=True)
+    floors = list(Floor.objects.filter(Exists(lived_in)).order_by("visit_order", "number"))
     if not floors:
         return []
+    zone = timezone.get_current_timezone()
     visits = (
         Campaign.objects.filter(
             type=MessageType.VISIT,
+            reply_type=ReplyType.ATTENDANCE,
             status__in=(Campaign.Status.SCHEDULED, Campaign.Status.SENDING, Campaign.Status.SENT),
+            floors__isnull=False,
+        )
+        .annotate(
+            day=Coalesce(
+                "event_date",
+                TruncDate(Coalesce("send_at", "started_at", "created_at"), tzinfo=zone),
+            )
         )
         .values("floors")
-        .annotate(last_event=Max("event_date"), last_sent=Max("send_at"))
+        .annotate(last=Max("day"))
     )
-    last_of = {}
-    for row in visits:
-        if row["floors"] is None:
-            continue
-        sent = timezone.localtime(row["last_sent"]).date() if row["last_sent"] else None
-        last_of[row["floors"]] = row["last_event"] or sent
+    last_of = {row["floors"]: row["last"] for row in visits}
     visited = [f for f in floors if last_of.get(f.pk)]
     if visited:
-        last = max(visited, key=lambda f: (last_of[f.pk], -floors.index(f)))
+        last = max(visited, key=lambda f: (last_of[f.pk], floors.index(f)))
         following = floors[(floors.index(last) + 1) % len(floors)]
     else:
         last, following = None, floors[0]

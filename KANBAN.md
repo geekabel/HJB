@@ -624,6 +624,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] À traiter en priorité : signalements en retard, réponses aux visites à venir (présents, absents, sur combien) ; envois programmés
 - [x] Rotation des visites par étage (ordre de visite des étages) : le dernier visité, le prochain, et « Préparer la visite » qui ouvre un message de visite pour cet étage
 - [x] Pour toute l'équipe, chaque partie selon les droits ; l'accueil et l'administration arrivent dessus
+- [x] Relecture indépendante : la rotation prend la visite la plus récente de chaque étage (date de l'évènement, sinon jour d'envoi) ; une visite sur deux étages continue après le dernier ; les avis d'annulation et les étages sans résident ne comptent pas ; un message programmé bloqué est signalé ; titres remplis ({date}) ; le dernier étage visité est écrit en clair ; `?etage=²` ne fait plus d'erreur 500 ; le modèle choisi est celui qui demande « Présent ou Absent »
 
 ### E9 Mise en service
 

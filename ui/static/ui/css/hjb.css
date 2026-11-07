@@ -3259,6 +3259,11 @@
     color: var(--text-muted);
   }
 
+  .planned .badge {
+    align-self: flex-start;
+    margin-block-start: var(--s-1);
+  }
+
   .planned__when {
     flex: none;
     width: 7rem;
@@ -3293,7 +3298,8 @@
   }
 
   .rotation__floor--last {
-    background: var(--surface-2);
+    outline: 2px solid var(--action-bg);
+    outline-offset: -2px;
     color: var(--ink);
   }
 
