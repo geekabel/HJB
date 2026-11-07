@@ -93,6 +93,10 @@ def _reach(user, *, title, body, url, tag, sms="", **options):
         _sms(user, sms)
 
 
+# Shared with the reports (card T31): same rule for the SMS fallback.
+reach = _reach
+
+
 def _until(start, now):
     """Seconds the push service keeps the reminder: never shown after the start."""
     return max(60, int((start - now).total_seconds()))

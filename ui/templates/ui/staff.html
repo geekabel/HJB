@@ -2,12 +2,12 @@
 {% load icons french %}
 {% comment %}
   Section template for the staff area.
-  Variables: ``active_nav`` (messages, appointments, conversations, residents,
-  audit, notifications, account).
+  Variables: ``active_nav`` (messages, reports, appointments, conversations,
+  residents, audit, notifications, account).
   On a computer (64rem and more) the menu is a column on the left. Below,
   a top bar with a "Menu" button opens it (ui/js/app.js); without
   JavaScript the menu stays open above the page.
-  Dashboard (T35) and reports (T31) come back when they exist.
+  The dashboard (T35) comes back when it exists.
 {% endcomment %}
 {% block body_class %}staff-page{% endblock %}
 {% block body %}
@@ -23,6 +23,11 @@
       {% endif %}
       {% if perms.accounts.send_messages %}
       <li><a href="{% url 'messaging:list' %}"{% if active_nav == "messages" %} aria-current="page"{% endif %}>Messages aux résidents</a></li>
+      {% endif %}
+      {% if perms.accounts.manage_reports %}
+      {% with fresh=new_reports %}
+      <li><a href="{% url 'reports_staff:board' %}"{% if active_nav == "reports" %} aria-current="page"{% endif %}>Signalements{% if fresh %}<span class="visually-hidden">, </span> <span class="counter"><span aria-hidden="true">{% if fresh > 99 %}99+{% else %}{{ fresh }}{% endif %}</span><span class="visually-hidden">{{ fresh }} nouveau{{ fresh|pluriel:"x" }}</span></span>{% endif %}</a></li>
+      {% endwith %}
       {% endif %}
       {% if perms.accounts.manage_appointments %}
       <li><a href="{% url 'appointments:availability' %}"{% if active_nav == "appointments" %} aria-current="page"{% endif %}>Rendez-vous</a></li>

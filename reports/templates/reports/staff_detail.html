@@ -1,0 +1,95 @@
+{% extends "ui/staff.html" %}
+{% load icons french %}
+{% block title %}Signalement n° {{ report.pk }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'reports_staff:board' %}">{% icon "back" %}Signalements</a>
+<header class="page-header">
+  <div class="stack stack--tight">
+    <h1>{{ report.get_category_display }} · chambre {{ report.room.number }}</h1>
+    <p class="row text-muted">{% include "reports/_status.html" %}<span>n° {{ report.pk }} · {{ report.get_urgency_display }}{% if report.late %} · <strong>en retard</strong>{% endif %}{% if report.assigned_to %} · confié à {{ report.assigned_to.get_full_name|default:report.assigned_to.get_username }}{% endif %}</span></p>
+  </div>
+</header>
+
+{# On a phone: the problem, what to do, then the history. On a computer: two columns. #}
+<div class="report-layout">
+  <div class="report-layout__main">
+    <section class="card stack report-layout__problem" aria-labelledby="problem-title">
+      <h2 id="problem-title" class="card__title">Le problème</h2>
+      <p class="report-text" dir="auto">{{ report.description|linebreaksbr }}</p>
+      {% if report.photos.all %}
+      <ul class="report-photos" aria-label="Photos">
+        {% for photo in report.photos.all %}
+        <li><a href="{% url 'reports_staff:photo' photo.pk %}"><img src="{% url 'reports_staff:photo' photo.pk %}" alt="Photo {{ forloop.counter }}" width="{{ photo.width }}" height="{{ photo.height }}" loading="lazy"></a></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <dl class="details">
+        <dt>Signalé le</dt><dd><time datetime="{{ report.created_at|date:'Y-m-d\TH:i:sO' }}">{{ report.created_at|date:"j F à H:i" }}</time></dd>
+        <dt>À traiter avant</dt><dd><time datetime="{{ report.due_at|date:'Y-m-d\TH:i:sO' }}">{{ report.due_at|date:"j F à H:i" }}</time></dd>
+        <dt>Accès</dt><dd>{% if report.access_allowed %}Entrée permise en son absence{% else %}Le résident veut être présent{% endif %}</dd>
+        {% if report.intervention_start %}<dt>Intervention</dt><dd>{{ report.visit_text }}</dd>{% endif %}
+      </dl>
+    </section>
+
+    <section class="card stack report-layout__history" aria-labelledby="history-title">
+      <h2 id="history-title" class="card__title">Historique</h2>
+      <ol class="history">
+        {% for event in events %}
+        <li><strong>{{ event.get_type_display }}</strong> <span class="text-muted text-small"><time datetime="{{ event.created_at|date:'Y-m-d\TH:i:sO' }}">{{ event.created_at|date:"j F à H:i" }}</time>{% if event.author %} · {{ event.author.get_full_name|default:event.author.get_username }}{% endif %}</span>{% if event.note %}<br><span dir="auto">«&nbsp;{{ event.note }}&nbsp;»</span>{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+
+  <div class="report-layout__side">
+    {% if can_act %}
+    <div class="stack report-layout__actions">
+    <section class="card stack" aria-labelledby="who-title">
+      <h2 id="who-title" class="card__title">Qui s'en occupe ?</h2>
+      {% if report.status == "new" %}
+      <form method="post" action="{% url 'reports_staff:take' report.pk %}">
+        {% csrf_token %}
+        <button class="button button--block" type="submit">Je m'en occupe</button>
+      </form>
+      {% endif %}
+      <form class="stack stack--tight" method="post" action="{% url 'reports_staff:assign' report.pk %}">
+        {% csrf_token %}
+        {{ assign_form.assignee.as_field_group }}
+        <button class="button button--quiet" type="submit">Confier</button>
+      </form>
+    </section>
+
+    <section class="card stack" aria-labelledby="plan-title">
+      <h2 id="plan-title" class="card__title">{% if report.status == "scheduled" %}Déplacer l'intervention{% else %}Planifier l'intervention{% endif %}</h2>
+      {% if not report.access_allowed %}<p class="text-small text-muted">Le résident veut être présent : il reçoit l'heure par notification, ou par SMS.</p>{% endif %}
+      <form class="stack stack--tight" method="post" action="{% url 'reports_staff:plan' report.pk %}">
+        {% csrf_token %}
+        <div class="plan-fields">
+          {{ plan_form.day.as_field_group }}
+          {{ plan_form.start.as_field_group }}
+          {{ plan_form.end.as_field_group }}
+        </div>
+        {{ plan_form.note.as_field_group }}
+        <button class="button{% if report.status != 'acknowledged' %} button--secondary{% endif %}" type="submit">{% icon "calendar" %}{% if report.status == "scheduled" %}Déplacer{% else %}Planifier{% endif %}</button>
+      </form>
+    </section>
+
+    <section class="card stack" aria-labelledby="done-title">
+      <h2 id="done-title" class="card__title">Intervention faite ?</h2>
+      <form class="stack stack--tight" method="post" action="{% url 'reports_staff:done' report.pk %}">
+        {% csrf_token %}
+        {{ done_form.note.as_field_group }}
+        <button class="button{% if report.status != 'scheduled' %} button--secondary{% endif %}" type="submit">{% icon "check" %}Marquer comme fait</button>
+      </form>
+    </section>
+    </div>
+    {% endif %}
+
+    <section class="card stack report-layout__resident" aria-labelledby="resident-title">
+      <h2 id="resident-title" class="card__title">Résident</h2>
+      <p>{% if perms.accounts.view_residents %}<a href="{% url 'residents:detail' report.resident.pk %}">{{ report.resident.get_full_name|default:report.resident.get_username }}</a>{% else %}{{ report.resident.get_full_name|default:report.resident.get_username }}{% endif %}<br><span class="text-muted">Chambre {{ report.room.number }} · {{ report.room.floor }}</span></p>
+      {% if report.resident.phone %}<p><a href="tel:{{ report.resident.phone }}">{% icon "phone" %} Appeler</a></p>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

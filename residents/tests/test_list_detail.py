@@ -181,8 +181,9 @@ class ListTests(ResidentsTestCase):
         self.client.get(url)
         # Including 3 for the session (saved on each request) and 2 for the passkey
         # that verified the session (django-otp, card T14), 1 for the wifi (T15) and 1
-        # for the number of wifi accesses to renew (T17).
-        with self.assertNumQueries(18):
+        # for the number of wifi accesses to renew (T17), 1 for the new reports in the
+        # menu (T31).
+        with self.assertNumQueries(19):
             self.client.get(url)
         for i in range(10):
             resident = User.objects.create_user(f"x{i}", first_name="X", last_name=str(i))
@@ -191,7 +192,7 @@ class ListTests(ResidentsTestCase):
                 room=Room.objects.create(number=f"2{i:02}", floor=self.f1),
                 arrival=D1,
             )
-        with self.assertNumQueries(18):
+        with self.assertNumQueries(19):
             self.client.get(url)
 
 
