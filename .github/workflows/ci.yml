@@ -85,7 +85,9 @@ jobs:
     # The tests again on PostgreSQL, the production database (card T38).
     # Service containers: https://docs.github.com/en/actions/use-cases-and-examples/using-containerized-services/creating-postgresql-service-containers
     name: Tests on PostgreSQL
-    runs-on: ubuntu-latest
+    # Same Ubuntu as the server: its archive has the PostgreSQL 16 client
+    # that pg_dump needs. ubuntu-latest (26.04) does not.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
