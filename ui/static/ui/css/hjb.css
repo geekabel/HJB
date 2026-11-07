@@ -531,6 +531,16 @@
     margin-block-start: var(--s-4);
   }
 
+  /* A section title with a link on its right ("Tout voir") */
+  .row:has(> .section-title) {
+    align-items: baseline;
+    margin-block-start: var(--s-4);
+  }
+
+  .row > .section-title {
+    margin-block-start: 0;
+  }
+
   /* A list of links, one per row, each a full-width target (Mon compte) */
   .link-list {
     margin: 0;
@@ -560,7 +570,7 @@
     background: var(--surface-2);
   }
 
-  .link-list a > span:not(.counter, .avatar) {
+  .link-list a > span:not(.counter, .avatar, .badge) {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -3095,6 +3105,61 @@
 
   .ask-card :focus-visible {
     outline-color: var(--on-action);
+  }
+
+  .ask-card__lead svg {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  /* Resident home (card T34): four shortcuts as tiles, two by two */
+  .shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shortcut-grid a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    height: 100%;
+    min-height: 5.5rem;
+    padding: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .shortcut-grid a:hover {
+    border-color: var(--action);
+  }
+
+  .shortcut-grid__icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--r-small);
+    background: var(--action-soft);
+    color: var(--action);
+  }
+
+  .shortcut-grid__icon--warm {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .shortcut-grid__icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   /* History of a report: newest first, a line between the steps */

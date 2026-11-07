@@ -212,7 +212,7 @@ def home(request):
     """Home page. Staff start on their main task: meetings for an educator,
     reports for maintenance, residents otherwise.
 
-    To be replaced by cards T34 (residents) and T35 (staff).
+    The resident home is card T34; the staff dashboard comes with T35.
     """
     user = request.user
     if not is_resident(user):
@@ -232,17 +232,24 @@ def home(request):
             return redirect("messaging:list")
         return redirect("account")
     from appointments import direct
+    from housing.services import current_stay
 
-    from .home import SHOWN, todos
+    from .home import latest_announcement, open_reports, page, todos
 
     unread_direct = direct.unread_count(user)
-    found = todos(user, unread_direct)
+    stay = current_stay(user)
+    lead, others, more = page(todos(user, unread_direct, stay=stay))
     return render(
         request,
         "access/home.html",
         {
-            "todos": found[:SHOWN],
-            "more_todos": len(found) - SHOWN,
+            # Card T34: the first thing to do leads the page, the others follow.
+            "lead": lead,
+            "todos": others,
+            "more_todos": more,
+            "room": stay.room if stay else None,
+            "my_reports": open_reports(user),
+            "announcement": latest_announcement(user),
             "active_nav": "home",
             # Replaces the context processor: counted once for the page and the bar.
             "unread_direct": unread_direct,
