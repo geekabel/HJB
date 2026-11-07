@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "dashboard",
     # Personal data: information page, retention and purge (card T36).
     "privacy",
+    # Backups of the database and the photos, read back (card T37).
+    "backups",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.

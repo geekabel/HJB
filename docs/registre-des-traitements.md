@@ -153,7 +153,12 @@ Repères :
 - Connexion par clé d'accès (passkey) ; application de codes pour l'équipe.
 - Droits par rôle ; pages sensibles jamais gardées en cache.
 - Mots de passe wifi chiffrés ; codes stockés en empreinte.
-- HTTPS, cookies sécurisés et CSP : carte T37. Sauvegardes testées : T37.
+- HTTPS obligatoire, cookies sécurisés (`Secure`, `HttpOnly`, préfixe
+  `__Host-`), politique de sécurité du contenu (CSP), fonctions du
+  navigateur inutiles coupées (Permissions-Policy).
+- Sauvegardes chaque nuit, relues aussitôt (`backup_data`) ; les clés n'y
+  sont pas. Copie chiffrée hors du serveur : à fixer avec T38.
+- Dépendances vérifiées contre les failles connues à chaque push (`pip-audit`).
 - Hébergement, sauvegardes, dossier des photos hors du site public : à
   compléter avec la carte T38 (hébergeur, pays, contrat de sous-traitance).
 

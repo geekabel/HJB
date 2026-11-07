@@ -1,5 +1,7 @@
 # Development dependencies, on top of the application ones.
 -r requirements.txt
 ruff==0.17.3
+# Known vulnerabilities in the pinned dependencies (card T37, run by the CI).
+pip-audit==2.10.1
 # Pillow also draws the application icons (tools/make_icons.py, card T18):
 # it is pinned once, in requirements.txt (card T30).

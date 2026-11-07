@@ -90,6 +90,13 @@ python -m tools.validate_w3c --jar ~/.cache/vnu/node_modules/vnu-jar/build/dist/
 
 Le dépôt est public. Un second workflow lance [gitleaks](https://github.com/gitleaks/gitleaks-action) sur chaque push. Les secrets restent dans l'environnement du serveur (voir [.env.example](.env.example)).
 
+### Sécurité
+
+- **Politique de sécurité du contenu (CSP)**, en développement aussi : seuls les fichiers du site peuvent s'exécuter ou se charger. Pas de script ni de style écrit dans la page, pas d'autre origine, pas d'affichage dans un cadre. Une violation apparaît dans la console du navigateur.
+- **Permissions-Policy** : caméra, micro, position, paiement, USB et capture d'écran sont coupés. La photo d'un signalement passe par le choix d'un fichier, pas par la caméra.
+- **En production** : HTTPS obligatoire, cookies `Secure` avec le préfixe `__Host-`, HSTS d'une heure au départ. Quand HTTPS marche sur le vrai domaine (T38), passer `DJANGO_SECURE_HSTS_SECONDS` à 31536000, puis, si tous les sous-domaines sont en HTTPS, `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=1` et `DJANGO_SECURE_HSTS_PRELOAD=1`. D'ici là, `check --deploy` signale seulement ces deux réglages (W005, W021) et l'absence de fournisseur SMS.
+- **Dépendances** : la CI lance `pip-audit` sur `requirements.txt` à chaque push.
+
 ## Réglages
 
 | Fichier | Rôle |
@@ -149,6 +156,7 @@ Les commandes planifiées, avec les réglages de production et les mêmes variab
 - chaque jour, `prune_push_subscriptions` : retire les appareils des comptes désactivés ;
 - chaque jour, `prune_db_task_results` : efface les tâches terminées depuis plus de 14 jours ;
 - chaque jour, `clearsessions` (Django) : efface les sessions expirées ;
+- chaque nuit, `backup_data --to /var/backups/hjb --keep 14` : sauvegarde la base et les photos, puis relit la sauvegarde (voir « Sauvegardes ») ;
 - chaque jour, `purge_personal_data --apply` : supprime les données dont la durée de conservation est passée (voir « Données personnelles »). **À ajouter seulement quand l'association a validé les durées.** Sans `--apply`, la commande compte sans rien supprimer.
 
 Exemple de lignes cron, avec le fichier d'environnement du service et `flock` pour qu'une exécution ne commence pas avant la fin de la précédente :
@@ -160,6 +168,35 @@ Exemple de lignes cron, avec le fichier d'environnement du service et `flock` po
 
 Le chemin, le fichier d'environnement et le service du *worker* seront fixés avec le déploiement (T38). Relancer une commande est sans risque : un message ou un rappel déjà envoyé ne repart pas.
 
+
+## Sauvegardes
+
+```sh
+python manage.py backup_data --to /var/backups/hjb --keep 14   # sauvegarde, relit, garde les 14 dernières
+python manage.py verify_backup /var/backups/hjb/hjb-20261107-030000
+```
+
+Une sauvegarde est un dossier (accès réservé au propriétaire) avec :
+- `db.sqlite3` : une copie faite par l'API de sauvegarde de SQLite, cohérente même pendant les écritures ;
+- `media.tar.gz` : les photos des signalements ;
+- `manifest.json` : le nombre de lignes par table, la liste des photos et l'empreinte SHA-256 des deux fichiers.
+
+`backup_data` relit chaque sauvegarde juste après l'avoir faite : intégrité de la base, nombre de lignes, empreintes, liste des photos. Une sauvegarde ratée sort en erreur, et les anciennes restent.
+
+**Les clés ne sont pas dans la sauvegarde** (`DJANGO_SECRET_KEY`, `DJANGO_WIFI_KEYS`, `DJANGO_VAPID_PRIVATE_KEY`). Gardez-en une copie ailleurs, à part : sans les clés wifi, les mots de passe wifi sauvegardés sont illisibles ; avec elles dans la même sauvegarde, un vol les ouvrirait.
+
+**Copie hors du serveur** : la sauvegarde contient des données personnelles. Chiffrez-la avant de la copier ailleurs (par exemple avec `age` ou `gpg`). Son lieu et sa durée sont à fixer avec le déploiement (T38).
+
+**Restaurer** :
+1. arrêter le site, le *worker* et les tâches planifiées ;
+2. `python manage.py verify_backup <dossier>` ;
+3. remplacer le fichier de la base par `db.sqlite3` de la sauvegarde ;
+4. vider `DJANGO_MEDIA_ROOT`, puis `tar -xzf <dossier>/media.tar.gz -C "$DJANGO_MEDIA_ROOT"` ;
+5. `python manage.py migrate`, puis `python manage.py check --deploy`, puis relancer les services.
+
+Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient aussi qu'une sauvegarde modifiée est refusée.
+
+Avec PostgreSQL (si T38 le choisit), la base se sauvegarde avec `pg_dump` ; `backup_data` le dit et s'arrête.
 
 ## Données personnelles
 
