@@ -12,7 +12,7 @@
   <form method="post" action="{% url 'reports_staff:take' report.pk %}">
     {% csrf_token %}
     <input type="hidden" name="from" value="board">
-    <button class="button button--secondary button--block" type="submit">Je m'en occupe<span class="visually-hidden"> : chambre {{ report.room.number }}</span></button>
+    <button class="button button--secondary button--block" type="submit">Je m'en occupe<span class="visually-hidden"> : signalement n° {{ report.pk }}</span></button>
   </form>
   {% endif %}
 </article>

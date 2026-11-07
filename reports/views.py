@@ -59,8 +59,17 @@ def board(request):
         reports = [r for r in reports if r.is_late(now)]
     for report in reports:
         report.late = report.is_late(now)
-    # Late first, then the closest due date (the oldest done ones first).
-    reports.sort(key=lambda r: (not r.late, r.due_at))
+
+    # Late first, then the closest due date; planned visits by their time,
+    # done work from the oldest.
+    def order(report):
+        if report.status == Report.Status.SCHEDULED and report.intervention_start:
+            return (False, report.intervention_start)
+        if report.status == Report.Status.DONE:
+            return (False, report.updated_at)
+        return (not report.late, report.due_at)
+
+    reports.sort(key=order)
     columns = [
         (status, label, [r for r in reports if r.status == status]) for status, label in COLUMNS
     ]
@@ -146,7 +155,8 @@ def take(request, pk):
 def assign(request, pk):
     form = AssignForm(request.POST)
     if not form.is_valid():
-        return _step(request, pk, lambda report: None)
+        messages.warning(request, "Choisissez une personne de la liste.")
+        return redirect("reports_staff:detail", pk=pk)
 
     def action(report):
         handling.assign(report, request.user, form.cleaned_data["assignee"])

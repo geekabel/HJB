@@ -76,9 +76,9 @@ def _sms(user, text):
     try:
         send_sms(user.phone, text)
     except SmsError as error:
-        logger.warning("Appointment SMS not sent: %s", type(error).__name__)
+        logger.warning("Fallback SMS not sent: %s", type(error).__name__)
         return False
-    logger.info("Appointment SMS sent: %s segment(s)", analyze(text).segments)
+    logger.info("Fallback SMS sent: %s segment(s)", analyze(text).segments)
     return True
 
 

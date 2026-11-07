@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T31 | Tableau des signalements (équipe) | E7 Signalements | T30 |
 | T32 | Délais, relances et récapitulatif quotidien | E7 Signalements | T31, T21 |
 | T33 | Suivi et confirmation par le résident | E7 Signalements | T31 |
 | T34 | Accueil du résident | E8 Accueils | T23, T27, T33 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | D6 | Pages pleines et ordinateur | 7 nov. 2026 |
 | D8 | Écrans de l'équipe, deuxième passe | 7 nov. 2026 |
 | T30 | Signaler un problème | 7 nov. 2026 |
+| T31 | Tableau des signalements (équipe) | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -583,11 +583,14 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - **Notes** : l'équipe ne voit les signalements qu'avec T31 (tableau et notifications). Le numéro d'urgence est à régler sur le serveur.
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Le commentaire d'un JPEG passait dans la photo gardée : retiré. Au plus 10 fichiers par requête, et la taille totale sera limitée au proxy (T38). Mémoire : la photo est réduite avant d'être tournée, limite à 25 mégapixels. Plus de fichier orphelin si l'enregistrement échoue. Message d'erreur neutre. Onglets lisibles sur un écran de 320 px. Le titre d'une étape reste visible quand le navigateur montre un champ manquant.
 
-#### T31 Tableau des signalements (équipe)
+#### T31 Tableau des signalements (équipe) (fait le 7 nov. 2026)
 - **Maquette** : P3.
-- [ ] Colonnes : nouveau, pris en charge, planifié, fait
-- [ ] Assignation, planification d'un créneau
-- [ ] Le résident est notifié à chaque changement
+- **Docs** : [Django : select_for_update](https://docs.djangoproject.com/en/6.1/ref/models/querysets/#select-for-update), [Django : on_commit](https://docs.djangoproject.com/en/6.1/topics/db/transactions/#performing-actions-after-commit).
+- [x] Colonnes : nouveau, pris en charge, planifié, fait ; sur téléphone elles se suivent ; filtres Tous, Confiés à moi, En retard ; les retards d'abord
+- [x] « Je m'en occupe » depuis le tableau ; sur la fiche : confier, planifier la visite (jour, de, à, un mot pour le résident), marquer comme fait ; historique de chaque étape
+- [x] Le résident est notifié à chaque étape ; l'heure de la visite part aussi par SMS s'il veut être présent et n'a pas l'application ; il voit la visite prévue et le mot de l'équipe sur son signalement
+- [x] Menu de l'équipe : « Signalements » avec le nombre de nouveaux ; la maintenance arrive sur le tableau
+- **Revue indépendante (7 nov.)** : corrigé après relecture. Le mot de l'équipe (visite, travail fait) s'affiche chez le résident. Plus de visite planifiée aujourd'hui à une heure passée. Colonne « Planifié » triée par heure de visite. « Confié à » est écrit dans l'historique, sans prévenir le résident. Un mauvais choix de personne affiche un message. Après une erreur, un bandeau en haut le dit. Chaque bouton « Je m'en occupe » a son propre nom (n° du signalement). Nombre de requêtes du tableau stable.
 
 #### T32 Délais, relances et récapitulatif quotidien
 - [ ] Échéance selon l'urgence : 4 h, 48 h, 7 jours

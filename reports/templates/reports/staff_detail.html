@@ -10,6 +10,9 @@
   </div>
 </header>
 
+{% if plan_form.errors or done_form.errors %}
+<div class="alert alert--warning" role="alert">{% icon "alert" %}<p>Vérifiez les points en rouge, plus bas.</p></div>
+{% endif %}
 {# On a phone: the problem, what to do, then the history. On a computer: two columns. #}
 <div class="report-layout">
   <div class="report-layout__main">

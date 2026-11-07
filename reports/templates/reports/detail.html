@@ -25,7 +25,9 @@
   </dl>
 </div>
 {% if report.status == "scheduled" %}
-<div class="alert alert--info">{% icon "calendar" %}<p>Intervention prévue {{ report.visit_text }}.{% if not report.access_allowed %} Soyez présent, s'il vous plaît.{% endif %}</p></div>
+<div class="alert alert--info">{% icon "calendar" %}<p>Intervention prévue {{ report.visit_text }}.{% if not report.access_allowed %} Soyez présent, s'il vous plaît.{% endif %}{% if staff_note %}<br>«&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p></div>
+{% elif report.status == "done" %}
+<div class="alert alert--success">{% icon "check" %}<p>Intervention faite.{% if staff_note %}<br>«&nbsp;{{ staff_note }}&nbsp;»{% endif %}</p></div>
 {% elif report.status == "new" %}<p class="text-muted text-small">Traité avant le {{ report.due_at|date:"j F à H:i" }}, en principe.</p>{% endif %}
 
 {% include "reports/_emergency.html" %}

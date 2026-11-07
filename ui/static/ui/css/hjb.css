@@ -2957,7 +2957,7 @@
     inset: 0;
   }
 
-  .report-card:hover {
+  .report-card:not(.report-card--late):hover {
     border-color: var(--action);
   }
 

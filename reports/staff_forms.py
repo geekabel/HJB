@@ -53,9 +53,12 @@ class PlanForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        start, end = data.get("start"), data.get("end")
+        day, start, end = data.get("day"), data.get("start"), data.get("end")
         if start and end and end <= start:
             self.add_error("end", "L'heure de fin doit être après le début.")
+        now = timezone.localtime()
+        if day == now.date() and start and start <= now.time():
+            self.add_error("start", "Cette heure est passée.")
         return data
 
     def moments(self):

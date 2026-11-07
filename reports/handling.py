@@ -5,8 +5,11 @@ occupe" at once: the second one is told), writes a ReportEvent (the history,
 shown to the resident in T33) and tells the resident, after the commit.
 
     new ── take ──> acknowledged ── plan ──> scheduled ── done ──> done
-                         └────────────── done ──────────────────┘
-A planned visit can be moved (plan again). Closing comes with T33.
+     │                   └────────────── done ──────────────────┘
+     └── plan or done directly (the staff went at once)
+A planned visit can be moved (plan again). Giving the report to someone
+else is written in the history, without telling the resident. Closing
+comes with T33.
 """
 
 from django.db import transaction
@@ -23,13 +26,14 @@ def _locked(report):
     return Report.objects.select_for_update().get(pk=report.pk)
 
 
-def _event(report, by, kind, note="", now=None):
+def _event(report, by, kind, note="", now=None, tell=True):
     event = ReportEvent.objects.create(
         report=report, author=by, type=kind, note=note.strip(), created_at=now or timezone.now()
     )
-    from .tasks import notify_resident_task
+    if tell:
+        from .tasks import notify_resident_task
 
-    transaction.on_commit(lambda: notify_resident_task.enqueue(event_id=event.pk))
+        transaction.on_commit(lambda: notify_resident_task.enqueue(event_id=event.pk))
     return event
 
 
@@ -60,6 +64,8 @@ def assign(report, by, assignee):
         return take(report, by, assignee)
     report.assigned_to = assignee
     report.save(update_fields=["assigned_to", "updated_at"])
+    name = assignee.get_full_name() or assignee.get_username()
+    _event(report, by, ReportEvent.Type.ASSIGNED, f"À {name}", tell=False)
     return report
 
 

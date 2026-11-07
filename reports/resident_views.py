@@ -17,7 +17,7 @@ from access.session_policy import is_resident
 
 from . import photos, service
 from .forms import ReportForm
-from .models import Report, ReportPhoto
+from .models import Report, ReportEvent, ReportPhoto
 
 # How soon the staff take the report in hand, shown under each urgency
 DELAY_TEXT = {
@@ -104,11 +104,22 @@ def detail(request, pk):
         pk=pk,
         resident=request.user,
     )
+    # The word of the staff with the last planned visit or the work done
+    last = (
+        report.events.filter(type__in=[ReportEvent.Type.SCHEDULED, ReportEvent.Type.INTERVENTION])
+        .order_by("-created_at", "-pk")
+        .first()
+    )
     return _page(
         render(
             request,
             "reports/detail.html",
-            {"active_nav": "reports", "report": report, **_emergency()},
+            {
+                "active_nav": "reports",
+                "report": report,
+                "staff_note": last.note if last else "",
+                **_emergency(),
+            },
         )
     )
 

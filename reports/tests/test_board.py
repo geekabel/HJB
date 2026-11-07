@@ -161,3 +161,102 @@ class StepTests(BoardTestCase):
         report.refresh_from_db()
         self.assertEqual(report.assigned_to, self.marc)
         self.assertEqual(ReportEvent.objects.filter(report=report, type="acknowledged").count(), 1)
+
+
+class ReviewTests(BoardTestCase):
+    """Independent review of T31."""
+
+    def test_staff_note_shown_to_the_resident(self):
+        report = self.report()
+        log_in_verified(self.client, self.marc)
+        day = timezone.localdate() + timedelta(days=1)
+        self.client.post(
+            self.url("plan", report),
+            {
+                "plan-day": day.isoformat(),
+                "plan-start": "09:00",
+                "plan-end": "10:00",
+                "plan-note": "Libérez le radiateur.",
+            },
+        )
+        log_in_verified(self.client, self.ines)
+        response = self.client.get(reverse("reports:detail", args=[report.pk]))
+        self.assertContains(response, "Libérez le radiateur.")
+        log_in_verified(self.client, self.marc)
+        self.client.post(self.url("done", report), {"done-note": "Purgé."})
+        log_in_verified(self.client, self.ines)
+        response = self.client.get(reverse("reports:detail", args=[report.pk]))
+        self.assertContains(response, "Intervention faite.")
+        self.assertContains(response, "Purgé.")
+
+    def test_today_with_a_past_time(self):
+        report = self.report()
+        log_in_verified(self.client, self.marc)
+        now = timezone.localtime()
+        if now.hour == 0:
+            self.skipTest("no past hour today")
+        response = self.client.post(
+            self.url("plan", report),
+            {"plan-day": now.date().isoformat(), "plan-start": "00:00", "plan-end": "00:30"},
+        )
+        self.assertContains(response, "Cette heure est passée.", status_code=400)
+        self.assertContains(response, 'role="alert"', status_code=400)
+
+    def test_assign_is_written_but_not_told(self):
+        report = self.report()
+        log_in_verified(self.client, self.karim)
+        self.client.post(self.url("take", report))
+        self.reach.reset_mock()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(self.url("assign", report), {"assignee": self.marc.pk})
+        self.reach.assert_not_called()
+        event = report.events.get(type=ReportEvent.Type.ASSIGNED)
+        self.assertEqual((event.author, event.note), (self.karim, "À Marc"))
+        response = self.client.post(self.url("assign", report), {"assignee": 0}, follow=True)
+        self.assertContains(response, "Choisissez une personne de la liste.")
+
+    def test_steps_from_new_and_after_done(self):
+        report = self.report()
+        log_in_verified(self.client, self.marc)
+        self.client.post(self.url("done", report))
+        report.refresh_from_db()
+        self.assertEqual((report.status, report.assigned_to), ("done", self.marc))
+        response = self.client.post(
+            self.url("assign", report), {"assignee": self.karim.pk}, follow=True
+        )
+        self.assertContains(response, "Ce signalement est terminé.")
+        day = (timezone.localdate() + timedelta(days=1)).isoformat()
+        plan = {"plan-day": day, "plan-start": "09:00", "plan-end": "10:00"}
+        response = self.client.post(self.url("plan", report), plan, follow=True)
+        self.assertContains(response, "Ce signalement est terminé.")
+        other = self.report()
+        log_in_verified(self.client, self.marc)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(self.url("plan", other), plan)
+            self.client.post(self.url("plan", other), plan | {"plan-start": "08:00"})
+        other.refresh_from_db()
+        self.assertEqual(other.status, "scheduled")
+        self.assertIn("de 08:00 à 10:00", self.reach.call_args.kwargs["body"])
+
+    def test_residents_and_anonymous_cannot_act(self):
+        report = self.report()
+        for name in ("take", "done", "assign", "plan"):
+            response = self.client.post(self.url(name, report))  # still Inès
+            self.assertIn(response.status_code, (302, 403))
+        self.client.logout()
+        self.assertEqual(self.client.post(self.url("take", report)).status_code, 302)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "new")
+
+    def test_board_query_count_is_stable(self):
+        self.report()
+        log_in_verified(self.client, self.marc)
+        self.client.get(BOARD)
+        with self.assertNumQueries(12):
+            self.client.get(BOARD)
+        for _ in range(3):
+            self.report()
+        log_in_verified(self.client, self.marc)
+        self.client.get(BOARD)
+        with self.assertNumQueries(12):  # the same with more reports
+            self.client.get(BOARD)

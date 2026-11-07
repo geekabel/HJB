@@ -146,6 +146,8 @@ class ReportEvent(models.Model):
     class Type(models.TextChoices):
         CREATED = "created", "Signalé"
         ACKNOWLEDGED = "acknowledged", "Pris en charge"
+        # Staff only: the resident is not told who handles the report.
+        ASSIGNED = "assigned", "Confié"
         SCHEDULED = "scheduled", "Intervention planifiée"
         INTERVENTION = "intervention", "Intervention faite"
         CONFIRMED = "confirmed", "Réglé, confirmé par le résident"
