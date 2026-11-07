@@ -5,7 +5,8 @@
   is told once, or everyone who handles reports when nobody took it.
 - A report done 3 days ago without an answer of the resident is closed
   (card T33).
-- Every morning at 9:00, a summary goes to the team: new reports, late ones,
+- Every weekday morning at 9:00 (not on Saturday or Sunday, Godwin's choice
+  of 7 November), a summary goes to the team: new reports, late ones,
   visits of the day, work waiting for the resident's confirmation. Nothing is
   sent on a day with nothing to say. A summary not sent by noon (worker
   stopped) is skipped: it would be stale.
@@ -49,7 +50,7 @@ def _summary(now):
     from .tasks import daily_summary_task
 
     local = timezone.localtime(now)
-    if not SUMMARY_FROM <= local.time() < SUMMARY_UNTIL:
+    if local.weekday() >= 5 or not SUMMARY_FROM <= local.time() < SUMMARY_UNTIL:
         return False
     try:
         with transaction.atomic():

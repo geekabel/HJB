@@ -81,6 +81,8 @@ class ReminderTests(ReportTestCase):
 
     def test_morning_summary(self):
         today = timezone.localdate()
+        while today.weekday() >= 5:  # a weekday
+            today += timedelta(days=1)
         fresh = self.report(urgency="urgent")
         late = self.report()
         Report.objects.filter(pk=fresh.pk).update(due_at=at(today, 18))
@@ -121,8 +123,24 @@ class ReminderTests(ReportTestCase):
             daily_summary_task.call(day=today.isoformat())
         self.push.assert_not_called()
 
+    def test_no_summary_on_the_weekend(self):
+        self.report()
+        saturday = timezone.localdate()
+        while saturday.weekday() != 5:
+            saturday += timedelta(days=1)
+        for day in (saturday, saturday + timedelta(days=1)):
+            with self.at_clock(at(day, 9, 30)):
+                reminders.send_due(at(day, 9, 30))
+        self.assertFalse(DailySummary.objects.exists())
+        monday = saturday + timedelta(days=2)
+        with self.at_clock(at(monday, 9, 30)):
+            reminders.send_due(at(monday, 9, 30))
+        self.assertTrue(DailySummary.objects.filter(day=monday).exists())
+
     def test_nothing_to_say(self):
         today = timezone.localdate()
+        while today.weekday() >= 5:
+            today += timedelta(days=1)
         with self.at_clock(at(today, 9, 30)):
             reminders.send_due(at(today, 9, 30))
         self.push.assert_not_called()

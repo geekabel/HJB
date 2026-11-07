@@ -596,7 +596,7 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Échéance selon l'urgence : 4 h, 48 h, 7 jours ; « reste 20 h » ou « retard 5 h » sur chaque carte
 - [x] Rappel à l'équipe en cas de retard, une seule fois : à la personne qui s'en occupe, sinon à toute l'équipe des signalements
 - [x] Récapitulatif chaque matin à 9 h (nouveaux, en retard, interventions du jour, à confirmer), rien s'il n'y a rien ; jamais après midi
-- **Notes** : lancé par `run_scheduled` chaque minute. Le récapitulatif part tous les jours, week-end compris.
+- **Notes** : lancé par `run_scheduled` chaque minute. Le récapitulatif part du lundi au vendredi (choix de Godwin, 7 nov.).
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Les tests ne dépendent plus de l'heure à laquelle ils tournent. « retard 25 min » au lieu de « retard 0 h » la première heure. Un récapitulatif sorti en retard de la file (après midi, ou un autre jour) ne part plus. Un nouveau signalement en retard compte une seule fois. Même règle de retard partout (à l'échéance pile).
 
 #### T33 Suivi et confirmation par le résident (fait le 7 nov. 2026)
