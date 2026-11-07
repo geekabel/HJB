@@ -146,3 +146,15 @@ if not SECURE_HSTS_PRELOAD:
 TRUSTED_PROXIES = _list("DJANGO_TRUSTED_PROXIES") or ["127.0.0.1", "::1"]
 if os.environ.get("DJANGO_BEHIND_PROXY", "1") == "1":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# Errors go to the standard error, so to the journal of the service
+# (journalctl -u hjb-web). Without this, with DEBUG off and no ADMINS, a
+# server error (500) would be written nowhere.
+# https://docs.djangoproject.com/en/6.1/topics/logging/#configuring-logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+}

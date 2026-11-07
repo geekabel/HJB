@@ -71,14 +71,14 @@ def _rooms(items, floor):
         if "-" in text:
             start, _, end = text.partition("-")
             if not (start.isdigit() and end.isdigit()) or int(start) > int(end):
-                raise DataError(f"Étage {floor} : plage de chambres invalide « {text} ».")
+                raise DataError(f"Étage {floor} : plage de chambres invalide « {text} ».")
             width = len(start)
             rooms += [str(n).zfill(width) for n in range(int(start), int(end) + 1)]
         elif text:
             rooms.append(text)
     for number in rooms:
         if len(number) > 10:
-            raise DataError(f"Chambre « {number} » : 10 caractères au plus.")
+            raise DataError(f"Chambre « {number} » : 10 caractères au plus.")
     return rooms
 
 
@@ -91,7 +91,7 @@ def check(data):
 
     for key, value in (data.get("residence") or {}).items():
         if key not in SETTINGS_FIELDS:
-            raise DataError(f"residence : réglage inconnu « {key} ».")
+            raise DataError(f"residence : réglage inconnu « {key} ».")
         plan.settings[key] = "" if value is None else str(value).strip()
 
     seen_rooms = set()
@@ -100,11 +100,11 @@ def check(data):
             raise DataError("floors : chaque étage a un numéro (number).")
         number = entry["number"]
         if not isinstance(number, int) or number < 0:
-            raise DataError(f"Étage « {number} » : un nombre entier, 0 pour le rez-de-chaussée.")
+            raise DataError(f"Étage « {number} » : un nombre entier, 0 pour le rez-de-chaussée.")
         rooms = _rooms(entry.get("rooms"), number)
         for room in rooms:
             if room in seen_rooms:
-                raise DataError(f"Chambre « {room} » : en double dans le fichier.")
+                raise DataError(f"Chambre « {room} » : en double dans le fichier.")
             seen_rooms.add(room)
         order = entry.get("visit_order", number)
         plan.floors.append((number, str(entry.get("name") or ""), order, rooms))
@@ -115,16 +115,16 @@ def check(data):
             raise DataError("staff : chaque compte a un identifiant (username).")
         username = str(entry["username"]).strip()
         if username in usernames:
-            raise DataError(f"Compte « {username} » : en double dans le fichier.")
+            raise DataError(f"Compte « {username} » : en double dans le fichier.")
         usernames.add(username)
         roles = entry.get("roles") or []
         wrong = [r for r in roles if r not in ROLE_NAMES]
         if not roles or wrong:
-            raise DataError(f"Compte « {username} » : rôles parmi {', '.join(sorted(ROLE_NAMES))}.")
+            raise DataError(f"Compte « {username} » : rôles parmi {', '.join(sorted(ROLE_NAMES))}.")
         try:
             phone = normalize_phone(str(entry.get("phone") or ""))
         except ValidationError as error:
-            raise DataError(f"Compte « {username} » : {error.messages[0]}") from None
+            raise DataError(f"Compte « {username} » : {error.messages[0]}") from None
         plan.staff.append(
             {
                 "username": username,
@@ -175,7 +175,7 @@ def apply(plan, dry_run=False):
                 )
                 if not made and room.floor_id != floor.pk:
                     raise DataError(
-                        f"Chambre « {room_number} » : déjà sur l'étage {room.floor.number}."
+                        f"Chambre « {room_number} » : déjà sur l'étage {room.floor.number}."
                     )
                 (report.created if made else report.kept).append(f"chambre {room_number}")
 
