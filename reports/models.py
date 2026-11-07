@@ -115,17 +115,20 @@ class Report(models.Model):
         return f"{date_format(start, 'l j F')}, de {start:%H:%M} à {end:%H:%M}"
 
     def is_late(self, now=None):
-        return self.status in self.WAITING and self.due_at < (now or timezone.now())
+        return self.status in self.WAITING and self.due_at <= (now or timezone.now())
 
     def delay_text(self, now=None):
-        """'reste 20 h', 'reste 3 j' or 'retard 5 h', for a report still waiting."""
+        """'reste 20 h', 'reste 3 j', 'reste 40 min' or 'retard 5 h', for a
+        report still waiting. Late from the due date itself, as is_late."""
         if self.status not in self.WAITING:
             return ""
         seconds = (self.due_at - (now or timezone.now())).total_seconds()
-        hours = int(abs(seconds) // 3600)
-        if seconds < 0:
-            return f"retard {hours} h" if hours < 48 else f"retard {hours // 24} j"
-        return f"reste {max(hours, 1)} h" if hours < 48 else f"reste {hours // 24} j"
+        word = "retard" if seconds <= 0 else "reste"
+        seconds = abs(seconds)
+        if seconds < 3600:
+            return f"{word} {max(int(seconds // 60), 1)} min"
+        hours = int(seconds // 3600)
+        return f"{word} {hours} h" if hours < 48 else f"{word} {hours // 24} j"
 
 
 def _photo_path(instance, filename):

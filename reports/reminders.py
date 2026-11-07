@@ -78,8 +78,9 @@ def summary_counts(day, now=None):
     end = timezone.make_aware(datetime.combine(day, time.max))
     waiting = Report.objects.filter(status__in=Report.WAITING)
     return {
-        "new": Report.objects.filter(status=Report.Status.NEW).count(),
-        "late": waiting.filter(due_at__lt=now).count(),
+        # A late new report counts once, as late.
+        "new": Report.objects.filter(status=Report.Status.NEW, due_at__gt=now).count(),
+        "late": waiting.filter(due_at__lte=now).count(),
         "today": Report.objects.filter(
             status=Report.Status.SCHEDULED, intervention_start__range=(start, end)
         ).count(),

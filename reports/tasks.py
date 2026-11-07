@@ -10,6 +10,7 @@ from datetime import date
 
 from django.tasks import task
 from django.urls import reverse
+from django.utils import timezone
 
 from appointments.tasks import push, reach
 
@@ -82,6 +83,11 @@ def late_alert_task(report_id):
 @task
 def daily_summary_task(day):
     """The morning summary to everyone who handles reports (nothing if all is 0)."""
+    # The queue may run late (worker stopped): a summary of another day, or
+    # after noon, would be stale.
+    now = timezone.localtime()
+    if now.date().isoformat() != day or now.time() >= reminders.SUMMARY_UNTIL:
+        return
     counts = reminders.summary_counts(date.fromisoformat(day))
     parts = []
     if counts["new"]:
