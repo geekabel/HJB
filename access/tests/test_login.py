@@ -100,8 +100,8 @@ class LoginTests(LoginTestBase):
         self.phone.register(front_desk)
         self.assertEqual(self.log_in().status_code, 200)
         self.assertEqual(self.client.session.get_expiry_age(), settings.SESSION_COOKIE_AGE)
-        # The front desk goes straight to the resident list.
-        self.assertRedirects(self.client.get(reverse("home")), reverse("residents:list"))
+        # The front desk starts on the dashboard (card T35).
+        self.assertRedirects(self.client.get(reverse("home")), reverse("dashboard:home"))
 
     def test_next_page(self):
         self.assertEqual(self.log_in(next_url="/guide/").json()["redirect_url"], "/guide/")

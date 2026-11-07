@@ -1,0 +1,80 @@
+{% extends "ui/staff.html" %}
+{% load icons french %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="stack stack--tight">
+    <p class="text-muted">{{ now|date:"l j F"|capfirst }}</p>
+    <h1>Bonjour {{ user.first_name|default:user.get_username }}</h1>
+  </div>
+  {% if sends %}<a class="button" href="{% url 'messaging:new' %}">{% icon "send" %}Nouveau message</a>{% endif %}
+</header>
+
+<ul class="figures" aria-label="Chiffres du jour">
+  {% for figure in figures %}
+  <li class="figure{% if figure.warn %} figure--warn{% endif %}">
+    {% if figure.url %}<a class="figure__link" href="{{ figure.url }}">{% endif %}
+    <span class="figure__label">{{ figure.label }}</span>
+    <strong class="figure__value">{{ figure.value }}</strong>
+    {% if figure.detail %}<span class="figure__detail">{{ figure.detail }}</span>{% endif %}
+    {% if figure.url %}</a>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="dashboard">
+  {% if handles_reports or visit_replies %}
+  <section class="card stack" aria-labelledby="first-title">
+    <div class="row row--between">
+      <h2 id="first-title" class="card__title">À traiter en priorité</h2>
+      {% if handles_reports %}<a href="{% url 'reports_staff:board' %}">Tous les signalements</a>{% endif %}
+    </div>
+    {% if late_reports or visit_replies %}
+    <ul class="link-list">
+      {% for report in late_reports %}
+      <li><a href="{% url 'reports_staff:detail' report.pk %}">{% icon report.icon %}<span><strong>Ch. {{ report.room.number }} · {{ report.get_category_display }}</strong><small>{{ report.get_urgency_display }} · {% if report.assigned_to %}{{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% else %}personne ne s'en occupe{% endif %}</small></span><span class="badge badge--warning">{{ report.delay }}</span>{% icon "chevron" %}</a></li>
+      {% endfor %}
+      {% for visit in visit_replies %}
+      <li><a href="{% url 'messaging:tracking' visit.campaign.pk %}">{% icon "door" %}<span><strong>{{ visit.campaign.title }}</strong><small>{{ visit.answered }} réponse{{ visit.answered|pluriel }} sur {{ visit.asked }} · {{ visit.present }} présent{{ visit.present|pluriel }} · {{ visit.absent }} absent{{ visit.absent|pluriel }}</small></span>{% icon "chevron" %}</a></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-card empty-card--done">
+      <span class="empty-card__icon" aria-hidden="true">{% icon "check" %}</span>
+      <p>Rien en retard.</p>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if sends %}
+  <section class="card stack" aria-labelledby="planned-title">
+    <h2 id="planned-title" class="card__title">Envois programmés</h2>
+    {% if scheduled %}
+    <ol class="planned">
+      {% for campaign in scheduled %}
+      <li><a href="{% url 'messaging:tracking' campaign.pk %}"><span class="planned__when">{{ campaign.when }}</span><span><strong>{{ campaign.title }}</strong><small>{{ campaign.audience }}</small></span></a></li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="text-muted">Aucun envoi programmé.</p>
+    {% endif %}
+
+    {% if rotation %}
+    <h3 class="card__title rotation-title">Rotation des visites</h3>
+    <ol class="rotation" aria-label="Étages dans l'ordre des visites">
+      {% for step in rotation %}
+      <li class="rotation__floor{% if step.is_last %} rotation__floor--last{% elif step.is_next %} rotation__floor--next{% endif %}"{% if step.is_next %} aria-current="step"{% endif %}>
+        <strong>{{ step.floor.short_label }}</strong>
+        <small>{% if step.is_next %}prochain{% elif step.last_visit %}{{ step.last_visit|date:"j N" }}{% else %}jamais{% endif %}</small>
+      </li>
+      {% endfor %}
+    </ol>
+    {% for step in rotation %}{% if step.is_next %}
+    <a class="button button--secondary" href="{% url 'messaging:new' %}?etage={{ step.floor.pk }}">{% icon "door" %}Préparer la visite : {{ step.floor }}</a>
+    {% endif %}{% endfor %}
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

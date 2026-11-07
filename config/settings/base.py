@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     "appointments",
     # Reports of a problem in a room (cards T30 to T33).
     "reports",
+    # Staff dashboard (card T35).
+    "dashboard",
     # Queue of background tasks in the database, and its worker (card T21).
     "django_tasks_db",
     # Passkeys (card T13): django-otp and its WebAuthn extension.

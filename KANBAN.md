@@ -71,7 +71,6 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 
 | ID | Tâche | Épopée | Dépend de |
 |---|---|---|---|
-| T35 | Tableau de bord de l'équipe | E8 Accueils | T21, T31, T27 |
 | T36 | RGPD | E9 Mise en service | T09, T15 |
 | T37 | Sécurité avant la mise en ligne | E9 Mise en service | toutes |
 | T38 | Déploiement | E9 Mise en service | T37 |
@@ -132,6 +131,7 @@ Ce fichier suit toutes les tâches jusqu'à la mise en service. Après chaque t�
 | T32 | Délais, relances et récapitulatif quotidien | 7 nov. 2026 |
 | T33 | Suivi et confirmation par le résident | 7 nov. 2026 |
 | T34 | Accueil du résident | 7 nov. 2026 |
+| T35 | Tableau de bord de l'équipe | 7 nov. 2026 |
 
 ## Détail des cartes
 
@@ -618,10 +618,12 @@ Tests sur de vrais formats d'écran (iPhone SE, iPhone 15, Pixel 7, iPad mini, p
 - [x] Dernière annonce reçue (des 30 derniers jours)
 - **Revue indépendante (7 nov.)** : corrigé après relecture. Seules les réponses aux messages sont coupées après cinq, avec « Voir les autres messages à répondre » ; un rendez-vous ou le wifi ne disparaissent plus. Ce qui est dû aujourd'hui (rendez-vous du jour, wifi fini) passe en tête. Un bouton juste pour chaque cas (« Lire », « Voir le rendez-vous », « Voir mon wifi »). Une annonce de plus de 30 jours n'est plus montrée. Le séjour est lu une seule fois (17 requêtes, comme avant). « Tout voir » a un nom complet pour les lecteurs d'écran ; date de visite plus courte.
 
-#### T35 Tableau de bord de l'équipe
+#### T35 Tableau de bord de l'équipe (fait le 7 nov. 2026)
 - **Maquette** : P1.
-- [ ] Chiffres du jour, éléments en retard, envois programmés
-- [ ] Rotation des visites par étage
+- [x] Chiffres du jour : signalements ouverts (dont en retard), messages programmés (le prochain), rendez-vous du jour (comptés par éducateur, sans le motif), wifi à renouveler ; deux par deux sur téléphone
+- [x] À traiter en priorité : signalements en retard, réponses aux visites à venir (présents, absents, sur combien) ; envois programmés
+- [x] Rotation des visites par étage (ordre de visite des étages) : le dernier visité, le prochain, et « Préparer la visite » qui ouvre un message de visite pour cet étage
+- [x] Pour toute l'équipe, chaque partie selon les droits ; l'accueil et l'administration arrivent dessus
 
 ### E9 Mise en service
 

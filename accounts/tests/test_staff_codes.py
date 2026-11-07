@@ -168,7 +168,7 @@ class StaffActivationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         # Staff session (12 h), verified by the passkey: the staff area opens.
         self.assertEqual(self.client.session.get_expiry_age(), 12 * 3600)
-        self.assertRedirects(self.client.get("/"), reverse("residents:list"))
+        self.assertRedirects(self.client.get("/"), reverse("dashboard:home"))
 
     def test_resident_code_refused_for_staff(self):
         self.client.post(reverse("activation:enter_code"), {"code": issue_code(self.samia)})

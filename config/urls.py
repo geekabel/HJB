@@ -57,6 +57,8 @@ urlpatterns = [
     # Style guide, for staff only.
     path("guide/", include("ui.urls")),
     # Staff area.
+    # Staff dashboard (card T35).
+    path("equipe/", include("dashboard.urls")),
     path("equipe/journal/", include("audit.urls")),
     path("equipe/residents/", include("residents.urls")),
     path("equipe/messages/", include("messaging.urls")),

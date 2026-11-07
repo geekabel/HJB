@@ -59,13 +59,13 @@ class StaffNavigationTests(TestCase):
         log_in_verified(self.client, make_user("karim", Role.FRONT_DESK))
         self.assertRedirects(
             self.client.get(reverse("home")),
-            reverse("residents:list"),
+            reverse("dashboard:home"),
             fetch_redirect_response=False,
         )
         log_in_verified(self.client, make_user("marie", Role.ADMIN))
         self.assertRedirects(
             self.client.get(reverse("home")),
-            reverse("residents:list"),
+            reverse("dashboard:home"),
             fetch_redirect_response=False,
         )
         # Maintenance never gets the resident home (it looped on its tabs).
