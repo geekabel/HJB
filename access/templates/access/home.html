@@ -45,7 +45,7 @@
 <nav aria-label="Raccourcis">
   <ul class="shortcut-grid">
     <li><a href="{% url 'reports:new' %}"><span class="shortcut-grid__icon shortcut-grid__icon--warm" aria-hidden="true">{% icon "tool" %}</span>Signaler un problème</a></li>
-    <li><a href="{% url 'rdv:book' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "calendar" %}</span>Prendre rendez-vous</a></li>
+    <li><a href="{% url 'rdv:book' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "calendar" %}</span>Prendre rendez‑vous</a></li>
     <li><a href="{% url 'housing:my_wifi' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "wifi" %}</span>Mon wifi</a></li>
     <li><a href="{% url 'rdv:educators' %}"><span class="shortcut-grid__icon" aria-hidden="true">{% icon "message" %}</span>Écrire à un éducateur</a></li>
   </ul>
@@ -55,7 +55,7 @@
 <section class="stack stack--tight" aria-labelledby="reports-title">
   <div class="row row--between">
     <h2 id="reports-title" class="section-title">Mes signalements</h2>
-    <a href="{% url 'reports:list' %}">Tout voir<span class="visually-hidden"> : mes signalements</span></a>
+    <a class="link-target" href="{% url 'reports:list' %}">Tout voir<span class="visually-hidden"> : mes signalements</span></a>
   </div>
   <ul class="link-list">
     {% for report in my_reports %}

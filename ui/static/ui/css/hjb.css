@@ -133,6 +133,9 @@
     --action: #006fa3; /* links and blue text: 5.5:1 on white */
     --action-hover: #00557d;
     --action-bg: #006fa3;
+    /* Blue of the logo in the stripe of the ask-card: a darker one in dark
+       mode, where the card itself is the logo blue. */
+    --logo-blue: #03a9f4;
     --on-action: #ffffff;
     --action-soft: #e1f4fd;
 
@@ -198,6 +201,7 @@
       --action: #6ccfff;
       --action-hover: #9fdfff;
       --action-bg: #03a9f4;
+      --logo-blue: #01579b;
       --on-action: #06202f;
       --action-soft: #0f3a52;
 
@@ -1034,11 +1038,64 @@
     cursor: pointer;
   }
 
+  /* Drawn radios and checkboxes: the same look in light and dark mode
+     (the browser's own grey dark controls clash with the palette). */
   .choices input {
+    display: grid;
+    place-content: center;
     width: 1.25rem;
     height: 1.25rem;
     flex: none;
-    accent-color: var(--action-bg);
+    margin: 0;
+    border: 2px solid var(--control);
+    border-radius: 0.3rem;
+    background: var(--surface);
+    appearance: none;
+  }
+
+  .choices input[type="radio"] {
+    border-radius: 50%;
+  }
+
+  .choices input:checked {
+    border-color: var(--action-bg);
+  }
+
+  .choices input[type="radio"]:checked::before {
+    content: "";
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--action-bg);
+  }
+
+  .choices input[type="checkbox"]:checked {
+    background: var(--action-bg);
+  }
+
+  .choices input[type="checkbox"]:checked::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.7rem;
+    margin-block-start: -0.15rem;
+    border: solid var(--on-action);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  @media (forced-colors: active) {
+    .choices input {
+      appearance: auto;
+    }
+  }
+
+  /* A long label: the box stays with its first line */
+  .choices--top {
+    align-items: flex-start;
+  }
+
+  .choices--top input {
+    margin-block-start: 0.15rem;
   }
 
   .choices:has(input:checked) {
@@ -1269,6 +1326,10 @@
     /* Focused fields and anchors never hide under the sticky bar (WCAG 2.4.11) */
     html:has(.staff-menu--enhanced) {
       scroll-padding-block-start: 4.5rem;
+    }
+
+    html:has(.staff-menu--enhanced):has(.action-bar) {
+      scroll-padding-block-end: 5rem;
     }
   }
 
@@ -3021,10 +3082,15 @@
     }
   }
 
+  /* Day on its own row, then "De" and "À" side by side */
   .plan-fields {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: var(--s-2);
+  }
+
+  .plan-fields > :first-child {
+    grid-column: 1 / -1;
   }
 
   .history {
@@ -3051,7 +3117,7 @@
     position: absolute;
     inset: 0 0 auto;
     height: 6px;
-    background: linear-gradient(90deg, #8bc34a 0 33.3%, #03a9f4 33.3% 66.6%, #ffc107 66.6%);
+    background: linear-gradient(90deg, #8bc34a 0 33.3%, var(--logo-blue) 33.3% 66.6%, #ffc107 66.6%);
   }
 
   .ask-card p {
@@ -3173,7 +3239,13 @@
     list-style: none;
   }
 
+  /* Label, number, detail: three rows shared by the tiles of a line
+     (subgrid), so the numbers line up even when a label wraps. */
   .figure {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-1);
     border: 1px solid var(--line);
     border-radius: var(--r);
     background: var(--surface);
@@ -3183,17 +3255,20 @@
     border: 2px solid var(--warning);
   }
 
-  .figure,
   .figure__link {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-1);
+    display: grid;
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-1);
   }
 
   .figure:not(:has(.figure__link)),
   .figure__link {
-    height: 100%;
     padding: var(--s-4);
+  }
+
+  .figure__value {
+    align-self: end;
   }
 
   .figure__link {
@@ -3669,6 +3744,77 @@
     .rdv-time input:checked + span {
       border: 3px solid Highlight;
     }
+  }
+
+  /* Visual review of the newer screens (card D9) */
+  .report-form legend {
+    margin-block-end: var(--s-2);
+  }
+
+  .board__empty {
+    margin: 0;
+    padding-inline: var(--s-2);
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .staff-menu__when-closed,
+  .staff-menu__when-open {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+
+  .staff-menu__toggle[aria-expanded="true"] .staff-menu__when-closed,
+  .staff-menu__toggle:not([aria-expanded="true"]) .staff-menu__when-open {
+    display: none;
+  }
+
+  /* A small text link with a full touch area (44 px) */
+  .link-target {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+  }
+
+  .bullets {
+    padding-inline-start: var(--s-5);
+  }
+
+  /* The emergency number: a large touch area in the warning. Vertical
+     padding on an inline link grows the area, not the line. */
+  .alert a[href^="tel:"] {
+    padding-block: 0.75rem;
+    font-weight: 700;
+  }
+
+  .link-list .badge {
+    align-self: flex-start;
+  }
+
+  /* Settings: a readable width, and the duration fields lined up (each
+     field takes the label, input, help and error rows of its line). */
+  .settings-form {
+    max-inline-size: 48rem;
+  }
+
+  .settings-durations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    column-gap: var(--s-4);
+  }
+
+  .settings-durations > .field {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    row-gap: var(--s-2);
+    align-content: start;
+    margin-block-end: var(--s-3);
+  }
+
+  .settings-durations > .field > label {
+    align-self: end;
   }
 }
 

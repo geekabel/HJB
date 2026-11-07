@@ -17,7 +17,7 @@
 </div>
 {% endif %}
 
-<form class="stack stack--loose" method="post" novalidate>
+<form class="stack stack--loose settings-form" method="post" novalidate>
   {% csrf_token %}
   {{ form.version }}
   {% if form.errors %}
@@ -61,10 +61,13 @@
   <section class="card stack" aria-labelledby="retention-title">
     <h2 id="retention-title" class="card__title">Durées de conservation</h2>
     <p class="text-muted">En jours. Une durée plus courte supprime plus tôt, à la prochaine suppression quotidienne. C'est sans retour.</p>
-    <div class="grid-auto">
+    <div class="settings-durations">
       {% for field in form.retention_fields %}{{ field.as_field_group }}{% endfor %}
     </div>
-    {{ form.confirm_shorter.as_field_group }}
+    <div class="field">
+      <label class="choices choices--top">{{ form.confirm_shorter }}<span>{{ form.confirm_shorter.label }}</span></label>
+      {% if form.confirm_shorter.errors %}<span class="field__errors" id="{{ form.confirm_shorter.auto_id }}_error">{% for error in form.confirm_shorter.errors %}<span class="field__error">{% icon "alert" %}{{ error }}</span>{% endfor %}</span>{% endif %}
+    </div>
   </section>
 
   {% if perms.accounts.manage_wifi_settings %}

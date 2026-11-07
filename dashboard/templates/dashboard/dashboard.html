@@ -27,12 +27,12 @@
   <section class="card stack" aria-labelledby="first-title">
     <div class="row row--between">
       <h2 id="first-title" class="card__title">À traiter en priorité</h2>
-      {% if handles_reports %}<a href="{% url 'reports_staff:board' %}">Tous les signalements</a>{% endif %}
+      {% if handles_reports %}<a class="link-target" href="{% url 'reports_staff:board' %}">Tous les signalements</a>{% endif %}
     </div>
     {% if late_reports or visit_replies %}
     <ul class="link-list">
       {% for report in late_reports %}
-      <li><a href="{% url 'reports_staff:detail' report.pk %}">{% icon report.icon %}<span><strong>Ch. {{ report.room.number }} · {{ report.get_category_display }}</strong><small>{{ report.get_urgency_display }} · {% if report.assigned_to %}{{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% else %}personne ne s'en occupe{% endif %}</small></span><span class="badge badge--warning">{{ report.delay }}</span>{% icon "chevron" %}</a></li>
+      <li><a href="{% url 'reports_staff:detail' report.pk %}">{% icon report.icon %}<span><strong><span class="nowrap">Ch.&nbsp;{{ report.room.number }}</span> · {{ report.get_category_display }}</strong><small>{{ report.get_urgency_display }} · {% if report.assigned_to %}{{ report.assigned_to.first_name|default:report.assigned_to.get_username }}{% else %}personne ne s'en occupe{% endif %}</small><span class="badge badge--warning">{{ report.delay }}</span></span>{% icon "chevron" %}</a></li>
       {% endfor %}
       {% for visit in visit_replies %}
       <li><a href="{% url 'messaging:tracking' visit.campaign.pk %}">{% icon "door" %}<span><strong>{{ visit.title }}</strong><small>{{ visit.campaign.event_date|date:"l j F"|capfirst }}{% for floor in visit.campaign.floors.all %} · {{ floor }}{% endfor %}</small><small>{{ visit.answered }} réponse{{ visit.answered|pluriel }} sur {{ visit.asked }} · {{ visit.present }} présent{{ visit.present|pluriel }} · {{ visit.absent }} absent{{ visit.absent|pluriel }}</small></span>{% icon "chevron" %}</a></li>

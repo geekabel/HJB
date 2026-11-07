@@ -4,6 +4,7 @@ from datetime import datetime, time, timedelta
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.utils import timezone
 
 
@@ -25,9 +26,22 @@ class PersonChoiceField(forms.ModelChoiceField):
 class AssignForm(forms.Form):
     assignee = PersonChoiceField(label="Confié à", queryset=handlers(), empty_label=None)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, current=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["assignee"].queryset = handlers()
+        # The person it is given to stays in the list, even if they lost the
+        # right since: the list never shows someone else by mistake.
+        query = handlers()
+        if current is not None:
+            query = (
+                get_user_model()
+                .objects.filter(
+                    Q(is_active=True, groups__permissions__codename="manage_reports")
+                    | Q(pk=current)
+                )
+                .distinct()
+                .order_by("first_name", "last_name", "username")
+            )
+        self.fields["assignee"].queryset = query
 
 
 class PlanForm(forms.Form):
@@ -35,8 +49,10 @@ class PlanForm(forms.Form):
         label="Jour",
         widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
-    start = forms.TimeField(label="De", widget=forms.TimeInput(attrs={"type": "time"}))
-    end = forms.TimeField(label="À", widget=forms.TimeInput(attrs={"type": "time"}))
+    start = forms.TimeField(
+        label="De", widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M")
+    )
+    end = forms.TimeField(label="À", widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"))
     note = forms.CharField(
         label="Mot pour le résident",
         required=False,

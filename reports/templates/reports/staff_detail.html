@@ -91,7 +91,7 @@
     <section class="card stack report-layout__resident" aria-labelledby="resident-title">
       <h2 id="resident-title" class="card__title">Résident</h2>
       <p>{% if not report.resident %}Ancien résident, compte supprimé{% elif perms.accounts.view_residents %}<a href="{% url 'residents:detail' report.resident.pk %}">{{ report.resident.get_full_name|default:report.resident.get_username }}</a>{% else %}{{ report.resident.get_full_name|default:report.resident.get_username }}{% endif %}<br><span class="text-muted">Chambre {{ report.room.number }} · {{ report.room.floor }}</span></p>
-      {% if report.resident.phone %}<p><a href="tel:{{ report.resident.phone }}">{% icon "phone" %} Appeler</a></p>{% endif %}
+      {% if report.resident.phone %}<p><a class="icon-text" href="tel:{{ report.resident.phone }}">{% icon "phone" %}<span>Appeler le {{ report.resident.phone_display }}</span></a></p>{% endif %}
     </section>
   </div>
 </div>

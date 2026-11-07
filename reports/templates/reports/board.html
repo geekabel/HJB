@@ -17,12 +17,16 @@
   </ul>
 </nav>
 
+{% if not total %}
+<div class="empty-card">{% icon "check" %}<p>Aucun signalement ici.</p></div>
+{% else %}
 <div class="board">
   {% for status, label, items in columns %}
   <section class="board__column" aria-labelledby="column-{{ status }}">
     <h2 class="board__title" id="column-{{ status }}">{{ label }} <span class="board__count">{{ items|length }}</span></h2>
-    {% for report in items %}{% include "reports/_card.html" %}{% empty %}<p class="text-muted text-small">Aucun.</p>{% endfor %}
+    {% for report in items %}{% include "reports/_card.html" %}{% empty %}<p class="board__empty">Aucun.</p>{% endfor %}
   </section>
   {% endfor %}
 </div>
+{% endif %}
 {% endblock %}
