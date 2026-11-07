@@ -112,16 +112,22 @@ def send_code(user):
         "Il expire dans 10 minutes. Ne le donnez à personne."
     )
     try:
-        send_sms(user.phone, text)
+        send_sms(user.phone, text, code=True)
     except SmsError as error:
         if not error.uncertain:
             # The SMS was not sent: this code cannot be used. The send still counts
             # in the hourly limit, so that the SMS credit is not used up.
             PhoneVerification.objects.filter(pk=verification.pk).update(expires_at=now)
             from sms.providers.disabled import SmsPaused
+            from sms.service import DailyLimitReached
 
             if isinstance(error, SmsPaused):
                 message = "Les SMS sont coupés pour le moment. Passez à l'accueil."
+            elif isinstance(error, DailyLimitReached):
+                message = (
+                    "Plus aucun SMS ne peut partir aujourd'hui. "
+                    "Réessayez demain, ou passez à l'accueil."
+                )
             else:
                 message = (
                     "Le SMS n'a pas pu partir. Réessayez dans une minute, ou passez à l'accueil."

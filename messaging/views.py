@@ -270,6 +270,26 @@ def _apply(request, campaign, action, add):
     return None
 
 
+def _sms_left(send_at):
+    """SMS a message may still use on the day of ``send_at`` (daily limit).
+
+    Other sendings planned for that day are not counted: an estimate.
+    """
+    from sms.service import KEPT_FOR_CODES, daily_limit, left_today
+
+    if timezone.localdate(send_at) == timezone.localdate():
+        return left_today()
+    return max(0, daily_limit() - KEPT_FOR_CODES)
+
+
+def _sms_needed(sms, send_at, remind_at, reminder_sms):
+    """SMS of the message, plus those of a reminder on the same day."""
+    needed = sms["total_segments"]
+    if remind_at and timezone.localdate(remind_at) == timezone.localdate(send_at):
+        needed += reminder_sms
+    return needed
+
+
 @login_required
 @permission_required(PERMISSION, raise_exception=True)
 def review(request, pk):
@@ -292,6 +312,9 @@ def review(request, pk):
             return redirect("messaging:tracking", pk=campaign.pk)
     audience_ = audience(campaign)
     sms = _sms_report(campaign, audience_)
+    remind_at = sending.reminder_time(campaign)
+    # Until residents can answer (card T22), the reminder goes to everyone reached.
+    reminder_sms = sms["total_segments"] if remind_at else 0
     return render(
         request,
         "messaging/review.html",
@@ -299,12 +322,13 @@ def review(request, pk):
             "active_nav": "messages",
             "campaign": campaign,
             "send_at": campaign.send_at,
-            "remind_at": sending.reminder_time(campaign),
+            "remind_at": remind_at,
             "poll": poll_of(campaign),
             "audience": audience_,
             "sms": sms,
-            # Until residents can answer (card T22), the reminder goes to everyone reached.
-            "reminder_sms": sms["total_segments"] if sending.reminder_time(campaign) else 0,
+            "reminder_sms": reminder_sms,
+            "sms_needed": _sms_needed(sms, send_at, remind_at, reminder_sms),
+            "sms_left": _sms_left(send_at),
             "problems": found,
         },
     )
