@@ -269,7 +269,7 @@ def write(request, educator_pk):
                 "active_nav": "messages",
                 "educator": educator,
                 "reply_hours": settings_of(educator).reply_hours,
-                "thread": conversation.messages.select_related("author") if conversation else [],
+                "page": direct.page_of(conversation, direct.cursor(request)),
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "new_ids": new_ids,

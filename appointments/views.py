@@ -229,7 +229,7 @@ def conversation(request, pk):
                 "active_nav": "conversations",
                 "conversation": found,
                 "room": stay.room.number if stay else "",
-                "thread": found.messages.select_related("author"),
+                "page": direct.page_of(found, direct.cursor(request)),
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "reply_hours": availability.settings_of(request.user).reply_hours,
