@@ -67,4 +67,6 @@ urlpatterns = [
     path("equipe/messages/", include("messaging.urls")),
     path("equipe/rendez-vous/", include("appointments.urls")),
     path("equipe/signalements/", include("reports.urls")),
+    # Settings of the residence, administration only (card T37b).
+    path("equipe/reglages/", include("residence.urls")),
 ]

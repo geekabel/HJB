@@ -1,7 +1,6 @@
 """The page "Vos données" (card T36): open to all, logged in or not, so
 that it can be read before activating an account."""
 
-from django.conf import settings
 from django.shortcuts import render
 from django.views.decorators.http import require_safe
 
@@ -20,8 +19,12 @@ def _duration(number):
 
 @require_safe
 def data(request):
-    durations = {key: _duration(retention.days(key)) for key in retention.DEFAULTS}
     from access.session_policy import is_resident
+    from residence.models import ResidenceSettings
+
+    found = ResidenceSettings.load()
+    durations = {key: _duration(found.retention_days(key)) for key in retention.KINDS}
+    contact = found.privacy_contact.strip()
 
     user = request.user
     staff = user.is_authenticated and not is_resident(user)
@@ -33,7 +36,8 @@ def data(request):
             "layout": "ui/staff.html" if staff else "ui/resident.html",
             "active_nav": active_nav,
             "durations": durations,
-            "contact": settings.PRIVACY_CONTACT,
-            "contact_is_email": "@" in settings.PRIVACY_CONTACT,
+            "organization": found,
+            "contact": contact,
+            "contact_is_email": "@" in contact,
         },
     )

@@ -25,6 +25,7 @@ class Action(models.TextChoices):
     DEPARTURE_PLANNED = "departure_planned", "Départ prévu"
     DEPARTURE_PLAN_CANCELLED = "departure_plan_cancelled", "Départ prévu annulé"
     DATA_PURGED = "data_purged", "Données anciennes supprimées"
+    SETTINGS_CHANGED = "settings_changed", "Réglages de la résidence modifiés"
 
 
 class AuditEntryImmutable(Exception):
@@ -194,6 +195,11 @@ class AuditEntry(models.Model):
             if not previous:
                 return "Premier accès."
             return f"Remplace {previous} ancien{'s' if previous > 1 else ''} accès."
+        if self.action == Action.SETTINGS_CHANGED:
+            return " ".join(
+                f"{label} : {before or 'vide'} → {after or 'vide'}."
+                for label, before, after in self.details.get("changed", [])
+            )
         if self.action == Action.DATA_PURGED:
             from privacy.retention import describe
 

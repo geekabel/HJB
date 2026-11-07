@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.checks import run_checks
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import CommandError, call_command
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from sms.providers import memory
 from sms.providers.base import ConfigurationError, SendError, SmsError
@@ -14,7 +14,7 @@ from sms.service import MAX_SEGMENTS, send_sms
 NUMBER = "+33612345678"
 
 
-class ServiceTests(SimpleTestCase):
+class ServiceTests(TestCase):  # the provider may be chosen in the settings (database)
     def setUp(self):
         memory.outbox.clear()
 
@@ -152,7 +152,7 @@ class ChecksTests(SimpleTestCase):
             self.assertEqual(self.ids(include_deployment_checks=True), ["sms.W002"])
 
 
-class SendTestSmsCommandTests(SimpleTestCase):
+class SendTestSmsCommandTests(TestCase):
     def setUp(self):
         memory.outbox.clear()
 

@@ -49,6 +49,7 @@ PERMISSIONS = {
     "moderate_discussion": "Peut modérer la discussion entre résidents",
     "view_audit_log": "Peut consulter le journal d'audit",
     "manage_roles": "Peut changer les rôles d'un utilisateur",
+    "manage_settings": "Peut changer les réglages de la résidence",
 }
 
 PERMISSIONS_BY_ROLE = {

@@ -3,7 +3,7 @@
     python manage.py purge_personal_data            # counts only
     python manage.py purge_personal_data --apply    # deletes
 
-The durations are in RETENTION_DAYS (privacy/retention.py). Once they are
+The durations are residence settings (page "Réglages"). Once they are
 validated by the association, run it once a day with --apply.
 """
 

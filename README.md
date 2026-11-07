@@ -209,11 +209,24 @@ Les tests font une sauvegarde, la relisent et la restaurent. Ils vérifient auss
 
 Avec PostgreSQL (si T38 le choisit), la base se sauvegarde avec `pg_dump` ; `backup_data` le dit et s'arrête.
 
+## Réglages de la résidence
+
+La page « Réglages » (`/equipe/reglages/`, rôle Administration) change ce qui n'est pas secret, sans toucher au serveur :
+- le nom et l'adresse de l'association, le contact pour les données personnelles ;
+- le numéro d'urgence montré aux résidents ;
+- l'heure du récapitulatif des signalements (de 7 h à 11 h, du lundi au vendredi) ;
+- le service SMS : celui du serveur, un autre service dont les clés sont sur le serveur, ou aucun (SMS coupés) ;
+- les durées de conservation, entre des bornes sûres.
+
+Elle demande une clé d'accès utilisée depuis moins de 10 minutes. Chaque changement est noté dans le journal, avec l'avant et l'après.
+
+**Les secrets restent dans l'environnement du serveur** (clés SMS, `DJANGO_SECRET_KEY`, clé VAPID, clés wifi) : si la base, une sauvegarde ou un compte d'administration fuit, ils restent protégés, et une faute de frappe dans un formulaire ne peut pas couper tous les envois. Le format des accès wifi reste dans le site d'administration.
+
 ## Données personnelles
 
 La page « Vos données » (`/donnees/`) dit aux résidents ce qui est gardé, combien de temps, et leurs droits. Elle est ouverte à tous, et liée depuis la connexion, l'activation et Mon compte.
 
-Les durées de conservation sont dans `RETENTION_DAYS` (`config/settings/base.py`). La page et la suppression utilisent les mêmes. `DJANGO_PRIVACY_CONTACT` donne l'adresse pour exercer ses droits (vide : « l'accueil de la résidence »).
+Les durées de conservation et le contact pour exercer ses droits se règlent dans la page « Réglages » (voir plus bas). La page « Vos données » et la suppression utilisent les mêmes.
 
 ```sh
 python manage.py purge_personal_data            # compte ce qui a passé sa durée

@@ -111,7 +111,7 @@ def daily_summary_task(day):
     # The queue may run late (worker stopped): a summary of another day, or
     # after noon, would be stale.
     now = timezone.localtime()
-    if now.date().isoformat() != day or now.time() >= reminders.SUMMARY_UNTIL:
+    if now.date().isoformat() != day or now.time() >= reminders.summary_window()[1]:
         return
     counts = reminders.summary_counts(date.fromisoformat(day))
     parts = []

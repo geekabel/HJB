@@ -26,8 +26,18 @@ from .models import DailySummary, Report
 
 logger = logging.getLogger(__name__)
 
-SUMMARY_FROM = time(9, 0)
-SUMMARY_UNTIL = time(12, 0)
+# The summary leaves from its hour (residence settings, 9 h by default) and
+# not later than three hours after: a worker stopped all morning does not
+# send yesterday's news at night.
+SUMMARY_WINDOW_HOURS = 3
+
+
+def summary_window():
+    """(from, until) of the morning summary, local times."""
+    from residence.models import ResidenceSettings
+
+    hour = ResidenceSettings.load().summary_hour
+    return time(hour, 0), time(hour + SUMMARY_WINDOW_HOURS, 0)
 
 
 def _alert_late(report_id, now):
@@ -50,7 +60,8 @@ def _summary(now):
     from .tasks import daily_summary_task
 
     local = timezone.localtime(now)
-    if local.weekday() >= 5 or not SUMMARY_FROM <= local.time() < SUMMARY_UNTIL:
+    start, until = summary_window()
+    if local.weekday() >= 5 or not start <= local.time() < until:
         return False
     try:
         with transaction.atomic():

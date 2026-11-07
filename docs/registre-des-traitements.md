@@ -10,16 +10,19 @@ dépendent de l'association ou de l'hébergement choisi (carte T38).
 
 ## Responsable du traitement
 
-- **Organisme** : association Habitat Jeunes Belfort. Adresse : à compléter.
+- **Organisme** : association Habitat Jeunes Belfort. Adresse : à compléter
+  dans la page « Réglages » de l'équipe (affichée sur « Vos données »).
 - **Représentant** : à compléter (la direction).
-- **Contact pour les données** : réglé par `DJANGO_PRIVACY_CONTACT`, affiché
-  sur la page « Vos données » (`/donnees/`). Vide : « l'accueil de la
-  résidence ».
+- **Contact pour les données** : réglé par l'administration dans la page
+  « Réglages », affiché sur la page « Vos données » (`/donnees/`). Vide :
+  « l'accueil de la résidence ».
 - **Délégué à la protection des données** : à compléter (aucun, ou son nom).
 
 ## Durées de conservation
 
-Les durées sont réglées dans `RETENTION_DAYS` (`config/settings/base.py`).
+Les durées sont réglées par l'administration dans la page « Réglages »,
+entre des bornes sûres (par exemple, le journal entre 180 et 365 jours).
+Chaque changement est noté au journal.
 La page « Vos données » affiche les mêmes. La commande
 `manage.py purge_personal_data` compte ce qui a passé sa durée ; avec
 `--apply`, elle le supprime et note les nombres dans le journal. Elle tourne

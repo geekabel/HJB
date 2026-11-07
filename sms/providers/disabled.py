@@ -15,3 +15,14 @@ class DisabledProvider(SmsProvider):
         raise ConfigurationError(
             "Aucun fournisseur de SMS n'est configuré (variable DJANGO_SMS_PROVIDER)."
         )
+
+
+class PausedProvider(DisabledProvider):
+    """SMS cut by the administration in the settings (card T37b).
+
+    Same name as DisabledProvider: everything that checks for "disabled"
+    treats it the same way.
+    """
+
+    def send(self, number, text):
+        raise ConfigurationError("Les SMS sont coupés dans les réglages de la résidence.")

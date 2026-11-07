@@ -15,6 +15,7 @@ from PIL import Image
 from accounts.roles import Role
 from accounts.tests.helpers import log_in_verified, make_user
 from housing.models import Floor, Room, Stay
+from residence.models import ResidenceSettings
 from tools.html_capture import save_page
 
 from .. import photos
@@ -57,7 +58,10 @@ class ReportTestCase(TestCase):
     def setUp(self):
         media = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, media, ignore_errors=True)
-        override = override_settings(MEDIA_ROOT=media, EMERGENCY_PHONE="03 84 00 00 00")
+        ResidenceSettings.objects.update_or_create(
+            pk=1, defaults={"emergency_phone": "03 84 00 00 00"}
+        )
+        override = override_settings(MEDIA_ROOT=media)
         override.enable()
         self.addCleanup(override.disable)
 
@@ -200,8 +204,8 @@ class PrivacyTests(ReportTestCase):
 
     def test_no_emergency_number_set(self):
         log_in_verified(self.client, self.ines)
-        with override_settings(EMERGENCY_PHONE=""):
-            response = self.client.get(NEW)
+        ResidenceSettings.objects.filter(pk=1).update(emergency_phone="")
+        response = self.client.get(NEW)
         self.assertContains(response, "Appelez tout de suite l'accueil.")
 
 
