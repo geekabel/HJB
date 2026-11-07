@@ -14,6 +14,7 @@ from pathlib import Path
 
 from django.contrib.messages import constants as message_levels
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 
 # Repository root: config/settings/base.py -> three levels up.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -74,7 +75,31 @@ MIDDLEWARE = [
     "access.middleware.StaffAreaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Content Security Policy (card T37), and the browser features the site
+    # never uses (ui/middleware.py).
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
+    "ui.middleware.PermissionsPolicyMiddleware",
 ]
+
+# Content Security Policy (card T37), in development too: a violation shows
+# at once in the browser console. Only the site's own files: no inline
+# script or style, no other origin. Photo previews use blob: images (app.js),
+# the service worker and the manifest come from the site.
+# https://docs.djangoproject.com/en/6.1/howto/csp/
+SECURE_CSP = {
+    "default-src": [CSP.NONE],
+    "script-src": [CSP.SELF],
+    "style-src": [CSP.SELF],
+    "img-src": [CSP.SELF, "data:", "blob:"],
+    "font-src": [CSP.SELF],
+    "connect-src": [CSP.SELF],
+    "manifest-src": [CSP.SELF],
+    "worker-src": [CSP.SELF],
+    "form-action": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+    "base-uri": [CSP.NONE],
+    "object-src": [CSP.NONE],
+}
 
 ROOT_URLCONF = "config.urls"
 

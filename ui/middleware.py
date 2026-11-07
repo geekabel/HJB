@@ -25,3 +25,23 @@ class PublicFilesSessionMiddleware(SessionMiddleware):
         if getattr(request, "sessionless", False):
             return response
         return super().process_response(request, response)
+
+
+# Browser features the site never asks for (card T37). A script injected
+# despite the CSP could not use them either. Taking a photo for a report
+# goes through <input type="file">, not the camera feature.
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy
+PERMISSIONS_POLICY = ", ".join(
+    f"{feature}=()"
+    for feature in ("camera", "microphone", "geolocation", "payment", "usb", "display-capture")
+)
+
+
+class PermissionsPolicyMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.headers.setdefault("Permissions-Policy", PERMISSIONS_POLICY)
+        return response
