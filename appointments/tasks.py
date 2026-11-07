@@ -76,9 +76,9 @@ def _sms(user, text):
     try:
         send_sms(user.phone, text)
     except SmsError as error:
-        logger.warning("Appointment SMS not sent: %s", type(error).__name__)
+        logger.warning("Fallback SMS not sent: %s", type(error).__name__)
         return False
-    logger.info("Appointment SMS sent: %s segment(s)", analyze(text).segments)
+    logger.info("Fallback SMS sent: %s segment(s)", analyze(text).segments)
     return True
 
 
@@ -91,6 +91,10 @@ def _reach(user, *, title, body, url, tag, sms="", **options):
     result = push(user, title=title, body=body, url=url, tag=tag, **options)
     if sms and result is not None and not result.sent and not result.failed:
         _sms(user, sms)
+
+
+# Shared with the reports (card T31): same rule for the SMS fallback.
+reach = _reach
 
 
 def _until(start, now):

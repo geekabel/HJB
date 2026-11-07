@@ -90,6 +90,8 @@ TEMPLATES = [
                 "messaging.context_processors.unread",
                 # Unread direct messages, on the Rendez-vous entries (T28).
                 "appointments.context_processors.unread",
+                # New reports, on the Signalements entry of the staff menu (T31).
+                "reports.context_processors.new_reports",
             ],
         },
     },

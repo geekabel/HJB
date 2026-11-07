@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.formats import date_format
 
 
 class Report(models.Model):
@@ -72,7 +73,9 @@ class Report(models.Model):
         related_name="assigned_reports",
         verbose_name="confié à",
     )
-    due_at = models.DateTimeField("à prendre en charge avant")
+    due_at = models.DateTimeField("à traiter avant")
+    intervention_start = models.DateTimeField("début de l'intervention", null=True, blank=True)
+    intervention_end = models.DateTimeField("fin de l'intervention", null=True, blank=True)
     created_at = models.DateTimeField("créé le", default=timezone.now)
     updated_at = models.DateTimeField("mis à jour le", auto_now=True)
 
@@ -96,6 +99,21 @@ class Report(models.Model):
     @property
     def is_open(self):
         return self.status != self.Status.CLOSED
+
+    # Still to handle: a report is late when its due date passed before an
+    # intervention was planned or done (card T31; reminders in T32).
+    WAITING = (Status.NEW, Status.ACKNOWLEDGED)
+
+    def visit_text(self):
+        """'vendredi 10 novembre, de 10:00 à 12:00' (the planned visit)."""
+        if not self.intervention_start:
+            return ""
+        start = timezone.localtime(self.intervention_start)
+        end = timezone.localtime(self.intervention_end)
+        return f"{date_format(start, 'l j F')}, de {start:%H:%M} à {end:%H:%M}"
+
+    def is_late(self, now=None):
+        return self.status in self.WAITING and self.due_at < (now or timezone.now())
 
 
 def _photo_path(instance, filename):
@@ -128,6 +146,8 @@ class ReportEvent(models.Model):
     class Type(models.TextChoices):
         CREATED = "created", "Signalé"
         ACKNOWLEDGED = "acknowledged", "Pris en charge"
+        # Staff only: the resident is not told who handles the report.
+        ASSIGNED = "assigned", "Confié"
         SCHEDULED = "scheduled", "Intervention planifiée"
         INTERVENTION = "intervention", "Intervention faite"
         CONFIRMED = "confirmed", "Réglé, confirmé par le résident"

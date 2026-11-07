@@ -2890,6 +2890,141 @@
     overflow-wrap: anywhere;
   }
 
+  /* Reports board (card T31): four columns from new to done. On a phone
+     they follow one another; late reports have a yellow border. */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--s-4);
+    align-items: start;
+  }
+
+  .board__column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border-radius: var(--r-large);
+    background: var(--surface-2);
+  }
+
+  .board__title {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--s-1) var(--s-2);
+    font-size: var(--t-body);
+  }
+
+  .board__count {
+    color: var(--text-muted);
+  }
+
+  .report-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--surface);
+  }
+
+  .report-card--late {
+    border: 2px solid var(--warning);
+  }
+
+  .report-card p {
+    margin: 0;
+  }
+
+  .report-card__title {
+    font-family: var(--font-text);
+    font-size: var(--t-body);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .report-card__link {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  /* The whole card opens the report; the button stays on top */
+  .report-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .report-card:not(.report-card--late):hover {
+    border-color: var(--action);
+  }
+
+  .report-card form {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Staff report page: one column in the order of the work on a phone
+     (problem, actions, history, resident), two columns on a computer. */
+  .report-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+  }
+
+  .report-layout__main,
+  .report-layout__side {
+    display: contents;
+  }
+
+  .report-layout__problem {
+    order: 1;
+  }
+
+  .report-layout__actions {
+    order: 2;
+  }
+
+  .report-layout__history {
+    order: 3;
+  }
+
+  .report-layout__resident {
+    order: 4;
+  }
+
+  @media (min-width: 64rem) {
+    .report-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+      gap: var(--s-6);
+      align-items: start;
+    }
+
+    .report-layout__main,
+    .report-layout__side {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+    }
+  }
+
+  .plan-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    gap: var(--s-2);
+  }
+
+  .history {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin: 0;
+    padding-inline-start: var(--s-5);
+  }
+
   /* A round initial, in lists of people */
   .avatar {
     display: grid;

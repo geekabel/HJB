@@ -209,7 +209,8 @@ def account(request):
 @never_cache
 @login_required
 def home(request):
-    """Home page. Staff start on their main task: meetings for an educator, residents otherwise.
+    """Home page. Staff start on their main task: meetings for an educator,
+    reports for maintenance, residents otherwise.
 
     To be replaced by cards T34 (residents) and T35 (staff).
     """
@@ -220,6 +221,11 @@ def home(request):
             "accounts.manage_appointments"
         ):
             return redirect("appointments:availability")
+        # Maintenance starts on the reports board (card T31).
+        if user.groups.filter(name=GROUP_BY_ROLE[Role.MAINTENANCE]).exists() and user.has_perm(
+            "accounts.manage_reports"
+        ):
+            return redirect("reports_staff:board")
         if user.has_perm("accounts.view_residents"):
             return redirect("residents:list")
         if user.has_perm("accounts.send_messages"):
