@@ -25,6 +25,8 @@ def notify_resident_task(event_id):
     if event is None:
         return
     report = event.report
+    if report.resident is None:  # account deleted meanwhile
+        return
     number = f"Signalement n° {report.pk}"
     options = {
         "url": reverse("reports:detail", args=[report.pk]),

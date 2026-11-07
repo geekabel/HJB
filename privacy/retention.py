@@ -11,8 +11,9 @@ What goes, and when (default durations):
 - a former resident (account disabled, at least one stay, none in
   progress): the account and all that is linked to it, 365 days after the
   last departure. That is stays, deliveries and answers, meetings, direct
-  messages, reports and their photos, passkeys, notification
-  subscriptions, codes;
+  messages, passkeys, notification subscriptions, codes. Their reports
+  stay for the room's repair history, with nothing of the person: no
+  name, no text, no note, no photo (reports/service.py, forget_resident);
 - the photos of a closed report: 180 days after it was closed;
 - meetings (with their reason) and direct messages: 365 days after; a
   conversation left empty goes too;
@@ -179,6 +180,13 @@ def _queries(now):
     }
 
 
+def _photos_of(people):
+    """The photos of the reports of these people: they go with the account."""
+    from reports.models import ReportPhoto
+
+    return ReportPhoto.objects.filter(report__resident__in=people.values("pk"))
+
+
 def _targets(now):
     """The people chosen or left out by name in a message: who was aimed at.
     Cleared with the deliveries; the message itself stays."""
@@ -220,12 +228,14 @@ def run(apply=False, now=None):
         former_residents=people.count(),
         **{key: sum(q.count() for q in found) for key, found in queries.items()},
     )
+    counted.report_photos += _photos_of(people).exclude(pk__in=queries["report_photos"][0]).count()
     if not apply or not counted.total():
         return counted
     from accounts.models import User
     from audit.models import Action
     from audit.service import log_action
     from housing.models import Stay
+    from reports.service import forget_resident
 
     done = Purge()
     kept = 0
@@ -234,6 +244,9 @@ def run(apply=False, now=None):
         for pk in _lock_former(candidates):
             try:
                 with transaction.atomic():
+                    # Their reports stay for the room's repair history,
+                    # with nothing of the person (reports/service.py).
+                    photos = forget_resident(pk, now)
                     # Stays protect their resident (room history): first.
                     Stay.objects.filter(resident_id=pk).delete()
                     User.objects.filter(pk=pk).delete()
@@ -241,6 +254,7 @@ def run(apply=False, now=None):
                 kept += 1
             else:
                 done.former_residents += 1
+                done.report_photos += photos
         # A queryset delete sends post_delete for each photo (its file goes)
         # and never calls AuditEntry.delete, which refuses a single entry.
         for key, found in queries.items():

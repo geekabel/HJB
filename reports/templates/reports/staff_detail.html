@@ -18,7 +18,7 @@
   <div class="report-layout__main">
     <section class="card stack report-layout__problem" aria-labelledby="problem-title">
       <h2 id="problem-title" class="card__title">Le problème</h2>
-      <p class="report-text" dir="auto">{{ report.description|linebreaksbr }}</p>
+      {% if report.description %}<p class="report-text" dir="auto">{{ report.description|linebreaksbr }}</p>{% else %}<p class="text-muted">Texte retiré avec le compte du résident.</p>{% endif %}
       {% if report.photos.all %}
       <ul class="report-photos" aria-label="Photos">
         {% for photo in report.photos.all %}
@@ -90,7 +90,7 @@
 
     <section class="card stack report-layout__resident" aria-labelledby="resident-title">
       <h2 id="resident-title" class="card__title">Résident</h2>
-      <p>{% if perms.accounts.view_residents %}<a href="{% url 'residents:detail' report.resident.pk %}">{{ report.resident.get_full_name|default:report.resident.get_username }}</a>{% else %}{{ report.resident.get_full_name|default:report.resident.get_username }}{% endif %}<br><span class="text-muted">Chambre {{ report.room.number }} · {{ report.room.floor }}</span></p>
+      <p>{% if not report.resident %}Ancien résident, compte supprimé{% elif perms.accounts.view_residents %}<a href="{% url 'residents:detail' report.resident.pk %}">{{ report.resident.get_full_name|default:report.resident.get_username }}</a>{% else %}{{ report.resident.get_full_name|default:report.resident.get_username }}{% endif %}<br><span class="text-muted">Chambre {{ report.room.number }} · {{ report.room.floor }}</span></p>
       {% if report.resident.phone %}<p><a href="tel:{{ report.resident.phone }}">{% icon "phone" %} Appeler</a></p>{% endif %}
     </section>
   </div>

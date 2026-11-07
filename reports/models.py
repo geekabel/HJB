@@ -51,9 +51,13 @@ class Report(models.Model):
         Urgency.CAN_WAIT: timedelta(days=7),
     }
 
+    # Empty once the account is deleted (privacy/retention.py): the room
+    # keeps its repair history, without the person.
     resident = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="reports",
         verbose_name="résident",
     )
