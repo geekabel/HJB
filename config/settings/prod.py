@@ -110,7 +110,7 @@ SITE_URL = os.environ.get("DJANGO_SITE_URL") or (
 
 
 # Background tasks (T21): a durable queue in the database, run by
-# "python manage.py db_worker" (a service of its own, see the README).
+# "python manage.py db_worker" (a service of its own: deploy/deploy.sh).
 TASKS = {
     "default": {"BACKEND": "django_tasks_db.DatabaseBackend", "QUEUES": ["default"]},
 }
@@ -130,14 +130,14 @@ SESSION_COOKIE_NAME = "__Host-sessionid"
 CSRF_COOKIE_NAME = "__Host-csrftoken"
 
 # HSTS: we start with a short duration, then raise it once HTTPS works on
-# the real domain (then 31536000, one year: README, "Déploiement").
+# the real domain (then 31536000, one year).
 SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "3600"))
 
-# The site lives on its own subdomain (for example hjb.godwinlab.cloud):
+# The site lives on its own subdomain (for example hjb.example.org):
 # includeSubDomains only covers the names below it, so it is on by default.
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", "1") == "1"
-# Preloading is decided for a whole registered domain (godwinlab.cloud and
-# all its sites), not for one app: off, and its warning silenced.
+# Preloading is decided for a whole registered domain (example.org and all
+# its sites), not for one app: off, and its warning silenced.
 # https://hstspreload.org/
 SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD") == "1"
 if not SECURE_HSTS_PRELOAD:

@@ -172,7 +172,7 @@ def _ask(provider, now):
     return checked
 
 
-# OVHcloud calls this address (set by hand in its manager, see the README).
+# OVHcloud calls this address (set by hand in its manager: SMS, API users, callback).
 # No session, no CSRF token: the secret in the address is the proof, since the
 # call carries no signature. Always 200 for a known secret, so OVHcloud does
 # not repeat calls about SMS that are not ours (activation codes...).

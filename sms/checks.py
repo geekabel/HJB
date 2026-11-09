@@ -69,7 +69,7 @@ def check_production_provider(app_configs, **kwargs):
             Warning(
                 "Pas d'accusés de réception des SMS : DJANGO_SMS_RECEIPT_SECRET "
                 "ou OVH_SMS_USER est vide.",
-                hint="Voir .env.example et le README (adresse de rappel OVHcloud).",
+                hint="Voir .env.example (adresse de rappel OVHcloud).",
                 id="sms.W002",
             )
         ]

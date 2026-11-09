@@ -103,7 +103,7 @@ def make(target_dir, now=None):
     manifest = {
         "made_at": now.isoformat(),
         # Which database was copied: a cron line without the production
-        # settings would back up the development one (README).
+        # settings would back up the development one.
         "database": str(connection.settings_dict["NAME"]),
         "format": connection.vendor,
         "db_file": db_file,
@@ -254,7 +254,7 @@ def prune(target_dir, keep):
     """Keep the ``keep`` most recent backups, delete the older ones.
 
     Return the names deleted. A deleted personal datum leaves the backups
-    with them (docs/registre-des-traitements.md).
+    with them (register of processing activities, kept outside the repository).
     """
     folders = sorted(
         (p for p in Path(target_dir).iterdir() if p.is_dir() and p.name.startswith(PREFIX)),

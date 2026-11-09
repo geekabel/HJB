@@ -11,8 +11,8 @@ API user at each status change, with ``id``, ``ptt`` (status code), ``date``
 and ``description`` in the query string
 (https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/faq-sms and
 https://docs.ovhcloud.com/en/guides/web-cloud/messaging/sms/sms-users).
-The callback is set on an API user, by hand in the OVHcloud manager (see the
-README), so the SMS are sent through that user (POST
+The callback is set on an API user, by hand in the OVHcloud manager (SMS, API
+users, callback), so the SMS are sent through that user (POST
 /sms/{serviceName}/users/{login}/jobs, option "user"). The address holds a
 secret (SMS_RECEIPT_SECRET), since the call carries no signature.
 
