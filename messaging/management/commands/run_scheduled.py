@@ -17,7 +17,7 @@ class Command(BaseCommand):
         "Lance les messages et les relances arrivés à l'heure, reprend les envois "
         "interrompus, enregistre les départs prévus, demande les accusés de réception "
         "des SMS, envoie les rappels de rendez-vous, les retards et le récapitulatif "
-        "des signalements. À lancer chaque minute (voir le README)."
+        "des signalements. À lancer chaque minute."
     )
 
     def handle(self, *args, **options):

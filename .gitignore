@@ -34,3 +34,7 @@ db.sqlite3-shm
 # Real first-loading file of a server (deploy/initial-data.example.yaml)
 deploy/initial-data.yaml
 deploy/deploy.conf
+
+# Project notes and operations docs: kept outside the public repository.
+/KANBAN.md
+/docs/

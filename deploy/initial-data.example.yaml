@@ -13,11 +13,14 @@ residence:
   organization_address: |
     1 rue de l'Exemple
     90000 Belfort
-  privacy_contact: donnees@example.org
-  emergency_phone: "03 84 00 00 00"
+  # Optional, shown to the residents. Leave out until known.
+  # privacy_contact: donnees@example.org
+  # emergency_phone: "03 84 00 00 00"
 
 # number: 0 for the ground floor. visit_order: the order of the room
-# visits (the floor number if left out). rooms: numbers, or ranges "101-120".
+# visits (the floor number if left out). rooms: numbers, or ranges "101-120";
+# leave out for a floor without rooms. Rooms can be added later in the admin
+# site; the Excel import refuses a room that does not exist.
 floors:
   - number: 0
     name: Rez-de-chaussée
@@ -29,9 +32,17 @@ floors:
 
 # The first staff accounts. Roles: admin, front_desk, educator, maintenance.
 # No password: each person gets an activation code (the command says how).
+# site_admin: true also opens the admin site (DJANGO_ADMIN_URL), with every
+# right: for the first administrator only.
 staff:
   - username: marie.exemple
     first_name: Marie
     last_name: Exemple
     phone: "06 00 00 00 01"
     roles: [admin]
+    site_admin: true
+  - username: paul.exemple
+    first_name: Paul
+    last_name: Exemple
+    phone: "06 00 00 00 02"
+    roles: [front_desk]

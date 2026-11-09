@@ -74,7 +74,7 @@ class User(AbstractUser):
     wifi_expiry_reminder = models.BooleanField(
         "rappel avant la fin de l'accès wifi",
         default=True,
-        help_text="Notification 15 jours avant la fin de l'accès wifi de la chambre (carte T17).",
+        help_text="Notification 15 jours avant la fin de l'accès wifi de la chambre.",
     )
 
     objects = HJBUserManager()
