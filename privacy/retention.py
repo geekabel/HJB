@@ -3,7 +3,7 @@
 The association, as data controller, sets the durations. The
 administration changes them on the page "Réglages" (residence app, card
 T37b, within safe bounds), so that the page "Vos données" and the purge
-use the same ones; docs/registre-des-traitements.md lists
+use the same ones; the register of processing activities lists
 them too. `manage.py purge_personal_data` counts what is past its time;
 with --apply it deletes it. Run it once a day, after the durations are
 validated.

@@ -44,7 +44,7 @@ class Report(models.Model):
         Category.OTHER: "more",
     }
 
-    # Time to take a report in hand, by urgency (data model, docs/modele-de-donnees.md).
+    # Time to take a report in hand, by urgency (data model).
     DELAYS = {
         Urgency.URGENT: timedelta(hours=4),
         Urgency.ANNOYING: timedelta(hours=48),
