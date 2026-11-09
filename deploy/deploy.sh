@@ -5,6 +5,8 @@
 #   sudo ./deploy.sh update    new code: dependencies, migrations, restart
 #   sudo ./deploy.sh status    services, timers, certificate, last errors
 #   sudo ./deploy.sh check     test the site from outside, like a visitor
+#   sudo ./deploy.sh manage …  a manage.py command, as the app user
+#   sudo ./deploy.sh codes     test mode: follow the SMS (codes) in the journal
 #
 # Settings: deploy/deploy.conf (copy of deploy.conf.example), or
 # /etc/hjb/deploy.conf. Each step can run again without harm: what is
@@ -33,6 +35,7 @@ ACME_EMAIL=""
 BACKUP_DIR="/var/backups/hjb"
 BACKUP_KEEP="14"
 ENV_DIR="/etc/hjb"
+TEST_MODE="0"
 DRY_RUN="${DRY_RUN:-0}"
 
 # Derived paths, set by load_config.
@@ -97,6 +100,7 @@ load_config() {
 		die "DOMAIN doit être un nom de domaine, sans https:// ni / (par exemple hjb.example.org)."
 	[[ "${ACME_EMAIL}" =~ ^[^[:space:]@#]+@[^[:space:]@#]+$ ]] || die "ACME_EMAIL n'est pas une adresse e-mail."
 	[[ -n "${ACME_EMAIL}" ]] || die "ACME_EMAIL est vide (deploy.conf)."
+	[[ "${TEST_MODE}" =~ ^[01]$ ]] || die "TEST_MODE vaut 0 ou 1 (deploy.conf)."
 	APP_DIR="${APP_HOME}/app"
 	VENV="${APP_HOME}/venv"
 	STATIC_ROOT="${APP_HOME}/static"
@@ -254,6 +258,29 @@ add_env() { # name value: add the line only if the name is absent
 	fi
 }
 
+set_env() { # name value: replace the line, or add it
+	if grep -q "^$1=" "${ENV_FILE}"; then
+		run sed -i "s|^$1=.*|$1=$2|" "${ENV_FILE}"
+	else
+		add_env "$1" "$2"
+	fi
+}
+
+# TEST_MODE=1: no SMS leaves, the console provider writes them (codes
+# included) to the journal; read them with "deploy.sh codes". Back to 0:
+# no SMS at all, until SMSGate or OVHcloud is filled in.
+sms_mode() {
+	local current
+	current="$(sed -n 's/^DJANGO_SMS_PROVIDER=//p' "${ENV_FILE}" | tail -n 1)"
+	if [[ "${TEST_MODE}" == "1" ]]; then
+		[[ "${current}" == "console" ]] || set_env DJANGO_SMS_PROVIDER console
+		warn "Mode test : aucun SMS ne part. Pour lire les codes : sudo $0 codes"
+	elif [[ "${current}" == "console" ]]; then
+		set_env DJANGO_SMS_PROVIDER disabled
+		warn "Mode test arrêté : aucun SMS ne part tant que SMSGate ou OVHcloud n'est pas réglé (${ENV_FILE})."
+	fi
+}
+
 django_setup() {
 	say "Django : migrations, cache, fichiers statiques, vérifications"
 	manage migrate --noinput
@@ -298,7 +325,7 @@ Restart=on-failure
 WantedBy=multi-user.target
 EOF
 
-	# The tasks worker: notifications, SMS, e-mails (README, "Tâches").
+	# The tasks worker: notifications, SMS, e-mails.
 	write_file /etc/systemd/system/hjb-worker.service 644 root:root <<EOF && changed=1 || true
 [Unit]
 Description=Résidence HJB : tâches de fond
@@ -470,6 +497,14 @@ check_site() {
 	say "Le site répond, en HTTPS, avec ses en-têtes de sécurité."
 }
 
+# The SMS written by the console provider (test mode): each one starts
+# with "--- SMS to <number> ..." and ends with "---".
+codes() {
+	say "SMS du mode test, en direct (Ctrl+C pour quitter)"
+	journalctl -u hjb-web.service -u hjb-worker.service -n 300 -f -o cat --no-pager |
+		awk '/^--- SMS to /{on=1} on{print; fflush()} on && /^---$/{on=0}'
+}
+
 status() {
 	systemctl --no-pager --lines=0 status hjb-web.service hjb-worker.service caddy.service postgresql.service || true
 	systemctl --no-pager list-timers 'hjb-*' || true
@@ -481,13 +516,14 @@ next_steps() {
 	cat <<EOF
 
 Prochaines étapes :
-  1. SMS : dans ${ENV_FILE}, remplir SMSGATE_URL et SMSGATE_TOKEN (ou
-     SMSGATE_USERNAME et SMSGATE_PASSWORD), mettre DJANGO_SMS_PROVIDER=smsgate,
-     puis : sudo $0 update
+  1. SMS : TEST_MODE=1 dans deploy.conf pour lire les codes avec « sudo $0 codes ».
+     Sinon, dans ${ENV_FILE}, remplir SMSGATE_URL et SMSGATE_TOKEN (ou
+     SMSGATE_USERNAME et SMSGATE_PASSWORD), mettre DJANGO_SMS_PROVIDER=smsgate.
+     Puis : sudo $0 update
   2. Charger la résidence :
      sudo cp ${APP_DIR}/deploy/initial-data.example.yaml ${ENV_DIR}/initial-data.yaml   (puis le remplir)
-     sudo runuser -u ${APP_USER} -- bash -c 'set -a; . ${ENV_FILE}; set +a; cd ${APP_DIR}; ${VENV}/bin/python manage.py load_initial_data ${ENV_DIR}/initial-data.yaml --dry-run'
-  3. Code du premier administrateur : même commande avec « activation_code <identifiant> ».
+     sudo $0 manage load_initial_data ${ENV_DIR}/initial-data.yaml --dry-run
+  3. Code du premier administrateur : sudo $0 manage activation_code <identifiant>
   4. Adresse du site d'administration : ligne DJANGO_ADMIN_URL de ${ENV_FILE}.
 EOF
 }
@@ -511,6 +547,7 @@ main() {
 		fetch_code
 		setup_venv
 		write_env
+		sms_mode
 		django_setup
 		install_units
 		setup_firewall
@@ -524,6 +561,7 @@ main() {
 		load_config
 		fetch_code
 		setup_venv
+		sms_mode
 		django_setup
 		install_units
 		setup_caddy
@@ -538,8 +576,20 @@ main() {
 		load_config
 		check_site || exit 1
 		;;
+	manage)
+		require_root
+		load_config
+		shift
+		[[ $# -gt 0 ]] || die "Quelle commande ? Par exemple : sudo $0 manage activation_code <identifiant>"
+		manage "$@"
+		;;
+	codes)
+		require_root
+		load_config
+		codes
+		;;
 	*)
-		sed -n '2,8p' "$0"
+		sed -n '2,10p' "$0"
 		exit 2
 		;;
 	esac

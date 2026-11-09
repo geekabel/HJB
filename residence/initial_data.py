@@ -152,6 +152,9 @@ def check(data):
             raise DataError(
                 f"Compte «\u00a0{username}\u00a0» : rôles parmi {', '.join(sorted(ROLE_NAMES))}."
             )
+        site_admin = entry.get("site_admin", False)
+        if not isinstance(site_admin, bool):
+            raise DataError(f"Compte «\u00a0{username}\u00a0» : site_admin vaut true ou false.")
         try:
             phone = normalize_phone(str(entry.get("phone") or ""))
         except ValidationError as error:
@@ -164,6 +167,7 @@ def check(data):
                 "email": str(entry.get("email") or ""),
                 "phone": phone,
                 "roles": {ROLE_NAMES[r] for r in roles},
+                "site_admin": site_admin,
             }
         )
     return plan
@@ -222,6 +226,9 @@ def apply(plan, dry_run=False):
                 last_name=person["last_name"],
                 email=person["email"],
                 phone=person["phone"],
+                # The Django admin site, after a passkey login (config/admin.py).
+                is_staff=person["site_admin"],
+                is_superuser=person["site_admin"],
             )
             user.set_unusable_password()  # passkeys only (card T13)
             user.full_clean()
