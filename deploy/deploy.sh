@@ -259,6 +259,10 @@ add_env() { # name value: add the line only if the name is absent
 }
 
 set_env() { # name value: replace the line, or add it
+	if [[ "${DRY_RUN}" == "1" ]]; then
+		printf '   [essai] %s=%s dans %s\n' "$1" "$2" "${ENV_FILE}"
+		return
+	fi
 	if grep -q "^$1=" "${ENV_FILE}"; then
 		run sed -i "s|^$1=.*|$1=$2|" "${ENV_FILE}"
 	else
@@ -271,6 +275,10 @@ set_env() { # name value: replace the line, or add it
 # no SMS at all, until SMSGate or OVHcloud is filled in.
 sms_mode() {
 	local current
+	if [[ ! -f "${ENV_FILE}" ]]; then
+		[[ "${DRY_RUN}" == "1" ]] && return
+		die "${ENV_FILE} manque : lancez d'abord sudo $0 install."
+	fi
 	current="$(sed -n 's/^DJANGO_SMS_PROVIDER=//p' "${ENV_FILE}" | tail -n 1)"
 	if [[ "${TEST_MODE}" == "1" ]]; then
 		[[ "${current}" == "console" ]] || set_env DJANGO_SMS_PROVIDER console
@@ -278,6 +286,7 @@ sms_mode() {
 	elif [[ "${current}" == "console" ]]; then
 		set_env DJANGO_SMS_PROVIDER disabled
 		warn "Mode test arrêté : aucun SMS ne part tant que SMSGate ou OVHcloud n'est pas réglé (${ENV_FILE})."
+		warn "Le journal garde les SMS du mode test (numéros, codes). Pour l'effacer : sudo journalctl --rotate puis sudo journalctl --vacuum-time=1s (tout le journal)."
 	fi
 }
 
@@ -441,7 +450,7 @@ setup_firewall() {
 	run ufw allow 443/tcp
 	run ufw allow 443/udp
 	run ufw --force enable
-	warn "Hostinger : ouvrez aussi ${ssh_port:-22}, 80, 443 (TCP) et 443 (UDP) dans le pare-feu du panneau, s'il est actif."
+	warn "Pare-feu du panneau de l'hébergeur, s'il est actif : ouvrez aussi ${ssh_port:-22}, 80, 443 (TCP) et 443 (UDP)."
 }
 
 restart_app() {
@@ -501,8 +510,9 @@ check_site() {
 # with "--- SMS to <number> ..." and ends with "---".
 codes() {
 	say "SMS du mode test, en direct (Ctrl+C pour quitter)"
+	# sed -u: unbuffered, each SMS shows at once (mawk would wait).
 	journalctl -u hjb-web.service -u hjb-worker.service -n 300 -f -o cat --no-pager |
-		awk '/^--- SMS to /{on=1} on{print; fflush()} on && /^---$/{on=0}'
+		sed -un '/^--- SMS to /,/^---$/p'
 }
 
 status() {

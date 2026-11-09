@@ -155,6 +155,10 @@ def check(data):
         site_admin = entry.get("site_admin", False)
         if not isinstance(site_admin, bool):
             raise DataError(f"Compte «\u00a0{username}\u00a0» : site_admin vaut true ou false.")
+        if site_admin and "admin" not in roles:
+            raise DataError(
+                f"Compte «\u00a0{username}\u00a0» : site_admin seulement avec le rôle admin."
+            )
         try:
             phone = normalize_phone(str(entry.get("phone") or ""))
         except ValidationError as error:
@@ -218,7 +222,10 @@ def apply(plan, dry_run=False):
         for person in plan.staff:
             user = User.objects.filter(username=person["username"]).first()
             if user:
-                report.kept.append(f"compte {person['username']}")
+                note = ""
+                if person["site_admin"] and not user.is_superuser:
+                    note = " (déjà créé : site_admin n'est pas appliqué)"
+                report.kept.append(f"compte {person['username']}{note}")
                 continue
             user = User(
                 username=person["username"],

@@ -10,6 +10,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from accounts.roles import Role, roles_of
+from accounts.tests.helpers import make_user
 from housing.models import Floor, Room
 from residence.models import ResidenceSettings
 
@@ -28,6 +29,14 @@ class InitialDataTests(TestCase):
         out = StringIO()
         call_command("load_initial_data", str(path), *args, stdout=out)
         return out.getvalue()
+
+    def test_an_existing_account_is_not_promoted(self):
+        make_user("marie.exemple", Role.FRONT_DESK)
+        out = self.load()
+        marie = User.objects.get(username="marie.exemple")
+        self.assertFalse(marie.is_staff or marie.is_superuser)
+        self.assertEqual(roles_of(marie), {Role.FRONT_DESK})
+        self.assertIn("site_admin n'est pas appliqué", out)
 
     def test_the_example_loads_once(self):
         out = self.load()
@@ -74,6 +83,9 @@ class InitialDataTests(TestCase):
             "floors:\n  - number: 1\n    rooms: ['120-101']\n": "plage",
             "staff:\n  - username: x\n    roles: [boss]\n": "rôles parmi",
             "staff:\n  - username: x\n    roles: [admin]\n    site_admin: 'yes'\n": "true ou false",
+            "staff:\n  - username: x\n    roles: [front_desk]\n    site_admin: true\n": (
+                "seulement avec le rôle admin"
+            ),
             "staff:\n  - username: x\n    roles: [admin]\n    phone: '12'\n": "Vérifiez",
             "chambres: []\n": "Rubrique inconnue",
             "residence:\n  color: red\n": "réglage inconnu",

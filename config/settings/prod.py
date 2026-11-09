@@ -32,7 +32,7 @@ if ADMIN_URL == "/":
     ADMIN_URL = "admin/"
 
 
-# Database: PostgreSQL (card T38, choice of Godwin, 7 Nov.). With an empty
+# Database: PostgreSQL (card T38). With an empty
 # POSTGRES_HOST, Django goes through the Unix socket: the app runs as the
 # Linux user that owns the database ("peer" login, no password to keep).
 # https://docs.djangoproject.com/en/6.1/ref/databases/#postgresql-notes

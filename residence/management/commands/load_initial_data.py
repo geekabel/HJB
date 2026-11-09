@@ -30,6 +30,9 @@ class Command(BaseCommand):
         self.stdout.write(f"{verb} : {len(report.created)}. Déjà là : {len(report.kept)}.")
         for item in report.created:
             self.stdout.write(f"  + {item}")
+        for item in report.kept:
+            if "(" in item:  # kept, with something left undone
+                self.stdout.write(f"  = {item}")
         if not dry_run:
             for person in plan.staff:
                 if f"compte {person['username']}" in report.created:
