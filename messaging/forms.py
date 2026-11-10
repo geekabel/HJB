@@ -4,7 +4,9 @@ from housing.models import Floor
 
 from .models import Campaign, MessageTemplate, MessageType, ReplyType
 
-TEXTAREA = {"rows": 8, "spellcheck": "true"}
+TEXTAREA = {"rows": 8, "spellcheck": "true", "data-field-target": ""}
+# The field buttons (_field_buttons.html) write into the last of these that had focus.
+TITLE = forms.TextInput(attrs={"data-field-target": ""})
 
 
 class TemplateForm(forms.ModelForm):
@@ -12,6 +14,7 @@ class TemplateForm(forms.ModelForm):
         model = MessageTemplate
         fields = ["type", "name", "title", "body", "sms_body", "reply_expected"]
         widgets = {
+            "title": TITLE,
             "body": forms.Textarea(attrs=TEXTAREA),
             "sms_body": forms.Textarea(attrs={**TEXTAREA, "rows": 3}),
         }
@@ -63,6 +66,7 @@ class CampaignForm(forms.ModelForm):
         ]
         widgets = {
             "type": forms.RadioSelect,
+            "title": TITLE,
             "body": forms.Textarea(attrs=TEXTAREA),
             "sms_body": forms.Textarea(attrs={**TEXTAREA, "rows": 3}),
             "event_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
@@ -80,7 +84,9 @@ class CampaignForm(forms.ModelForm):
             ),
         }
         help_texts = {
-            "body": "Les {champs} sont remplis pour chaque personne.",
+            "body": (
+                "Les {champs} sont remplis pour chaque personne. {debut} ou {Début} marchent aussi."
+            ),
             "sms_body": (
                 "Pour ceux sans l'application. Vide : le texte complet part par SMS. "
                 "ê, ç et guillemets sont remplacés."

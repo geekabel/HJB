@@ -1,6 +1,7 @@
 {% extends "ui/staff.html" %}
-{% load icons french %}
+{% load icons french static %}
 {% block title %}{% if campaign.pk %}{{ campaign.title }}{% else %}Nouveau message{% endif %}{% endblock %}
+{% block head %}<script src="{% static 'ui/js/fields.js' %}" defer></script>{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'messaging:list' %}">{% icon "back" %}Tous les messages</a>
 
@@ -94,7 +95,7 @@
     <fieldset class="card stack">
       <legend class="compose__step">3. Message</legend>
       {{ form.body.as_field_group }}
-      <p class="text-small">Champs possibles : {% for name, label in fields.items %}<code title="{{ label }}">{{ "{" }}{{ name }}{{ "}" }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+      {% include "messaging/_field_buttons.html" %}
       <div class="grid-auto compose__event{% if uses_event %} compose__event--used{% endif %}">
         {{ form.event_date.as_field_group }}
         {{ form.start_time.as_field_group }}
