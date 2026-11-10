@@ -158,7 +158,7 @@ def activation_state(user):
     return latest, "active"
 
 
-def send_code_by_sms(user, url, *, by=None, request=None):
+def send_code_by_sms(user, url, *, by=None, request=None, for_staff=False):
     """Issue a code and send it by SMS. Return True if the SMS was sent.
 
     ``url``: the absolute address of the activation page. If sending fails
@@ -169,7 +169,7 @@ def send_code_by_sms(user, url, *, by=None, request=None):
 
     if not user.phone:
         return False
-    code = issue_code(user, by=by, request=request)
+    code = issue_code(user, by=by, request=request, for_staff=for_staff)
     text = (
         f"Habitat Jeunes Belfort : activez votre compte sur {url}#{code} "
         f"(code {code}, valable 72 h, une seule fois)."
