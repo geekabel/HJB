@@ -92,13 +92,14 @@
     <h2 id="columns-title">Colonnes attendues</h2>
     <p class="text-muted">La première ligne donne le titre de chaque colonne. L'ordre n'a pas d'importance.</p>
     <dl class="details">
-      <dt>Prénom</dt><dd>Obligatoire</dd>
-      <dt>Nom</dt><dd>Obligatoire</dd>
+      <dt>Prénom</dt><dd>Obligatoire, sauf si la colonne Nom contient le nom entier</dd>
+      <dt>Nom</dt><dd>Obligatoire. Seule, elle peut contenir le nom entier : «&nbsp;Awa KONÉ&nbsp;», nom de famille en majuscules</dd>
       <dt>Téléphone</dt><dd>Portable, par exemple 06 12 34 56 78</dd>
-      <dt>Chambre</dt><dd>Numéro, par exemple 312</dd>
-      <dt>Arrivée</dt><dd>Date, par exemple 01/09/2026. Vide : aujourd'hui</dd>
+      <dt>Chambre</dt><dd>Numéro, par exemple 312 ou 214A-1</dd>
+      <dt>Arrivée (ou Date)</dt><dd>Date, par exemple 01/09/2026. Vide : aujourd'hui</dd>
       <dt>E-mail</dt><dd>Facultatif</dd>
     </dl>
+    <p class="text-muted">Les autres colonnes sont ignorées, par exemple Identifiant et Mot de passe du wifi : le même fichier s'importe ensuite dans «&nbsp;Importer la liste wifi&nbsp;». Une ligne sans nom (chambre libre) est ignorée.</p>
     <p><a href="{% url 'residents:import_template' %}" download>Télécharger un modèle vide (.csv)</a></p>
   </section>
 </div>

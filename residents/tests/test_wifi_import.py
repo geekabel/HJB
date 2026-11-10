@@ -339,3 +339,12 @@ class ImportReviewTests(WifiImportTestCase):
     def test_front_desk_with_only_one_of_the_rights(self):
         self.log_in(self.front_desk)
         self.assertEqual(self.client.get(reverse("residents:wifi_import")).status_code, 403)
+
+
+class SamePersonTests(TestCase):
+    def test_marks_of_the_list_are_ignored(self):
+        from residents.wifi_import import _same_person
+
+        self.assertTrue(_same_person("Jean-Marc DUPONT*", "Jean-Marc Dupont"))
+        self.assertTrue(_same_person(" jean-marc  dupont ", "Jean-Marc Dupont"))
+        self.assertFalse(_same_person("Paul DUPONT", "Jean-Marc Dupont"))

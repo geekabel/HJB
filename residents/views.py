@@ -60,6 +60,7 @@ from .bulk_import import (
     FileError,
     analyze,
     from_session,
+    has_wifi_columns,
     read_file,
     run_import,
     to_session,
@@ -724,7 +725,8 @@ def import_file(request):
     if request.method == "POST" and form.is_valid():
         file = form.cleaned_data["file"]
         try:
-            rows = analyze(read_file(file))
+            content = read_file(file)
+            rows = analyze(content)
         except FileError as error:
             form.add_error("file", str(error))
         else:
@@ -734,6 +736,8 @@ def import_file(request):
                 "created_at": time.time(),
                 "file_name": file.name[:100],
                 "rows": to_session(rows),
+                # Its passwords are not kept: only the fact that they are there.
+                "wifi": has_wifi_columns(content[0][1]),
             }
             return redirect("residents:import_preview")
     return render(
@@ -851,6 +855,12 @@ def import_preview(request):
                     can_issue = request.user.has_perm("accounts.issue_activation_codes")
                     if request.POST.get("send_codes") == "yes" and can_issue:
                         _send_codes(request, created)
+                    if pending_import.get("wifi"):
+                        messages.info(
+                            request,
+                            "Ce fichier contient aussi les accès wifi : envoyez-le maintenant "
+                            "dans «\u00a0Importer la liste wifi\u00a0».",
+                        )
                 return redirect("residents:list")
             rows = from_session(pending_import["rows"])
             ready = [row.number for row in rows if row.ready]
