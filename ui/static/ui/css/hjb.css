@@ -998,6 +998,17 @@
     font-size: var(--t-small);
   }
 
+  /* A date or time in French under its field (ui/js/dates.js) */
+  .field__echo {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .field__echo::first-letter {
+    text-transform: uppercase;
+  }
+
   .field__error {
     display: flex;
     gap: var(--s-1);
