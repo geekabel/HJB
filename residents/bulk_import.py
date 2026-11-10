@@ -42,9 +42,11 @@ EXTENSIONS = (".csv", ".xlsx")
 HEADERS = {
     "first_name": ["prenom", "firstname"],
     "last_name": ["nom", "nomdefamille", "lastname"],
+    # One column for both, "Awa KONÉ": split by split_name().
+    "full_name": ["nomprenom", "prenomnom", "nomcomplet", "resident", "residente", "occupant"],
     "phone": ["telephone", "tel", "portable", "mobile", "telephoneportable"],
     "room": ["chambre", "nchambre", "numerodechambre", "numerochambre"],
-    "arrival": ["arrivee", "datedarrivee", "datearrivee", "entree", "datedentree"],
+    "arrival": ["arrivee", "datedarrivee", "datearrivee", "entree", "datedentree", "date"],
     "email": ["email", "mail", "courriel", "adresseemail"],
 }
 REQUIRED = ("first_name", "last_name")
@@ -190,6 +192,7 @@ class ImportRow:
     email: str = ""
     # Parsing errors (unreadable date): kept between the preview and the confirmation.
     format_errors: list = field(default_factory=list)
+    format_warnings: list = field(default_factory=list)
     # Computed by _check(), at each analysis.
     errors: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
@@ -247,12 +250,54 @@ def _date(value):
     return None
 
 
+def clean_name(text):
+    """Without the marks some lists add (a trailing "*") nor double spaces."""
+    return " ".join(text.replace("*", " ").split())
+
+
+def split_name(text):
+    """ "Mohamed ismail EL GHANNAJ" -> ("Mohamed ismail", "EL GHANNAJ", True).
+
+    French lists write the last name in capitals: the capital words at the
+    end are the last name. Without them, the last word is taken, and the
+    third value (sure) is False: the preview asks to check.
+    """
+    words = clean_name(text).split()
+    if not words:
+        return "", "", True
+
+    def capitals(word):
+        letters = [c for c in word if c.isalpha()]
+        return len(letters) > 1 and all(c.isupper() for c in letters)
+
+    cut = len(words)
+    while cut > 1 and capitals(words[cut - 1]):
+        cut -= 1
+    if cut < len(words):
+        return " ".join(words[:cut]), " ".join(words[cut:]), True
+    if len(words) == 1:
+        return "", words[0], False
+    return " ".join(words[:-1]), words[-1], False
+
+
+def has_wifi_columns(header):
+    """True if the file also lists wifi accesses (username and password)."""
+    keys = {_key(title) for title in header}
+    return bool(keys & {"identifiant", "login"}) and bool(keys & {"motdepasse", "mdp"})
+
+
 def _columns(header):
     columns = {}
     for index, title in enumerate(header):
         key = KEY_BY_HEADER.get(_key(title))
         if key and key not in columns:
             columns[key] = index
+    if "first_name" not in columns:
+        # One column with the whole name: "Nom prénom", or "Nom" alone.
+        if "full_name" not in columns and "last_name" in columns:
+            columns["full_name"] = columns.pop("last_name")
+        if "full_name" in columns:
+            return columns
     missing = [key for key in REQUIRED if key not in columns]
     if missing:
         names = " et ".join(f"«\u00a0{HEADERS[c][0].capitalize()}\u00a0»" for c in missing)
@@ -272,10 +317,16 @@ def analyze(rows):
             index = columns.get(key)
             return cells[index] if index is not None and index < len(cells) else None
 
+        first_name = clean_name(_text(value("first_name")))
+        last_name = clean_name(_text(value("last_name")))
+        guessed = False
+        if "full_name" in columns:
+            first_name, last_name, sure = split_name(_text(value("full_name")))
+            guessed = not sure
         row = ImportRow(
             number=number,
-            first_name=_text(value("first_name")),
-            last_name=_text(value("last_name")),
+            first_name=first_name,
+            last_name=last_name,
             phone=_raw_phone(value("phone")),
             room=_text(value("room")).upper(),
             email=_text(value("email")),
@@ -290,6 +341,11 @@ def analyze(rows):
                 )
         elif row.room:
             row.auto_arrival = True
+        if guessed:
+            row.format_warnings.append(
+                "Prénom et nom séparés au mieux : vérifiez-les "
+                "(le nom de famille en majuscules aide)."
+            )
         result.append(row)
     _check(result)
     return result
@@ -302,7 +358,7 @@ def _check(rows):
     """
     for row in rows:
         row.errors = list(row.format_errors)
-        row.warnings = []
+        row.warnings = list(row.format_warnings)
         row.phone_valid = False
         if row.phone:
             try:
@@ -326,6 +382,11 @@ def _check(rows):
     seen_numbers, seen_rooms = {}, {}
 
     for row in rows:
+        if not row.first_name and not row.last_name:
+            # A free room in the residence's list: nothing to create.
+            row.errors = ["Pas de nom : cette ligne est ignorée."]
+            row.warnings = []
+            continue
         if not row.first_name:
             row.errors.append("Le prénom manque.")
         if not row.last_name:

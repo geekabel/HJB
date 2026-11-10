@@ -77,14 +77,15 @@ def _rooms(items, floor):
                 f'Étage {floor} : écrivez chaque chambre entre guillemets, par exemple "{item}".'
             )
         text = item.strip()
-        if "-" in text:
-            start, _, end = text.partition("-")
-            if not (start.isdigit() and end.isdigit()) or int(start) > int(end):
+        start, dash, end = text.partition("-")
+        # "101-120" is a range; "214A-1" is one room whose name has a dash.
+        if dash and start.isascii() and start.isdigit() and end.isascii() and end.isdigit():
+            if int(start) > int(end):
                 raise DataError(f"Étage {floor} : plage de chambres invalide «\u00a0{text}\u00a0».")
             width = len(start)
             rooms += [str(n).zfill(width) for n in range(int(start), int(end) + 1)]
         elif text:
-            rooms.append(text)
+            rooms.append(text.upper())  # as the Excel import writes them
     for number in rooms:
         if len(number) > 10:
             raise DataError(f"Chambre «\u00a0{number}\u00a0» : 10 caractères au plus.")
