@@ -30,7 +30,9 @@
 
   function day(text) {
     var parts = text.split("-");
-    var date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    var date = new Date(2000, 0, 1);
+    // setFullYear: new Date(20, ...) would mean 1920 while the year is typed.
+    date.setFullYear(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     return isNaN(date.getTime()) ? "" : DAY.format(date);
   }
 
@@ -63,6 +65,11 @@
       }
       input.addEventListener("input", update);
       input.addEventListener("change", update);
+      if (input.form) {
+        input.form.addEventListener("reset", function () {
+          setTimeout(update, 0); // after the browser has put the values back
+        });
+      }
       update();
     });
 })();

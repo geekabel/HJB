@@ -258,7 +258,7 @@ def newer_messages(request, conversation, me):
     found = direct.newer_than(conversation, after)
     if not found:
         return _private(HttpResponse(status=204))
-    new_ids = direct.mark_read(conversation, me)
+    new_ids = direct.mark_read(conversation, me, among=found)
     # No request given: the context processors (menu counters...) are not needed here.
     html = render_to_string(
         "appointments/_thread_items.html", {"messages": found, "me": me, "new_ids": new_ids}

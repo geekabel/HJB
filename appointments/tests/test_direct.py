@@ -404,6 +404,15 @@ class NewerMessagesTests(DirectTestCase):
             Session.objects.get(pk=key).expire_date, timezone.now() + timedelta(hours=1)
         )
 
+    def test_only_the_shown_messages_are_read(self):
+        later = DirectMessage.objects.create(conversation=self.talk, author=self.ines, text="1")
+        log_in_verified(self.client, self.samia)
+        with mock.patch.object(direct, "PAGE", 1):  # one shown, one still waiting
+            DirectMessage.objects.create(conversation=self.talk, author=self.ines, text="2")
+            response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertContains(response, f'data-id="{later.pk}"')
+        self.assertEqual(self.talk.messages.filter(read_at__isnull=True).count(), 2)
+
     def test_a_new_day_gets_its_line(self):
         DirectMessage.objects.filter(pk=self.first.pk).update(
             sent_at=timezone.now() - timedelta(days=2)

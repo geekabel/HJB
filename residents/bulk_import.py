@@ -40,13 +40,13 @@ EXTENSIONS = (".csv", ".xlsx")
 # Expected column -> accepted headers (compared without accents, spaces or case).
 # The headers stay in French: users type them in their files.
 HEADERS = {
-    "first_name": ["prenom", "firstname"],
+    "first_name": ["prenom", "prenoms", "firstname"],
     "last_name": ["nom", "nomdefamille", "lastname"],
     # One column for both, "Awa KONÉ": split by split_name().
     "full_name": ["nomprenom", "prenomnom", "nomcomplet", "resident", "residente", "occupant"],
     "phone": ["telephone", "tel", "portable", "mobile", "telephoneportable"],
     "room": ["chambre", "nchambre", "numerodechambre", "numerochambre"],
-    "arrival": ["arrivee", "datedarrivee", "datearrivee", "entree", "datedentree", "date"],
+    "arrival": ["arrivee", "datedarrivee", "datearrivee", "entree", "datedentree"],
     "email": ["email", "mail", "courriel", "adresseemail"],
 }
 REQUIRED = ("first_name", "last_name")
@@ -255,35 +255,68 @@ def clean_name(text):
     return " ".join(text.replace("*", " ").split())
 
 
+# Small words that belong to the last name: "Jean de LA FONTAINE".
+PARTICLES = {
+    "de",
+    "du",
+    "des",
+    "d'",
+    "van",
+    "von",
+    "der",
+    "den",
+    "da",
+    "di",
+    "del",
+    "ben",
+    "le",
+    "la",
+}
+
+
+def _capitals(word):
+    letters = [c for c in word if c.isalpha()]
+    return len(letters) > 1 and all(c.isupper() for c in letters)
+
+
 def split_name(text):
     """ "Mohamed ismail EL GHANNAJ" -> ("Mohamed ismail", "EL GHANNAJ", True).
 
-    French lists write the last name in capitals: the capital words at the
-    end are the last name. Without them, the last word is taken, and the
-    third value (sure) is False: the preview asks to check.
+    French lists write the last name in capitals, at the end ("Awa KONÉ")
+    or first ("KONÉ Awa"). Small words just before it belong to it ("Jean
+    de LA FONTAINE"). The third value (sure) is False when the capitals do
+    not tell (all or none of the words): the preview then asks to check.
     """
     words = clean_name(text).split()
     if not words:
         return "", "", True
-
-    def capitals(word):
-        letters = [c for c in word if c.isalpha()]
-        return len(letters) > 1 and all(c.isupper() for c in letters)
-
-    cut = len(words)
-    while cut > 1 and capitals(words[cut - 1]):
-        cut -= 1
-    if cut < len(words):
+    caps = [_capitals(word) for word in words]
+    if all(caps) or not any(caps):
+        if len(words) == 1:
+            return "", words[0], False
+        return " ".join(words[:-1]), words[-1], False
+    if caps[-1]:
+        cut = len(words)
+        while cut > 1 and caps[cut - 1]:
+            cut -= 1
+        while cut > 1 and words[cut - 1].casefold() in PARTICLES:
+            cut -= 1
         return " ".join(words[:cut]), " ".join(words[cut:]), True
-    if len(words) == 1:
-        return "", words[0], False
+    if caps[0]:
+        cut = 0
+        while caps[cut]:
+            cut += 1
+        if not any(caps[cut:]):
+            return " ".join(words[cut:]), " ".join(words[:cut]), True
     return " ".join(words[:-1]), words[-1], False
 
 
 def has_wifi_columns(header):
     """True if the file also lists wifi accesses (username and password)."""
-    keys = {_key(title) for title in header}
-    return bool(keys & {"identifiant", "login"}) and bool(keys & {"motdepasse", "mdp"})
+    from .wifi_import import KEY_BY_HEADER as WIFI_KEYS  # wifi_import imports this module
+
+    found = {WIFI_KEYS.get(_key(title)) for title in header}
+    return {"username", "password"} <= found
 
 
 def _columns(header):
@@ -292,12 +325,22 @@ def _columns(header):
         key = KEY_BY_HEADER.get(_key(title))
         if key and key not in columns:
             columns[key] = index
-    if "first_name" not in columns:
-        # One column with the whole name: "Nom prénom", or "Nom" alone.
-        if "full_name" not in columns and "last_name" in columns:
-            columns["full_name"] = columns.pop("last_name")
-        if "full_name" in columns:
-            return columns
+    # "Date" alone is the arrival, only if no column says "Arrivée".
+    if "arrival" not in columns:
+        dates = [i for i, title in enumerate(header) if _key(title) == "date"]
+        if dates:
+            columns["arrival"] = dates[0]
+    if "full_name" in columns and not {"first_name", "last_name"} <= columns.keys():
+        # One column with the whole name ("Nom prénom"): split by split_name().
+        columns.pop("first_name", None)
+        columns.pop("last_name", None)
+        return columns
+    titles = [_key(title) for title in header]
+    first_name_title = any("prenom" in t or "firstname" in t for t in titles)
+    if "first_name" not in columns and "last_name" in columns and not first_name_title:
+        # "Nom" alone, no first name column: it holds the whole name.
+        columns["full_name"] = columns.pop("last_name")
+        return columns
     missing = [key for key in REQUIRED if key not in columns]
     if missing:
         names = " et ".join(f"«\u00a0{HEADERS[c][0].capitalize()}\u00a0»" for c in missing)

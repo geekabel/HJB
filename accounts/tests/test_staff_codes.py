@@ -148,6 +148,12 @@ class StaffCodeButtonTests(TestCase):
         self.assertContains(response, "Le SMS n&#x27;est pas parti")
         self.assertFalse(ActivationCode.objects.valid().exists())
 
+    def test_sms_without_a_number(self):
+        confirm_now(self.client)
+        response = self.client.post(self.url(self.marie), {"sms": "1"}, follow=True)
+        self.assertContains(response, "Ce compte n&#x27;a pas de numéro.")
+        self.assertFalse(ActivationCode.objects.exists())
+
     def test_not_for_a_resident_nor_without_the_role(self):
         confirm_now(self.client)
         response = self.client.post(self.url(self.awa), {"sheet": "1"}, follow=True)
