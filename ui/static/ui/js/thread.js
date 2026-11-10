@@ -69,7 +69,11 @@
         var before = list.querySelectorAll(".thread__new").length;
         list.insertAdjacentHTML("beforeend", html);
         if (status && list.querySelectorAll(".thread__new").length > before) {
-          status.textContent = "Nouveau message.";
+          // Emptied first: the same words again are read out again.
+          status.textContent = "";
+          setTimeout(function () {
+            status.textContent = "Nouveau message.";
+          }, 100);
         }
         if (follow) {
           list.lastElementChild.scrollIntoView({ block: "end" });

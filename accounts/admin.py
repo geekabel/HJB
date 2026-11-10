@@ -168,7 +168,9 @@ class HJBUserAdmin(UserAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
     def response_add(self, request, obj, post_url_continue=None):
-        if set(obj.roles) & STAFF_ROLES:
+        # The button is on the page that follows, for those who can use it.
+        shown = "_addanother" not in request.POST and self.has_manage_roles_permission(request)
+        if shown and set(obj.roles) & STAFF_ROLES:
             self.message_user(
                 request,
                 "Compte créé. Pour sa première connexion, la personne a besoin d'un code "
@@ -204,7 +206,10 @@ class HJBUserAdmin(UserAdmin):
         if request.method == "POST" and "sheet" in request.POST:
             code = issue_code(person, by=request.user, request=request, for_staff=True)
             return activation_sheet(request, person, code, back_url)
-        if request.method == "POST" and "sms" in request.POST and person.phone:
+        if request.method == "POST" and "sms" in request.POST and not person.phone:
+            self.message_user(request, "Ce compte n'a pas de numéro.", messages.WARNING)
+            return redirect(back_url)
+        if request.method == "POST" and "sms" in request.POST:
             address = request.build_absolute_uri(reverse("activation:enter_code"))
             if send_code_by_sms(person, address, by=request.user, request=request, for_staff=True):
                 self.message_user(

@@ -143,7 +143,12 @@ class AnalysisTests(ImportTestCase):
             "Paul Martin": ("Paul", "Martin", False),
             "  ": ("", "", True),
             "Sam": ("", "Sam", False),
-            "LÉO ROUX": ("LÉO", "ROUX", True),
+            "LÉO ROUX": ("LÉO", "ROUX", False),  # all in capitals: to check
+            "Jean de LA FONTAINE": ("Jean", "de LA FONTAINE", True),
+            "Pieter van DIJK": ("Pieter", "van DIJK", True),
+            "KONÉ Awa": ("Awa", "KONÉ", True),
+            "EL GHANNAJ Mohamed ismail": ("Mohamed ismail", "EL GHANNAJ", True),
+            "Anne DUPONT Marie": ("Anne DUPONT", "Marie", False),
         }
         for written, expected in cases.items():
             with self.subTest(written):
@@ -171,6 +176,18 @@ class AnalysisTests(ImportTestCase):
         self.assertEqual((row.first_name, row.last_name), ("Awa", "NDIAYE"))
         (row,) = self.analyze(("Awa", "Ndiaye*", "305"), header=("Prénom", "Nom", "Chambre"))
         self.assertEqual((row.first_name, row.last_name, row.warnings), ("Awa", "Ndiaye", []))
+        # An unknown first name title keeps the clear file error.
+        with self.assertRaisesMessage(FileError, "Il manque «\u00a0Prenom\u00a0»"):
+            self.analyze(("Awa", "Ndiaye"), header=("Prénom usuel", "Nom"))
+        (row,) = self.analyze(("Awa", "Ndiaye"), header=("Prénoms", "Nom"))
+        self.assertEqual(row.first_name, "Awa")
+        # "Date" is the arrival only without an "Arrivée" column.
+        (row,) = self.analyze(
+            ("Awa", "Ndiaye", "02/02/2002", "01/09/2026"),
+            header=("Prénom", "Nom", "Date", "Arrivée"),
+        )
+        self.assertEqual(row.arrival_date, date(2026, 9, 1))
+        self.assertTrue(has_wifi_columns(["Nom d'utilisateur", "Password"]))
 
     def test_values_coming_from_excel(self):
         (row,) = self.analyze(("Léa", "Moreau", 612345678, 304.0, datetime(2026, 9, 1), ""))
