@@ -10,5 +10,6 @@ urlpatterns = [
     path("ecrire/", resident_views.educators_to_write, name="educators"),
     path("<int:pk>/", resident_views.detail, name="detail"),
     path("ecrire/<int:educator_pk>/", resident_views.write, name="write"),
+    path("ecrire/<int:educator_pk>/nouveaux/", resident_views.write_newer, name="write_newer"),
     path("<int:pk>/annuler/", resident_views.cancel, name="cancel"),
 ]

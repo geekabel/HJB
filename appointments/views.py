@@ -4,15 +4,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.db.models import OuterRef, Prefetch, Subquery
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from accounts.roles import Role
 from housing.models import Stay
+from ui.middleware import background
 
 from . import availability, booking, direct
 from .forms import AbsenceForm, SettingsForm
@@ -237,9 +240,39 @@ def conversation(request, pk):
                 "reply_hours": availability.settings_of(request.user).reply_hours,
                 "new_ids": new_ids,
                 "left": not found.resident.is_active,
+                "poll_url": reverse("appointments:conversation_newer", args=[found.pk]),
             },
         )
     )
+
+
+def newer_messages(request, conversation, me):
+    """The messages written after ?apres=, as list items (thread.js), or 204.
+
+    They are on screen as soon as they arrive: the other person's are read.
+    Also used by the resident's page (resident_views.write_newer).
+    """
+    after = direct.after_id(request)
+    if conversation is None or after is None:
+        return _private(HttpResponse(status=400))
+    found = direct.newer_than(conversation, after)
+    if not found:
+        return _private(HttpResponse(status=204))
+    new_ids = direct.mark_read(conversation, me)
+    # No request given: the context processors (menu counters...) are not needed here.
+    html = render_to_string(
+        "appointments/_thread_items.html", {"messages": found, "me": me, "new_ids": new_ids}
+    )
+    return _private(HttpResponse(html))
+
+
+@background
+@login_required
+@permission_required(PERMISSION, raise_exception=True)
+@require_GET
+def conversation_newer(request, pk):
+    found = get_object_or_404(Conversation, pk=pk, educator=request.user)
+    return newer_messages(request, found, request.user)
 
 
 @login_required

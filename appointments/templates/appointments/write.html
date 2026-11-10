@@ -1,6 +1,7 @@
 {% extends "ui/resident.html" %}
-{% load icons %}
+{% load icons static %}
 {% block title %}{{ educator.first_name|default:educator.get_username }}{% endblock %}
+{% block head %}<script src="{% static 'ui/js/thread.js' %}" defer></script>{% endblock %}
 {% block body_class %}resident-page resident-page--task{% endblock %}
 {% block content %}
 <div class="task-bar">
