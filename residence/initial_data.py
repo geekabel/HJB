@@ -14,6 +14,7 @@ YAML is read with yaml.safe_load (never yaml.load): the file can only
 hold plain data. https://pyyaml.org/wiki/PyYAMLDocumentation
 """
 
+import re
 from dataclasses import dataclass, field
 
 import yaml
@@ -64,6 +65,11 @@ def read(path):
     return check(data)
 
 
+# "101-120" is a range; "214A-1" is one room whose name has a dash.
+RANGE = re.compile(r"[0-9]+-[0-9]+")
+DASHED_ROOM = re.compile(r"[0-9]+[A-Za-z]+-[0-9A-Za-z]+")
+
+
 def _rooms(items, floor):
     if items is None:
         return []
@@ -77,14 +83,16 @@ def _rooms(items, floor):
                 f'Étage {floor} : écrivez chaque chambre entre guillemets, par exemple "{item}".'
             )
         text = item.strip()
-        if "-" in text:
-            start, _, end = text.partition("-")
-            if not (start.isdigit() and end.isdigit()) or int(start) > int(end):
+        start, dash, end = (part.strip() for part in text.partition("-"))
+        if dash and RANGE.fullmatch(f"{start}-{end}"):
+            if int(start) > int(end):
                 raise DataError(f"Étage {floor} : plage de chambres invalide «\u00a0{text}\u00a0».")
             width = len(start)
             rooms += [str(n).zfill(width) for n in range(int(start), int(end) + 1)]
+        elif dash and not DASHED_ROOM.fullmatch(text):
+            raise DataError(f"Étage {floor} : plage de chambres invalide «\u00a0{text}\u00a0».")
         elif text:
-            rooms.append(text)
+            rooms.append(text.upper())  # as the Excel import writes them
     for number in rooms:
         if len(number) > 10:
             raise DataError(f"Chambre «\u00a0{number}\u00a0» : 10 caractères au plus.")

@@ -1,6 +1,7 @@
 {% extends "ui/staff.html" %}
-{% load icons %}
+{% load icons static %}
 {% block title %}Message direct{% endblock %}
+{% block head %}<script src="{% static 'ui/js/thread.js' %}" defer></script>{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'appointments:conversations' %}">{% icon "back" %}Discussions</a>
 <header class="page-header">

@@ -23,8 +23,10 @@ from residents.bulk_import import (
     FileError,
     ImportRow,
     analyze,
+    has_wifi_columns,
     read_file,
     run_import,
+    split_name,
 )
 from residents.models import ResidentImport
 from tools.html_capture import save_page
@@ -133,6 +135,60 @@ class AnalysisTests(ImportTestCase):
         ):
             analyze([(1, ["Téléphone"]), (2, ["06 12 34 56 78"])])
 
+    def test_split_name(self):
+        cases = {
+            "Jean-Marc DUPONT-LEROY": ("Jean-Marc", "DUPONT-LEROY", True),
+            "anne marie LE GALL*": ("anne marie", "LE GALL", True),
+            "Chloé L'HERMITE": ("Chloé", "L'HERMITE", True),
+            "Paul Martin": ("Paul", "Martin", False),
+            "  ": ("", "", True),
+            "Sam": ("", "Sam", False),
+            "LÉO ROUX": ("LÉO", "ROUX", False),  # all in capitals: to check
+            "Jean de LA FONTAINE": ("Jean", "de LA FONTAINE", True),
+            "Pieter van DIJK": ("Pieter", "van DIJK", True),
+            "KONÉ Awa": ("Awa", "KONÉ", True),
+            "EL GHANNAJ Mohamed ismail": ("Mohamed ismail", "EL GHANNAJ", True),
+            "Anne DUPONT Marie": ("Anne DUPONT", "Marie", False),
+        }
+        for written, expected in cases.items():
+            with self.subTest(written):
+                self.assertEqual(split_name(written), expected)
+
+    def test_residence_list_with_one_name_column(self):
+        # Chambre | Nom | Identifiant | Mot de passe | Date, as kept at the front desk.
+        rows = self.analyze(
+            ("304", "Jean-Marc DUPONT*", "u1", "p1", "01/09/2026"),
+            ("305", "", "u2", "p2", ""),
+            ("312", "Paul Martin", "u3", "p3", ""),
+            header=("Chambre", "Nom", "Identifiant", "Mot de passe", "Date"),
+        )
+        first, free, guessed = rows
+        self.assertTrue(first.ready, first.errors)
+        self.assertEqual((first.first_name, first.last_name), ("Jean-Marc", "DUPONT"))
+        self.assertEqual(first.arrival_date, date(2026, 9, 1))
+        self.assertEqual(free.errors, ["Pas de nom : cette ligne est ignorée."])
+        self.assertEqual((guessed.first_name, guessed.last_name), ("Paul", "Martin"))
+        self.assertIn("séparés au mieux", guessed.warnings[0])
+        self.assertTrue(has_wifi_columns(["Chambre", "Nom", "Identifiant", "Mot de passe"]))
+        self.assertFalse(has_wifi_columns(["Chambre", "Nom", "Identifiant"]))
+        # "Nom prénom" works too, and a separate Prénom column wins over guessing.
+        (row,) = self.analyze(("Awa NDIAYE", "305"), header=("Nom prénom", "Chambre"))
+        self.assertEqual((row.first_name, row.last_name), ("Awa", "NDIAYE"))
+        (row,) = self.analyze(("Awa", "Ndiaye*", "305"), header=("Prénom", "Nom", "Chambre"))
+        self.assertEqual((row.first_name, row.last_name, row.warnings), ("Awa", "Ndiaye", []))
+        # An unknown first name title keeps the clear file error.
+        with self.assertRaisesMessage(FileError, "Il manque «\u00a0Prenom\u00a0»"):
+            self.analyze(("Awa", "Ndiaye"), header=("Prénom usuel", "Nom"))
+        (row,) = self.analyze(("Awa", "Ndiaye"), header=("Prénoms", "Nom"))
+        self.assertEqual(row.first_name, "Awa")
+        # "Date" is the arrival only without an "Arrivée" column.
+        (row,) = self.analyze(
+            ("Awa", "Ndiaye", "02/02/2002", "01/09/2026"),
+            header=("Prénom", "Nom", "Date", "Arrivée"),
+        )
+        self.assertEqual(row.arrival_date, date(2026, 9, 1))
+        self.assertTrue(has_wifi_columns(["Nom d'utilisateur", "Password"]))
+
     def test_values_coming_from_excel(self):
         (row,) = self.analyze(("Léa", "Moreau", 612345678, 304.0, datetime(2026, 9, 1), ""))
         self.assertTrue(row.ready, row.errors)
@@ -141,7 +197,8 @@ class AnalysisTests(ImportTestCase):
 
     def test_errors_explained(self):
         cases = [
-            (("", "", "", "", "", ""), ["Le prénom manque.", "Le nom manque."]),
+            (("", "", "", "", "", ""), ["Pas de nom : cette ligne est ignorée."]),
+            (("Léa", "", "", "", "", ""), ["Le nom manque."]),
             (
                 ("A", "B", "06 12 34", "", "", ""),
                 ["Numéro «\u00a006 12 34\u00a0» : Ce numéro n'existe pas. Vérifiez les chiffres."],
@@ -261,6 +318,16 @@ class ImportPagesTests(ImportTestCase):
         self.assertEqual(current_stay(moussa).room, self.r305)
         self.assertFalse(User.objects.filter(first_name__in=["Léa", "Zoé"]).exists())
         self.assertNotIn("resident_import", self.client.session)
+
+    def test_wifi_columns_are_pointed_out_after_the_import(self):
+        file = csv_(
+            "Chambre;Nom;Identifiant;Mot de passe\n304;Jean DUPONT;u1;secret-1\n305;;u2;p2\n"
+        )
+        self.upload(file)
+        self.assertNotIn("secret-1", str(dict(self.client.session)))
+        response = self.confirm("2", follow=True)
+        self.assertContains(response, "1 résident importé.")
+        self.assertContains(response, "contient aussi les accès wifi")
 
     def test_state_changed_before_the_confirmation(self):
         self.upload(self.sample_file())

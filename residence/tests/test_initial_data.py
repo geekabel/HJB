@@ -106,6 +106,19 @@ class InitialDataTests(TestCase):
                 self.load(text=text)
         self.assertFalse(Floor.objects.exists())
 
+    def test_room_names_with_a_dash(self):
+        self.load(text="floors:\n  - number: 2\n    rooms: ['201 - 203', '214a-1', '214B-2']\n")
+        self.assertEqual(
+            sorted(Room.objects.values_list("number", flat=True)),
+            ["201", "202", "203", "214A-1", "214B-2"],
+        )
+        for wrong in ("A1-A20", "101-", "-5", "1O1-120"):
+            with (
+                self.subTest(wrong),
+                self.assertRaisesMessage(CommandError, "plage de chambres invalide"),
+            ):
+                self.load(text=f"floors:\n  - number: 3\n    rooms: ['{wrong}']\n")
+
     def test_a_room_already_on_another_floor(self):
         Room.objects.create(number="101", floor=Floor.objects.create(number=9))
         with self.assertRaisesMessage(CommandError, "déjà sur l'étage 9"):

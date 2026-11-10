@@ -1,0 +1,11 @@
+{% comment %}
+  Buttons that write a {field} where the cursor is (ui/js/fields.js), in the
+  last text with data-field-target that had focus, else the message.
+  Variable: fields (name -> label).
+{% endcomment %}
+<div class="field-buttons stack stack--tight">
+  <p class="text-small" id="field-buttons-help">Touchez un champ pour l'ajouter là où est le curseur.</p>
+  <ul class="chips" aria-describedby="field-buttons-help">
+    {% for name, label in fields.items %}<li><button class="chip" type="button" data-insert="{{ "{" }}{{ name }}{{ "}" }}" title="{{ label }}"><span class="visually-hidden">Ajouter </span><code>{{ "{" }}{{ name }}{{ "}" }}</code></button></li>{% endfor %}
+  </ul>
+</div>

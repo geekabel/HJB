@@ -6,10 +6,16 @@ SessionMiddleware would then renew the session each time: a lost phone that
 still gets notifications would stay logged in forever. These addresses carry
 no personal data, so they get an empty session that is never saved, and the
 session cookie is neither renewed nor deleted.
+
+The same goes for the requests a page makes on its own (@background views,
+such as the new messages of a conversation): they keep the session, but do
+not renew it.
 """
 
+from functools import wraps
+
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.utils.cache import add_never_cache_headers
+from django.utils.cache import add_never_cache_headers, patch_vary_headers
 
 SESSIONLESS_PATHS = frozenset({"/sw.js", "/manifest.webmanifest", "/hors-ligne/", "/favicon.ico"})
 
@@ -25,7 +31,23 @@ class PublicFilesSessionMiddleware(SessionMiddleware):
     def process_response(self, request, response):
         if getattr(request, "sessionless", False):
             return response
+        if getattr(request, "background", False) and not request.session.modified:
+            # A page that asks on its own (thread.js) is not activity: the
+            # session keeps its expiry, and is not written every 5 seconds.
+            patch_vary_headers(response, ("Cookie",))
+            return response
         return super().process_response(request, response)
+
+
+def background(view):
+    """Mark a view called by a script, not by the person (see above)."""
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        request.background = True
+        return view(request, *args, **kwargs)
+
+    return wrapper
 
 
 # Browser features the site never asks for (card T37). A script injected

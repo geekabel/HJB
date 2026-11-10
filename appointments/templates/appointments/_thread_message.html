@@ -1,0 +1,5 @@
+{% load french %}{% comment %}One message of a conversation. Variables: message, me, new_ids, last (bool).{% endcomment %}
+<li class="thread__message{% if message.author_id == me.pk %} thread__message--mine{% endif %}" data-id="{{ message.pk }}"{% if last %} id="last-message"{% endif %}>
+  <p class="thread__text" dir="auto"><span class="visually-hidden">{% if message.author_id == me.pk %}Vous{% else %}{{ message.author.first_name|default:message.author.get_username }}{% endif %}&nbsp;: </span>{{ message.text|linebreaksbr }}</p>
+  <p class="thread__meta"><time datetime="{{ message.sent_at|date:'Y-m-d\TH:i:sO' }}">{{ message.sent_at|date:"H:i" }}</time>{% if message.pk in new_ids %} · <strong class="thread__new">Nouveau</strong>{% endif %}</p>
+</li>

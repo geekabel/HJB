@@ -21,7 +21,7 @@ from django.views.decorators.debug import sensitive_variables
 from housing import wifi, wifi_crypto
 from housing.models import Room, Stay, WifiAccess, WifiSettings
 
-from .bulk_import import FileError, _date, _key, _text
+from .bulk_import import FileError, _date, _key, _text, clean_name
 
 # Expected column -> accepted headers (compared without accents, spaces or case).
 # The headers stay in French: users type them in their files.
@@ -194,7 +194,7 @@ def analyze(rows):
 def _same_person(written, occupant):
     """True if every word written in the file is in the occupant's name."""
     occupant_words = {_key(word) for word in occupant.split()}
-    return {_key(word) for word in written.split()} <= occupant_words
+    return {_key(word) for word in clean_name(written).split()} <= occupant_words
 
 
 def _check(rows):

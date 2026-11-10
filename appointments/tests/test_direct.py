@@ -351,3 +351,111 @@ class HistoryPageTests(DirectTestCase):
         log_in_verified(self.client, self.samia)
         response = self.client.get(reverse("appointments:conversation", args=[talk.pk]))
         self.assertEqual(len(response.context["page"].messages), direct.PAGE)
+
+
+class NewerMessagesTests(DirectTestCase):
+    """New messages without reloading the page (thread.js)."""
+
+    def setUp(self):
+        super().setUp()
+        self.talk = Conversation.objects.create(resident=self.ines, educator=self.samia)
+        self.first = DirectMessage.objects.create(
+            conversation=self.talk, author=self.ines, text="Bonjour"
+        )
+        self.staff_url = reverse("appointments:conversation_newer", args=[self.talk.pk])
+        self.resident_url = reverse("rdv:write_newer", args=[self.samia.pk])
+
+    def test_educator_receives_the_resident_message(self):
+        log_in_verified(self.client, self.samia)
+        page = self.client.get(reverse("appointments:conversation", args=[self.talk.pk]))
+        self.assertContains(page, f'data-poll="{self.staff_url}"')
+        self.assertContains(page, f'data-id="{self.first.pk}"')
+        response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("no-store", response["Cache-Control"])
+        later = DirectMessage.objects.create(
+            conversation=self.talk, author=self.ines, text="Je <b>suis</b> là"
+        )
+        with self.assertNumQueries(11):  # 8 when there is nothing new
+            response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertContains(response, f'data-id="{later.pk}"')
+        self.assertContains(response, "Je &lt;b&gt;suis&lt;/b&gt; là")
+        self.assertContains(response, "Nouveau")
+        self.assertNotContains(response, "thread__day")  # same day as the one before
+        self.assertNotContains(response, 'id="last-message"')
+        later.refresh_from_db()
+        self.assertIsNotNone(later.read_at)
+
+    def test_asking_is_not_activity(self):
+        # The page asks every 5 seconds: that must not keep a session alive.
+        from django.contrib.sessions.models import Session
+
+        log_in_verified(self.client, self.samia)
+        key = self.client.session.session_key
+        Session.objects.filter(pk=key).update(expire_date=timezone.now() + timedelta(minutes=5))
+        response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("sessionid", response.cookies)
+        expiry = Session.objects.get(pk=key).expire_date
+        self.assertLess(expiry, timezone.now() + timedelta(minutes=6))
+        # A real visit renews it.
+        self.client.get(reverse("appointments:conversation", args=[self.talk.pk]))
+        self.assertGreater(
+            Session.objects.get(pk=key).expire_date, timezone.now() + timedelta(hours=1)
+        )
+
+    def test_only_the_shown_messages_are_read(self):
+        later = DirectMessage.objects.create(conversation=self.talk, author=self.ines, text="1")
+        log_in_verified(self.client, self.samia)
+        with mock.patch.object(direct, "PAGE", 1):  # one shown, one still waiting
+            DirectMessage.objects.create(conversation=self.talk, author=self.ines, text="2")
+            response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertContains(response, f'data-id="{later.pk}"')
+        self.assertEqual(self.talk.messages.filter(read_at__isnull=True).count(), 2)
+
+    def test_a_new_day_gets_its_line(self):
+        DirectMessage.objects.filter(pk=self.first.pk).update(
+            sent_at=timezone.now() - timedelta(days=2)
+        )
+        DirectMessage.objects.create(conversation=self.talk, author=self.ines, text="Re")
+        log_in_verified(self.client, self.samia)
+        response = self.client.get(self.staff_url, {"apres": self.first.pk})
+        self.assertContains(response, "thread__day", count=1)
+
+    def test_resident_receives_the_answer(self):
+        log_in_verified(self.client, self.ines)
+        page = self.client.get(self.write_url(self.samia))
+        self.assertContains(page, f'data-poll="{self.resident_url}"')
+        answer = DirectMessage.objects.create(
+            conversation=self.talk, author=self.samia, text="Je vous réponds"
+        )
+        response = self.client.get(self.resident_url, {"apres": self.first.pk})
+        self.assertContains(response, "Je vous réponds")
+        answer.refresh_from_db()
+        self.assertIsNotNone(answer.read_at)
+
+    def test_refusals(self):
+        log_in_verified(self.client, self.samia)
+        for wrong in ("", "x", "-1", "9" * 20):
+            response = self.client.get(self.staff_url, {"apres": wrong})
+            self.assertEqual(response.status_code, 400)
+        log_in_verified(self.client, self.julien)  # not his conversation
+        self.assertEqual(self.client.get(self.staff_url, {"apres": 0}).status_code, 404)
+        self.assertEqual(self.client.get(self.resident_url, {"apres": 0}).status_code, 403)
+        log_in_verified(self.client, self.yanis)  # no conversation yet: nothing to ask
+        self.assertNotContains(self.client.get(self.write_url(self.samia)), 'data-poll="')
+        self.assertEqual(self.client.get(self.resident_url, {"apres": 0}).status_code, 400)
+        self.client.logout()
+        self.assertEqual(self.client.get(self.resident_url, {"apres": 0}).status_code, 302)
+
+    def test_no_polling_on_an_older_page(self):
+        DirectMessage.objects.bulk_create(
+            DirectMessage(conversation=self.talk, author=self.samia, text=f"M {n}")
+            for n in range(direct.PAGE + 5)
+        )
+        log_in_verified(self.client, self.ines)
+        page = self.client.get(self.write_url(self.samia))
+        older = page.context["page"].older
+        self.assertNotContains(
+            self.client.get(self.write_url(self.samia), {"avant": older}), 'data-poll="'
+        )

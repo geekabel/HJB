@@ -145,15 +145,47 @@ def page_of(conversation, before=None):
     return Page(list(reversed(found[:PAGE])), older, before is None)
 
 
+def newer_than(conversation, after):
+    """Messages after message ``after`` (a pk), oldest first, at most PAGE.
+
+    For the conversation page that stays open (thread.js asks every few
+    seconds): one query on the index (conversation, id). Each message gets
+    ``new_day``: True when its day differs from the one before.
+    """
+    found = list(
+        conversation.messages.select_related("author").filter(pk__gt=after).order_by("pk")[:PAGE]
+    )
+    if found:
+        before = conversation.messages.filter(pk=after).values_list("sent_at", flat=True).first()
+        day = timezone.localdate(before) if before else None
+        for message in found:
+            message_day = timezone.localdate(message.sent_at)
+            message.new_day = message_day != day
+            day = message_day
+    return found
+
+
+def after_id(request):
+    """The ?apres= of the URL, or None if absent or wrong."""
+    value = request.GET.get("apres", "")
+    return int(value) if value.isascii() and value.isdigit() and len(value) < 12 else None
+
+
 def cursor(request):
     """The ?avant= of the URL, or None if absent or wrong."""
     value = request.GET.get("avant", "")
     return int(value) if value.isascii() and value.isdigit() and len(value) < 12 else None
 
 
-def mark_read(conversation, reader):
-    """The messages of the other person, now read by ``reader``. Return their ids."""
+def mark_read(conversation, reader, among=None):
+    """The messages of the other person, now read by ``reader``. Return their ids.
+
+    ``among``: only these messages (the ones just shown), not one that
+    arrived meanwhile and is not on screen yet.
+    """
     unread = conversation.messages.exclude(author=reader).filter(read_at__isnull=True)
+    if among is not None:
+        unread = unread.filter(pk__in=[message.pk for message in among])
     ids = list(unread.values_list("pk", flat=True))
     unread.update(read_at=timezone.now())
     return ids
