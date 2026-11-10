@@ -12,7 +12,7 @@
 </ol>
 {% endblock %}
 {% block content %}
-<p>{{ original.get_full_name|default:original.get_username }} se connectera la première fois avec ce code, sur la page « Activer mon compte ». Il est valable 72 heures, une seule fois. Un nouveau code annule le précédent.</p>
+<p>{{ original.get_full_name|default:original.get_username }} se connectera la première fois avec ce code, sur la page «&nbsp;Activer mon compte&nbsp;». Il est valable 72 heures, une seule fois. Un nouveau code annule le précédent.</p>
 <p>Ensuite, la personne vérifie son numéro par SMS et crée sa clé d'accès ou relie une application de codes.</p>
 <form method="post">{% csrf_token %}
 <div class="submit-row">

@@ -172,7 +172,7 @@ class HJBUserAdmin(UserAdmin):
             self.message_user(
                 request,
                 "Compte créé. Pour sa première connexion, la personne a besoin d'un code "
-                "d'activation : bouton « Code d'activation » en haut de cette page.",
+                "d'activation : bouton «\u00a0Code d'activation\u00a0» en haut de cette page.",
                 messages.INFO,
             )
         return super().response_add(request, obj, post_url_continue)
