@@ -1,0 +1,6 @@
+{% extends "admin/change_form.html" %}
+{% comment %}A staff member's first access: a visible button, not only the list action (T14).{% endcomment %}
+{% block object-tools-items %}
+{% if staff_code_url %}<li><a href="{{ staff_code_url }}">Code d'activation</a></li>{% endif %}
+{{ block.super }}
+{% endblock %}

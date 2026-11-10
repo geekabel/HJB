@@ -1,9 +1,16 @@
+from urllib.parse import urlencode
+
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm
-from django.urls import reverse
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404, redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_http_methods
 
 from audit.models import Action
 from audit.service import log_action
@@ -120,9 +127,109 @@ class HJBUserAdmin(UserAdmin):
         return readonly
 
     actions = ("issue_staff_code",)
+    change_form_template = "admin/accounts/user/change_form.html"
 
     def has_manage_roles_permission(self, request):
         return request.user.has_perm("accounts.manage_roles")
+
+    def get_urls(self):
+        return [
+            path(
+                "<int:object_id>/code-activation/",
+                self.admin_site.admin_view(self.staff_code_view),
+                name="accounts_user_staff_code",
+            ),
+            *super().get_urls(),
+        ]
+
+    def _staff_code_refusal(self, request, person):
+        """Why no staff code can be given to ``person`` by this user, or ""."""
+        from access.session_policy import is_resident
+
+        if person.is_superuser and not request.user.is_superuser:
+            return "Seul un super-utilisateur peut générer le code d'un super-utilisateur."
+        if not person.is_active:
+            return "Ce compte est désactivé."
+        if is_resident(person):
+            return "Ce compte est celui d'un résident : son code se génère depuis sa fiche."
+        return ""
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        person = self.get_object(request, object_id)
+        if (
+            person is not None
+            and self.has_manage_roles_permission(request)
+            and not self._staff_code_refusal(request, person)
+        ):
+            extra_context["staff_code_url"] = reverse(
+                "admin:accounts_user_staff_code", args=[person.pk]
+            )
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def response_add(self, request, obj, post_url_continue=None):
+        if set(obj.roles) & STAFF_ROLES:
+            self.message_user(
+                request,
+                "Compte créé. Pour sa première connexion, la personne a besoin d'un code "
+                "d'activation : bouton «\u00a0Code d'activation\u00a0» en haut de cette page.",
+                messages.INFO,
+            )
+        return super().response_add(request, obj, post_url_continue)
+
+    @method_decorator(require_http_methods(["GET", "POST"]))
+    def staff_code_view(self, request, object_id):
+        """First access of a staff member: a code to print, or sent by SMS (T14).
+
+        Like a resident's code (T37), it needs a passkey (or app code) used
+        less than 10 minutes ago: a code hands over the account.
+        """
+        from access.session_policy import confirmed_recently
+        from residents.views import activation_sheet
+
+        from .activation_codes import issue_code, send_code_by_sms
+
+        if not self.has_manage_roles_permission(request):
+            raise PermissionDenied
+        person = get_object_or_404(User, pk=object_id)
+        back_url = reverse("admin:accounts_user_change", args=[person.pk])
+        refusal = self._staff_code_refusal(request, person)
+        if refusal:
+            self.message_user(request, refusal, messages.WARNING)
+            return redirect(back_url)
+        if not confirmed_recently(request):
+            here = reverse("admin:accounts_user_staff_code", args=[person.pk])
+            messages.info(request, "Confirmez d'abord votre identité.")
+            return redirect(f"{reverse('access:confirm')}?{urlencode({'next': here})}")
+        if request.method == "POST" and "sheet" in request.POST:
+            code = issue_code(person, by=request.user, request=request, for_staff=True)
+            return activation_sheet(request, person, code, back_url)
+        if request.method == "POST" and "sms" in request.POST and person.phone:
+            address = request.build_absolute_uri(reverse("activation:enter_code"))
+            if send_code_by_sms(person, address, by=request.user, request=request, for_staff=True):
+                self.message_user(
+                    request,
+                    f"Code envoyé par SMS au {person.phone_display}. Il est valable 72 h.",
+                    messages.SUCCESS,
+                )
+            else:
+                self.message_user(
+                    request,
+                    "Le SMS n'est pas parti. Affichez le code et donnez-le en main propre.",
+                    messages.WARNING,
+                )
+            return redirect(back_url)
+        return TemplateResponse(
+            request,
+            "admin/accounts/user/staff_code.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.opts,
+                "original": person,
+                "title": "Code d'activation",
+                "back_url": back_url,
+            },
+        )
 
     @admin.action(
         description="Générer un code d'activation (personnel)", permissions=["manage_roles"]
@@ -132,7 +239,6 @@ class HJBUserAdmin(UserAdmin):
 
         Residents get their code at the front desk, from their profile page.
         """
-        from access.session_policy import is_resident
         from residents.views import activation_sheet
 
         from .activation_codes import issue_code
@@ -141,22 +247,9 @@ class HJBUserAdmin(UserAdmin):
             self.message_user(request, "Choisissez un seul compte.", messages.WARNING)
             return None
         person = queryset.get()
-        if person.is_superuser and not request.user.is_superuser:
-            self.message_user(
-                request,
-                "Seul un super-utilisateur peut générer le code d'un super-utilisateur.",
-                messages.WARNING,
-            )
-            return None
-        if not person.is_active:
-            self.message_user(request, "Ce compte est désactivé.", messages.WARNING)
-            return None
-        if is_resident(person):
-            self.message_user(
-                request,
-                "Ce compte est celui d'un résident : son code se génère depuis sa fiche.",
-                messages.WARNING,
-            )
+        refusal = self._staff_code_refusal(request, person)
+        if refusal:
+            self.message_user(request, refusal, messages.WARNING)
             return None
         code = issue_code(person, by=request.user, request=request, for_staff=True)
         back_url = reverse("admin:accounts_user_change", args=[person.pk])

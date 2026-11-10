@@ -2,6 +2,8 @@
 
 import io
 import re
+from unittest import mock
+from urllib.parse import urlencode
 
 from django.core.management import CommandError, call_command
 from django.test import Client, TestCase
@@ -11,7 +13,7 @@ from access.tests.authenticator import SoftwareAuthenticator
 from accounts.activation_codes import issue_code
 from accounts.models import ActivationCode, User
 from accounts.roles import Role
-from accounts.tests.helpers import log_in_verified, make_user
+from accounts.tests.helpers import confirm_now, log_in_verified, make_user
 from activation.tests.test_passkey import json_post
 from audit.models import Action, AuditEntry
 from sms.providers import memory
@@ -78,6 +80,109 @@ class AdminActionTests(TestCase):
             {"action": "issue_staff_code", "_selected_action": [self.samia.pk]},
         )
         self.assertFalse(ActivationCode.objects.exists())
+
+
+class StaffCodeButtonTests(TestCase):
+    """The visible "Code d'activation" button of a staff member's page."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.marie = make_user(
+            "marie", Role.ADMIN, is_staff=True, is_superuser=True, first_name="Marie"
+        )
+        cls.samia = make_user("samia", Role.EDUCATOR, first_name="Samia", phone="+33612345600")
+        cls.awa = make_user("awa", phone="+33612345647")
+
+    def setUp(self):
+        log_in_verified(self.client, self.marie)
+        memory.outbox.clear()
+
+    def url(self, person):
+        return reverse("admin:accounts_user_staff_code", args=[person.pk])
+
+    def test_button_on_a_staff_page_only(self):
+        page = self.client.get(reverse("admin:accounts_user_change", args=[self.samia.pk]))
+        self.assertContains(page, f'href="{self.url(self.samia)}"')
+        page = self.client.get(reverse("admin:accounts_user_change", args=[self.awa.pk]))
+        self.assertNotContains(page, "Code d'activation")
+
+    def test_needs_a_recent_confirmation(self):
+        response = self.client.get(self.url(self.samia))
+        self.assertRedirects(
+            response,
+            f"{reverse('access:confirm')}?{urlencode({'next': self.url(self.samia)})}",
+            fetch_redirect_response=False,
+        )
+        self.client.post(self.url(self.samia), {"sheet": "1"})
+        self.assertFalse(ActivationCode.objects.exists())
+
+    def test_sheet(self):
+        confirm_now(self.client)
+        page = self.client.get(self.url(self.samia))
+        save_page("admin-staff-code-choice", page)
+        self.assertContains(page, "Envoyer par SMS au 06 12 34 56 00")
+        self.assertFalse(ActivationCode.objects.exists())  # a GET gives no code
+        response = self.client.post(self.url(self.samia), {"sheet": "1"})
+        self.assertContains(response, "Activer votre compte")
+        self.assertTrue(ActivationCode.objects.get().for_staff)
+
+    def test_sms(self):
+        confirm_now(self.client)
+        response = self.client.post(self.url(self.samia), {"sms": "1"}, follow=True)
+        self.assertContains(response, "Code envoyé par SMS au 06 12 34 56 00")
+        code = ActivationCode.objects.get()
+        self.assertTrue(code.for_staff)
+        self.assertEqual(code.created_by, self.marie)
+        self.assertEqual(len(memory.outbox), 1)
+        self.assertIn("/activer/#", memory.outbox[0].text)
+
+    def test_sms_refused_is_said_and_the_code_cancelled(self):
+        from sms.providers.base import SendError
+
+        confirm_now(self.client)
+        with (
+            mock.patch("sms.providers.memory.MemoryProvider.send", side_effect=SendError("non")),
+            self.assertLogs("sms.service", "WARNING"),
+        ):
+            response = self.client.post(self.url(self.samia), {"sms": "1"}, follow=True)
+        self.assertContains(response, "Le SMS n&#x27;est pas parti")
+        self.assertFalse(ActivationCode.objects.valid().exists())
+
+    def test_not_for_a_resident_nor_without_the_role(self):
+        confirm_now(self.client)
+        response = self.client.post(self.url(self.awa), {"sheet": "1"}, follow=True)
+        self.assertContains(response, "son code se génère depuis sa fiche")
+        from django.contrib.auth.models import Permission
+
+        technician = make_user("tom", Role.MAINTENANCE, is_staff=True)
+        technician.user_permissions.add(
+            *Permission.objects.filter(codename__in=["view_user", "change_user"])
+        )
+        client = Client()
+        log_in_verified(client, technician)
+        confirm_now(client)
+        self.assertEqual(client.post(self.url(self.samia), {"sheet": "1"}).status_code, 403)
+        self.assertFalse(ActivationCode.objects.exists())
+
+    def test_message_after_creating_a_staff_account(self):
+        response = self.client.post(
+            reverse("admin:accounts_user_add"),
+            {
+                "username": "leo",
+                "first_name": "Léo",
+                "last_name": "M",
+                "phone": "",
+                "roles": ["educator"],
+            },
+            follow=True,
+        )
+        self.assertContains(response, "la personne a besoin d&#x27;un code")
+        response = self.client.post(
+            reverse("admin:accounts_user_add"),
+            {"username": "ines", "first_name": "Inès", "last_name": "B", "phone": ""},
+            follow=True,
+        )
+        self.assertNotContains(response, "besoin d&#x27;un code")
 
 
 class RightsReviewTests(TestCase):
