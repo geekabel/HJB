@@ -28,12 +28,22 @@ class PlaceholderTests(SimpleTestCase):
     def test_unknown_fields(self):
         self.assertEqual(check_text("Bonjour {prénom}"), [])
         self.assertEqual(
-            check_text("Bonjour {prenom} {heure}"),
+            check_text("Bonjour {nom} {heure}"),
             [
-                "Champs inconnus : {prenom}, {heure}. "
+                "Champs inconnus : {nom}, {heure}. "
                 "Champs possibles : {prénom}, {chambre}, {date}, {début}, {fin}."
             ],
         )
+
+    def test_names_without_accents_case_or_spaces(self):
+        values = {"prénom": "Awa", "début": "15 h", "chambre": "", "date": "", "fin": ""}
+        self.assertEqual(
+            fill("Bonjour {Prenom}, visite à {debut}, puis { DÉBUT }.", values),
+            "Bonjour Awa, visite à 15 h, puis 15 h.",
+        )
+        self.assertEqual(check_text("{debut} {Prénom} { fin }"), [])
+        self.assertEqual(len(check_text("{debutt}")), 1)
+        self.assertEqual(fill("{x} et {debutt}", values), "{x} et {debutt}")
 
     def test_missing_values(self):
         campaign = Campaign(body="Le {date} à {début}", sms_body="{fin}")

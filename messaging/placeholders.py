@@ -6,10 +6,12 @@ Field names stay in French: the staff type them in the texts.
 """
 
 import re
+import unicodedata
 
 from django.utils.formats import date_format
 
-FIELD = re.compile(r"\{([^{}\s]{1,20})\}")
+# Spaces inside the braces are allowed: "{ début }" is "{début}".
+FIELD = re.compile(r"\{\s*([^{}\s]{1,20})\s*\}")
 FIELDS = {
     "prénom": "Prénom du résident",
     "chambre": "Numéro de sa chambre",
@@ -19,8 +21,24 @@ FIELDS = {
 }
 
 
+def _canonical(name):
+    """Without accents nor case: {debut}, {Début} and {DEBUT} are {début}."""
+    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return plain.casefold()
+
+
+KNOWN = {_canonical(name): name for name in FIELDS}
+
+
+def field_name(written):
+    """The field meant by ``written`` (as typed between braces), or None."""
+    return KNOWN.get(_canonical(written))
+
+
 def fields_in(text):
-    return list(dict.fromkeys(FIELD.findall(text or "")))
+    """Fields of ``text``: known ones by their real name, unknown ones as typed."""
+    names = (field_name(name) or name for name in FIELD.findall(text or ""))
+    return list(dict.fromkeys(names))
 
 
 def check_text(text):
@@ -51,7 +69,12 @@ def values_for(campaign, resident=None, room=None):
 
 def fill(text, values):
     """Replace each known field; an unknown one stays as written."""
-    return FIELD.sub(lambda m: values.get(m.group(1), m.group(0)), text or "")
+
+    def value(match):
+        name = field_name(match.group(1))
+        return values[name] if name in values else match.group(0)
+
+    return FIELD.sub(value, text or "")
 
 
 def uses_event_fields(campaign):

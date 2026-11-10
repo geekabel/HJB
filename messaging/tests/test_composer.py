@@ -160,9 +160,9 @@ class ComposerPageTests(ComposerTestCase):
 
     def test_errors(self):
         log_in_verified(self.client, self.nadia)
-        response = self.post(reverse("messaging:new"), body="Bonjour {prenom}", title="")
+        response = self.post(reverse("messaging:new"), body="Bonjour {nom}", title="")
         save_page("messaging-new-errors", response)
-        self.assertContains(response, "Champ inconnu : {prenom}.")
+        self.assertContains(response, "Champ inconnu : {nom}.")
         self.assertFalse(Campaign.objects.exists())
         response = self.post(reverse("messaging:new"), event_date="", start_time="")
         self.assertContains(response, "indiquez leurs valeurs ci-dessus")
