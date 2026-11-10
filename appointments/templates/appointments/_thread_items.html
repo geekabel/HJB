@@ -1,0 +1,5 @@
+{% load french %}{% comment %}
+  Messages written since the page was opened (thread.js adds them at the end
+  of the list). Variables: messages (each with new_day), me, new_ids.
+{% endcomment %}{% for message in messages %}{% if message.new_day %}<li class="thread__day"><time datetime="{{ message.sent_at|date:'Y-m-d' }}">{{ message.sent_at|jour }}</time></li>{% endif %}
+{% include "appointments/_thread_message.html" with last=False %}{% endfor %}

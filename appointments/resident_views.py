@@ -12,14 +12,21 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.debug import sensitive_post_parameters
-from django.views.decorators.http import require_http_methods, require_POST, require_safe
+from django.views.decorators.http import (
+    require_GET,
+    require_http_methods,
+    require_POST,
+    require_safe,
+)
 
 from access.session_policy import is_resident
+from ui.middleware import background
 
 from . import booking, direct, reminders
 from .availability import settings_of
@@ -242,6 +249,19 @@ def detail(request, pk):
     )
 
 
+@background
+@login_required
+@require_GET
+def write_newer(request, educator_pk):
+    """New messages of the conversation with one educator (thread.js)."""
+    from .views import newer_messages
+
+    if not is_resident(request.user):
+        return HttpResponseForbidden()
+    educator = get_object_or_404(direct.educators(), pk=educator_pk)
+    return newer_messages(request, direct.conversation_of(request.user, educator), request.user)
+
+
 @login_required
 @sensitive_post_parameters("text")  # never in an error report
 @require_http_methods(["GET", "POST"])
@@ -277,6 +297,7 @@ def write(request, educator_pk):
                 "text": text,
                 "max_length": direct.MAX_LENGTH,
                 "new_ids": new_ids,
+                "poll_url": reverse("rdv:write_newer", args=[educator.pk]) if conversation else "",
             },
         )
     )
