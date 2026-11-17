@@ -298,6 +298,7 @@ def write(request, educator_pk):
                 "max_length": direct.MAX_LENGTH,
                 "new_ids": new_ids,
                 "poll_url": reverse("rdv:write_newer", args=[educator.pk]) if conversation else "",
+                "conversation": conversation,
             },
         )
     )

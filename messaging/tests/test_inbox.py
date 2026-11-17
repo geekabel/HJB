@@ -384,3 +384,33 @@ class ToAnswerTests(InboxTestCase):
         self.assertEqual(len(response.context["todos"]), 4)
         self.assertContains(response, "Voir les autres messages à répondre (2)")
         self.assertContains(response, f"{LIST}?show=todo")
+
+
+class AnsweredTests(InboxTestCase):
+    """Once answered, the question no longer looks open (card T22)."""
+
+    def setUp(self):
+        super().setUp()
+        log_in_verified(self.client, self.ines)
+
+    def test_buttons_fold_once_answered(self):
+        visit = self.send("Visite", type=MessageType.VISIT, reply_type=ReplyType.ATTENDANCE)
+        url = reverse("inbox:message", args=[visit.pk])
+        page = self.client.get(url)
+        self.assertNotContains(page, "Changer ma réponse")
+        self.assertNotContains(page, 'name="hjb-seen"')  # still waits: the notification stays
+        self.assertContains(page, 'value="present"')
+        response = self.client.post(url, {"answer": "present"}, follow=True)
+        self.assertContains(response, "Changer ma réponse")
+        self.assertContains(response, f'<meta name="hjb-seen" content="message-{visit.pk}">')
+        content = response.content.decode()
+        details = content[content.index('<details class="answer-change">') :]
+        self.assertIn('value="absent"', details[: details.index("</details>")])
+        home = self.client.get(reverse("home"))
+        self.assertNotContains(home, "Visite")
+        self.assertContains(home, '<meta name="hjb-fresh" content="1">')
+
+    def test_a_message_without_question_is_seen_at_once(self):
+        party = self.send("Soirée jeux")
+        page = self.client.get(reverse("inbox:message", args=[party.pk]))
+        self.assertContains(page, f'<meta name="hjb-seen" content="message-{party.pk}">')

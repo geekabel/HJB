@@ -2268,6 +2268,24 @@
     outline-offset: 2px;
   }
 
+  /* Answered: the buttons fold under "Changer ma réponse" */
+  .answer-change {
+    display: grid;
+    gap: var(--s-3);
+  }
+
+  .answer-change > summary {
+    list-style: none;
+  }
+
+  .answer-change > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .answer-change[open] > summary {
+    display: none;
+  }
+
   /* Resident inbox (card T23): filter chips, then one card per message */
   .chips {
     display: flex;

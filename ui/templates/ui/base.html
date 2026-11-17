@@ -18,6 +18,10 @@
   <script src="{% static 'ui/js/app.js' %}" defer></script>
   <script src="{% static 'ui/js/dates.js' %}" defer></script>
   {% block head %}{% endblock %}
+  {# Its phone notification is no longer needed: app.js closes it (tags of messaging/sending.py, appointments/tasks.py) #}
+  {% block seen %}{% endblock %}
+  {# A page with questions: never shown again from the back-forward cache (app.js) #}
+  {% block fresh %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}"{% if user.is_authenticated and not request.session.push_checked %} data-push-sync="{% url 'push:subscribe' %}" data-push-key="{{ push_public_key }}" data-csrf="{{ csrf_token }}"{% endif %}>
   <a class="skip-link" href="#content">Aller au contenu</a>
