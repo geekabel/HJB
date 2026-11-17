@@ -309,3 +309,44 @@
     });
   });
 })();
+
+/*
+ * Answered or read: its phone notification goes (card T19). The page names
+ * the notification tag in <meta name="hjb-seen">.
+ * Docs: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/getNotifications
+ */
+(function () {
+  "use strict";
+
+  var seen = document.querySelector('meta[name="hjb-seen"]');
+  if (!seen || !("serviceWorker" in navigator) || !window.Notification) {
+    return;
+  }
+  if (Notification.permission !== "granted") {
+    return;
+  }
+  navigator.serviceWorker.ready
+    .then(function (registration) {
+      return registration.getNotifications({ tag: seen.getAttribute("content") });
+    })
+    .then(function (shown) {
+      shown.forEach(function (notification) {
+        notification.close();
+      });
+    })
+    .catch(function () {
+      // Not supported here: the notification simply stays.
+    });
+})();
+
+/*
+ * Back to a page kept by the browser (back-forward cache, Safari on iPhone):
+ * it may show an answered question as still open. Load it again.
+ * Docs: https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event
+ */
+window.addEventListener("pageshow", function (event) {
+  if (event.persisted && document.body.hasAttribute("data-fresh")) {
+    window.location.reload();
+  }
+});
+

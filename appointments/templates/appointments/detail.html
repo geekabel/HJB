@@ -1,6 +1,7 @@
 {% extends "ui/resident.html" %}
 {% load icons %}
 {% block title %}Rendez-vous{% endblock %}
+{% block seen %}<meta name="hjb-seen" content="rendez-vous-{{ meeting.pk }}">{% endblock %}
 {% block content %}
 <div class="row">
   <a class="icon-button" href="{% url 'rdv:list' %}">{% icon "back" %}<span class="visually-hidden">Retour aux rendez-vous</span></a>

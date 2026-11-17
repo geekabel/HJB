@@ -106,17 +106,28 @@ function answer(notification, choice) {
   })
     .then((response) => response.ok, () => false)
     .then((done) => {
-      return self.registration.showNotification(done ? "Réponse enregistrée" : "Réponse non enregistrée", {
-        body: done
-          ? (choice === "present" ? "Vous serez présent. Merci !" : "Vous serez absent. Merci de l'avoir dit.")
-          : "Ouvrez le message pour répondre.",
-        icon: ICON,
-        lang: "fr",
-        tag: notification.tag || undefined,
-        data: { url: notification.data.url },
-      });
+      const tag = notification.tag || "hjb-answer";
+      return self.registration
+        .showNotification(done ? "Réponse enregistrée" : "Réponse non enregistrée", {
+          body: done
+            ? (choice === "present" ? "Vous serez présent. Merci !" : "Vous serez absent. Merci de l'avoir dit.")
+            : "Ouvrez le message pour répondre.",
+          icon: ICON,
+          lang: "fr",
+          tag: tag,
+          data: { url: notification.data.url },
+        })
+        // Answered: the thanks goes away by itself, the question is over.
+        // A failure stays, so that the person still answers.
+        .then(() => (done ? closeLater(tag) : undefined));
     })
     .catch(() => undefined); // the notification itself could not be shown
+}
+
+function closeLater(tag) {
+  return new Promise((resolve) => setTimeout(resolve, 4000))
+    .then(() => self.registration.getNotifications({ tag: tag }))
+    .then((shown) => shown.forEach((item) => item.close()));
 }
 
 self.addEventListener("notificationclick", (event) => {
