@@ -1,6 +1,7 @@
 {% extends "ui/resident.html" %}
 {% load icons %}
 {% block title %}{{ delivery.title }}{% endblock %}
+{% block fresh %}<meta name="hjb-fresh" content="1">{% endblock %}
 {# Seen, and nothing left to answer: the phone notification goes #}
 {% block seen %}{% if poll %}{% if voted or not open %}<meta name="hjb-seen" content="message-{{ campaign.pk }}">{% endif %}{% elif not asks or current or closed %}<meta name="hjb-seen" content="message-{{ campaign.pk }}">{% endif %}{% endblock %}
 {% block content %}

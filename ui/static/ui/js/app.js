@@ -345,8 +345,24 @@
  * Docs: https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event
  */
 window.addEventListener("pageshow", function (event) {
-  if (event.persisted && document.body.hasAttribute("data-fresh")) {
-    window.location.reload();
+  var fresh = document.querySelector('meta[name="hjb-fresh"]');
+  if (event.persisted && fresh && navigator.onLine !== false) {
+    window.location.replace(window.location.href); // a GET, never a form sent again
   }
 });
+
+// "Changer ma réponse" opens the buttons: the focus goes to the first one.
+document.addEventListener(
+  "toggle",
+  function (event) {
+    var details = event.target;
+    if (details.matches && details.matches(".answer-change") && details.open) {
+      var first = details.querySelector("button");
+      if (first) {
+        first.focus();
+      }
+    }
+  },
+  true // "toggle" does not bubble
+);
 

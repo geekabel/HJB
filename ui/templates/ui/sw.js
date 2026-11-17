@@ -115,7 +115,7 @@ function answer(notification, choice) {
           icon: ICON,
           lang: "fr",
           tag: tag,
-          data: { url: notification.data.url },
+          data: { url: notification.data.url, thanks: done },
         })
         // Answered: the thanks goes away by itself, the question is over.
         // A failure stays, so that the person still answers.
@@ -127,7 +127,8 @@ function answer(notification, choice) {
 function closeLater(tag) {
   return new Promise((resolve) => setTimeout(resolve, 4000))
     .then(() => self.registration.getNotifications({ tag: tag }))
-    .then((shown) => shown.forEach((item) => item.close()));
+    // Only the thanks: a reminder of the same message that came meanwhile stays.
+    .then((shown) => shown.filter((item) => item.data && item.data.thanks).forEach((item) => item.close()));
 }
 
 self.addEventListener("notificationclick", (event) => {

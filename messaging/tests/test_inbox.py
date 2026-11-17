@@ -408,7 +408,7 @@ class AnsweredTests(InboxTestCase):
         self.assertIn('value="absent"', details[: details.index("</details>")])
         home = self.client.get(reverse("home"))
         self.assertNotContains(home, "Visite")
-        self.assertContains(home, "data-fresh")
+        self.assertContains(home, '<meta name="hjb-fresh" content="1">')
 
     def test_a_message_without_question_is_seen_at_once(self):
         party = self.send("Soirée jeux")
